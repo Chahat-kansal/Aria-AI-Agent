@@ -1,26 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; draftId: string }) {
   const router = useRouter();
-  const [fileName, setFileName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  async function uploadDocument() {
-    if (!fileName.trim()) return;
+  async function uploadDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setMessage(null);
+    const formData = new FormData(event.currentTarget);
     const res = await fetch("/api/documents", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matterId, fileName: fileName.trim(), mimeType: fileName.endsWith(".pdf") ? "application/pdf" : "application/octet-stream" })
+      body: formData
     });
     const data = await res.json();
     setMessage(data.message ?? data.error);
-    setFileName("");
     startTransition(() => router.refresh());
   }
 
@@ -33,6 +31,18 @@ export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; 
     });
     const data = await res.json();
     setMessage(data.message ?? data.error);
+    startTransition(() => router.refresh());
+  }
+
+  async function runFinalCrossCheck() {
+    setMessage(null);
+    const res = await fetch("/api/application-drafts/final-review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matterId })
+    });
+    const data = await res.json();
+    setMessage(data.summary ?? data.error);
     startTransition(() => router.refresh());
   }
 
@@ -52,13 +62,15 @@ export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; 
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-[#0e182a] p-3">
         <p className="text-sm font-semibold">Upload client document</p>
-        <p className="mt-1 text-xs text-muted">Records metadata in Postgres, classifies the file, stores extraction output, and maps supported values to the draft.</p>
-        <div className="mt-3 flex gap-2">
-          <input value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="passport-client.pdf" className="w-full rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
-          <button onClick={uploadDocument} disabled={pending} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Upload</button>
-        </div>
+        <p className="mt-1 text-xs text-muted">Stores the file, records metadata in Postgres, classifies evidence, and maps supported values to the draft.</p>
+        <form onSubmit={uploadDocument} className="mt-3 flex gap-2">
+          <input type="hidden" name="matterId" value={matterId} />
+          <input name="file" required type="file" className="w-full rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
+          <button disabled={pending} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Upload</button>
+        </form>
       </div>
       <button onClick={runMapping} disabled={pending} className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Run AI-assisted draft mapping</button>
+      <button onClick={runFinalCrossCheck} disabled={pending} className="w-full rounded-xl border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60">Final submission-readiness cross-check</button>
       <div className="rounded-xl border border-border bg-[#0e182a] p-3">
         <p className="text-sm font-semibold">Client review/signature foundation</p>
         <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-2 w-full rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />

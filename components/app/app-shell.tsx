@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Bell, Building2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { SignOutButton } from "@/components/app/sign-out-button";
 
 const nav = [
   ["Overview", "/app/overview"],
@@ -80,6 +81,7 @@ export async function AppShell({ title, children }: { title: string; children: R
               </div>
               <button className="rounded-lg border border-border p-2"><Bell className="h-4 w-4" /></button>
               <div className="rounded-lg border border-border px-3 py-2 text-sm">{user.name} ({user.role})</div>
+              <SignOutButton />
             </div>
           </header>
           {children}

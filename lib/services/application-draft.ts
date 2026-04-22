@@ -106,6 +106,8 @@ export async function uploadDocumentToMatter(input: {
   fileName: string;
   mimeType?: string;
   storageKey?: string;
+  fileSize?: number;
+  contentHash?: string;
   uploadedByUserId: string;
 }) {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
@@ -119,6 +121,8 @@ export async function uploadDocumentToMatter(input: {
       fileName: input.fileName,
       storageKey: input.storageKey ?? `matter/${matter.id}/${Date.now()}-${input.fileName}`,
       mimeType: input.mimeType ?? "application/octet-stream",
+      fileSize: input.fileSize,
+      contentHash: input.contentHash,
       category,
       uploadedByUserId: input.uploadedByUserId,
       extractionStatus: ExtractionStatus.QUEUED,

@@ -28,6 +28,8 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           <div className="rounded-xl border border-border p-3"><p className="text-muted">Stage</p><p className="font-medium">{formatEnum(matter.stage)}</p></div>
           <div className="rounded-xl border border-border p-3"><p className="text-muted">Readiness</p><p className="font-medium">{matter.readinessScore}%</p></div>
           <div className="rounded-xl border border-border p-3"><p className="text-muted">Lodgement target</p><p className="font-medium">{formatDate(matter.lodgementTargetDate)}</p></div>
+          <div className="rounded-xl border border-border p-3"><p className="text-muted">Matter ref</p><p className="font-medium">{matter.matterReference ?? matter.id.slice(0, 8)}</p></div>
+          <div className="rounded-xl border border-border p-3"><p className="text-muted">Client ref</p><p className="font-medium">{matter.client.clientReference ?? matter.client.id.slice(0, 8)}</p></div>
         </div>
       </Card>
 

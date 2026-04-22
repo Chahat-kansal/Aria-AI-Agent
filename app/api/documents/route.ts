@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { persistDocumentStorageObject, prepareMatterDocumentUpload } from "@/lib/services/storage";
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const fileName = typeof body.fileName === "string" ? body.fileName : "unknown.file";
-  const matterId = typeof body.matterId === "string" ? body.matterId : null;
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return NextResponse.json({ error: "multipart file upload is required" }, { status: 415 });
+  }
+
+  const formData = await req.formData();
+  const matterId = typeof formData.get("matterId") === "string" ? String(formData.get("matterId")) : null;
   if (!matterId) return NextResponse.json({ error: "matterId is required" }, { status: 400 });
+  const file = formData.get("file");
+  if (!(file instanceof File)) return NextResponse.json({ error: "file is required" }, { status: 400 });
+  const fileName = file.name;
+  const mimeType = file.type || "application/octet-stream";
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes });
 
   const context = await getCurrentWorkspaceContext();
   if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
@@ -14,10 +25,14 @@ export async function POST(req: Request) {
   const document = await uploadDocumentToMatter({
     matterId,
     fileName,
-    mimeType: typeof body.mimeType === "string" ? body.mimeType : "application/octet-stream",
-    storageKey: typeof body.storageKey === "string" ? body.storageKey : undefined,
+    mimeType,
+    storageKey: upload?.storageKey,
+    fileSize: upload?.fileSize,
+    contentHash: upload?.contentHash,
     uploadedByUserId: context.user.id
   });
+
+  await persistDocumentStorageObject({ documentId: document.id, upload });
 
   return NextResponse.json({
     status: "accepted",

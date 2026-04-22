@@ -175,6 +175,7 @@ model User {
 
 model Client {
   id          String     @id @default(cuid())
+  clientReference String? @unique
   workspaceId String
   workspace   Workspace  @relation(fields: [workspaceId], references: [id])
   firstName   String
@@ -191,6 +192,7 @@ model Client {
 
 model Matter {
   id                  String                   @id @default(cuid())
+  matterReference     String?                  @unique
   workspaceId         String
   workspace           Workspace                @relation(fields: [workspaceId], references: [id])
   clientId            String
@@ -229,6 +231,8 @@ model Document {
   fileName           String
   storageKey         String
   mimeType           String
+  fileSize           Int?
+  contentHash        String?
   category           String
   subcategory        String?
   uploadedByUserId   String
@@ -239,6 +243,17 @@ model Document {
   extractedFields    ExtractedField[]
   draftEvidenceLinks MatterDraftFieldEvidenceLink[]
   extractionResults  DocumentExtractionResult[]
+  storageObject      DocumentStorageObject?
+}
+
+model DocumentStorageObject {
+  id         String   @id @default(cuid())
+  documentId String   @unique
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  provider   String
+  storageKey String
+  data       Bytes?
+  createdAt  DateTime @default(now())
 }
 
 model ExtractedField {
