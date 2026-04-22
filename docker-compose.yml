@@ -1,0 +1,28 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aria
+    ports:
+      - "5432:5432"
+    volumes:
+      - aria_pg:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/aria
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: local-dev-secret
+      NEXT_PUBLIC_DEMO_MODE: "true"
+    command: sh -c "npm run prisma:generate && npm run start"
+
+volumes:
+  aria_pg:
