@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env
+artifacts/*.zip
+artifacts/*.tar.gz
+artifacts/*.bundle
+artifacts/*.patch

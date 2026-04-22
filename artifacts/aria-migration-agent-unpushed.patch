@@ -1,0 +1,2318 @@
+From 726ac44cb2db2891803985023c29993c46b6f3f9 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Wed, 22 Apr 2026 00:56:07 +0000
+Subject: [PATCH 1/3] Initial app scaffold: Next.js UI, API routes, Prisma
+ schema, demo data, and Docker
+
+### Motivation
+- Provide a runnable demo scaffold for the Aria migration operations product to accelerate development and reviews.
+- Offer a review-required AI-assisted workflow surface with source-linked field review, update ingestion, and document pipeline abstractions.
+- Include infrastructure and developer DX files so contributors can run the app locally and seed a demo dataset.
+
+### Description
+- Added a full Next.js App Router application with landing, auth, and authenticated workspace pages and UI primitives in `components/` and `app/` to render an operations dashboard and matter workflows.
+- Implemented lightweight service adapters and demo implementations for AI (`lib/services/ai-adapter.ts`), document pipeline (`lib/services/document-pipeline.ts`), and update ingestion/connectors (`lib/connectors/update-connector.ts`, `lib/services/update-ingestion.ts`), plus API routes under `app/api/*` to exercise them.
+- Added domain types, seeded demo data, demo repository helpers (`lib/domain.ts`, `lib/demo-data.ts`, `lib/data/demo-repository.ts`), and a full Prisma schema, SQL migration, and seed script under `prisma/` to model workspace, matters, documents, updates, tasks, AI chat threads and audit events.
+- Included developer tooling and runtime configuration: `Dockerfile`, `docker-compose.yml`, `.env.example`, `README.md`, `package.json`, `tsconfig.json`, `next.config.mjs`, Tailwind/PostCSS configs, `eslint` config, and utility helpers like `lib/utils.ts`.
+
+### Testing
+- No automated tests were executed as part of this change; the PR provides startup and seed scripts (`npm run dev`, `npm run build`, `npm run prisma:generate`, `npm run prisma:migrate`, `npm run prisma:seed`) for local verification of the app and database seed process.
+---
+ .env.example                                  |   8 +
+ .eslintrc.json                                |   3 +
+ Dockerfile                                    |   8 +
+ README.md                                     | 121 +++++++++
+ app/api/assistant/route.ts                    |  14 ++
+ app/api/auth/[...nextauth]/route.ts           |   6 +
+ app/api/documents/route.ts                    |  14 ++
+ app/api/updates/ingest/route.ts               |  14 ++
+ app/app/assistant/page.tsx                    |  34 +++
+ app/app/documents/page.tsx                    |  41 +++
+ app/app/forms/page.tsx                        |  44 ++++
+ app/app/layout.tsx                            |  13 +
+ app/app/matters/[matterId]/page.tsx           |  48 ++++
+ app/app/matters/page.tsx                      |  32 +++
+ app/app/overview/page.tsx                     |  54 ++++
+ app/app/settings/page.tsx                     |  18 ++
+ app/app/tasks/page.tsx                        |  19 ++
+ app/app/updates/[updateId]/page.tsx           |  25 ++
+ app/app/updates/page.tsx                      |  26 ++
+ app/app/validation/page.tsx                   |  30 +++
+ app/auth/sign-in/page.tsx                     |  19 ++
+ app/auth/sign-up/page.tsx                     |  19 ++
+ app/globals.css                               |  15 ++
+ app/layout.tsx                                |  15 ++
+ app/page.tsx                                  |  64 +++++
+ components/app/app-shell.tsx                  |  62 +++++
+ components/app/blocks/page-header.tsx         |  11 +
+ components/app/blocks/stat-card.tsx           |  11 +
+ components/app/blocks/status-chip.tsx         |  17 ++
+ components/ui/badge.tsx                       |   5 +
+ components/ui/button.tsx                      |   5 +
+ components/ui/card.tsx                        |   5 +
+ docker-compose.yml                            |  28 +++
+ lib/auth.ts                                   |  22 ++
+ lib/connectors/update-connector.ts            |  34 +++
+ lib/data/demo-repository.ts                   |  79 ++++++
+ lib/demo-data.ts                              |  45 ++++
+ lib/domain.ts                                 | 101 ++++++++
+ lib/services/ai-adapter.ts                    |  16 ++
+ lib/services/document-pipeline.ts             |  15 ++
+ lib/services/update-ingestion.ts              |  21 ++
+ lib/utils.ts                                  |   6 +
+ next-env.d.ts                                 |   4 +
+ next.config.mjs                               |   8 +
+ package.json                                  |  42 ++++
+ postcss.config.mjs                            |   6 +
+ .../202604210001_init/migration.sql           | 180 ++++++++++++++
+ prisma/schema.prisma                          | 234 ++++++++++++++++++
+ prisma/seed.ts                                | 104 ++++++++
+ tailwind.config.ts                            |  26 ++
+ tsconfig.json                                 |  21 ++
+ 51 files changed, 1812 insertions(+)
+ create mode 100644 .env.example
+ create mode 100644 .eslintrc.json
+ create mode 100644 Dockerfile
+ create mode 100644 README.md
+ create mode 100644 app/api/assistant/route.ts
+ create mode 100644 app/api/auth/[...nextauth]/route.ts
+ create mode 100644 app/api/documents/route.ts
+ create mode 100644 app/api/updates/ingest/route.ts
+ create mode 100644 app/app/assistant/page.tsx
+ create mode 100644 app/app/documents/page.tsx
+ create mode 100644 app/app/forms/page.tsx
+ create mode 100644 app/app/layout.tsx
+ create mode 100644 app/app/matters/[matterId]/page.tsx
+ create mode 100644 app/app/matters/page.tsx
+ create mode 100644 app/app/overview/page.tsx
+ create mode 100644 app/app/settings/page.tsx
+ create mode 100644 app/app/tasks/page.tsx
+ create mode 100644 app/app/updates/[updateId]/page.tsx
+ create mode 100644 app/app/updates/page.tsx
+ create mode 100644 app/app/validation/page.tsx
+ create mode 100644 app/auth/sign-in/page.tsx
+ create mode 100644 app/auth/sign-up/page.tsx
+ create mode 100644 app/globals.css
+ create mode 100644 app/layout.tsx
+ create mode 100644 app/page.tsx
+ create mode 100644 components/app/app-shell.tsx
+ create mode 100644 components/app/blocks/page-header.tsx
+ create mode 100644 components/app/blocks/stat-card.tsx
+ create mode 100644 components/app/blocks/status-chip.tsx
+ create mode 100644 components/ui/badge.tsx
+ create mode 100644 components/ui/button.tsx
+ create mode 100644 components/ui/card.tsx
+ create mode 100644 docker-compose.yml
+ create mode 100644 lib/auth.ts
+ create mode 100644 lib/connectors/update-connector.ts
+ create mode 100644 lib/data/demo-repository.ts
+ create mode 100644 lib/demo-data.ts
+ create mode 100644 lib/domain.ts
+ create mode 100644 lib/services/ai-adapter.ts
+ create mode 100644 lib/services/document-pipeline.ts
+ create mode 100644 lib/services/update-ingestion.ts
+ create mode 100644 lib/utils.ts
+ create mode 100644 next-env.d.ts
+ create mode 100644 next.config.mjs
+ create mode 100644 package.json
+ create mode 100644 postcss.config.mjs
+ create mode 100644 prisma/migrations/202604210001_init/migration.sql
+ create mode 100644 prisma/schema.prisma
+ create mode 100644 prisma/seed.ts
+ create mode 100644 tailwind.config.ts
+ create mode 100644 tsconfig.json
+
+diff --git a/.env.example b/.env.example
+new file mode 100644
+index 0000000..2833699
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,8 @@
++DATABASE_URL="postgresql://postgres:postgres@localhost:5432/aria"
++NEXTAUTH_URL="http://localhost:3000"
++NEXTAUTH_SECRET="replace-with-strong-secret"
++NEXT_PUBLIC_DEMO_MODE="true"
++STORAGE_PROVIDER="local"
++STORAGE_BUCKET="aria-documents"
++AI_PROVIDER="mock"
++OFFICIAL_UPDATE_SCHEDULER_ENABLED="false"
+diff --git a/.eslintrc.json b/.eslintrc.json
+new file mode 100644
+index 0000000..957cd15
+--- /dev/null
++++ b/.eslintrc.json
+@@ -0,0 +1,3 @@
++{
++  "extends": ["next/core-web-vitals"]
++}
+diff --git a/Dockerfile b/Dockerfile
+new file mode 100644
+index 0000000..64d5a86
+--- /dev/null
++++ b/Dockerfile
+@@ -0,0 +1,8 @@
++FROM node:20-alpine AS base
++WORKDIR /app
++COPY package*.json ./
++RUN npm ci
++COPY . .
++RUN npm run build
++EXPOSE 3000
++CMD ["npm", "run", "start"]
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..5adfabe
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,121 @@
++# Aria for Migration Agents
++
++Aria is an AI-assisted migration operations platform for Australian migration practices. It supports matter coordination, document intake, source-linked field review, validation, official update monitoring, and matter impact triage.
++
++## Tech stack
++- Next.js (App Router) + TypeScript
++- Tailwind CSS component system
++- Prisma + PostgreSQL
++- NextAuth foundation
++- Modular service adapters for AI, update ingestion, and document extraction
++
++## Product areas
++- Overview
++- Matters (list + detail)
++- Documents
++- Forms & Field Review
++- Validation
++- Updates Monitor
++- AI Assistant
++- Tasks
++- Settings
++
++## Architecture
++- `app/`: route structure for marketing, auth, authenticated app, and API endpoints.
++- `components/`: shell, shared UI primitives, and app-level blocks.
++- `lib/data/`: demo repository layer emulating production query boundaries.
++- `lib/services/`: integration adapters for OCR/extraction pipeline, AI provider output, and update ingestion.
++- `lib/connectors/`: official update source connector interfaces.
++- `prisma/`: schema, migration SQL, and seeded demo dataset.
++
++## Key integration points
++- **Document ingestion**: `POST /api/documents` + `lib/services/document-pipeline.ts`
++- **AI assistant**: `POST /api/assistant` + `lib/services/ai-adapter.ts`
++- **Update ingestion**: `POST /api/updates/ingest` + connector interface + hash dedupe service
++
++## Local development
++1. Copy env vars:
++   ```bash
++   cp .env.example .env
++   ```
++2. Install dependencies:
++   ```bash
++   npm install
++   ```
++3. Generate Prisma client:
++   ```bash
++   npm run prisma:generate
++   ```
++4. Apply migration:
++   ```bash
++   npm run prisma:migrate
++   ```
++5. Seed demo data:
++   ```bash
++   npm run prisma:seed
++   ```
++6. Run app:
++   ```bash
++   npm run dev
++   ```
++
++## Docker local run
++```bash
++docker compose up --build
++```
++
++## Demo data included
++- 10 clients and 10 matters
++- 32 documents with extraction/review states
++- Extracted fields with confidence and source snippets
++- Validation issues with severity and status
++- Official updates + matter impacts
++- Matter-linked tasks
++- AI chat threads/messages
++- Audit events
++
++## Trust-safe positioning
++Aria is AI-assisted and review-required. It does not replace a registered migration agent and does not guarantee visa outcomes.
++
++## Downloading a source bundle (when artifact links are not clickable)
++If your chat/artifact UI does not render clickable links, create and fetch a source-only archive from the repository root:
++
++```bash
++mkdir -p artifacts
++zip -r artifacts/Aria-AI-Agent-source-only.zip . -x '.git/*' 'node_modules/*' '.next/*'
++```
++
++Then download the file directly from your workspace file browser at:
++- `artifacts/Aria-AI-Agent-source-only.zip`
++
++If your environment supports sandbox links, this format is typically clickable:
++- `[Download source zip](sandbox:/workspace/Aria-AI-Agent/artifacts/Aria-AI-Agent-source-only.zip)`
++
++## Enabling direct push from this environment
++To allow the agent/environment to push straight to GitHub, confirm these repo/environment settings:
++
++1. **Remote configured**
++   ```bash
++   git remote add origin https://github.com/Chahat-kansal/Aria-AI-Agent.git
++   ```
++   (Or `git remote set-url origin ...` if it already exists.)
++
++2. **Write authentication available to Git**
++   - HTTPS: provide a GitHub PAT with `repo` scope via credential helper or `GITHUB_TOKEN`/`GH_TOKEN` in environment.
++   - SSH: load a key that is added to your GitHub account and use `git@github.com:Chahat-kansal/Aria-AI-Agent.git`.
++
++3. **Outbound network access to GitHub**
++   - Allow `github.com` and `api.github.com` over port `443`.
++   - If a corporate proxy is required, set `HTTPS_PROXY`/`HTTP_PROXY` for the runtime.
++
++4. **Branch permissions**
++   - Ensure the target branch accepts direct pushes from your account/token, or allow push to a feature branch and open a PR.
++
++5. **Quick verification commands**
++   ```bash
++   git remote -v
++   git ls-remote origin
++   git push -u origin HEAD
++   ```
++
++If `git ls-remote origin` fails with `403`/`CONNECT tunnel failed`, the blocker is network/proxy or token permissions (not repository code).
+diff --git a/app/api/assistant/route.ts b/app/api/assistant/route.ts
+new file mode 100644
+index 0000000..dc020de
+--- /dev/null
++++ b/app/api/assistant/route.ts
+@@ -0,0 +1,14 @@
++import { NextResponse } from "next/server";
++import { generateSeededAiReply } from "@/lib/services/ai-adapter";
++
++export async function POST(req: Request) {
++  const body = await req.json();
++  const prompt = typeof body.prompt === "string" ? body.prompt : "Summarize current matter";
++  const reply = await generateSeededAiReply(prompt);
++
++  return NextResponse.json({
++    mode: body.matterId ? "matter-specific" : "workspace",
++    reviewRequired: true,
++    ...reply
++  });
++}
+diff --git a/app/api/auth/[...nextauth]/route.ts b/app/api/auth/[...nextauth]/route.ts
+new file mode 100644
+index 0000000..7b38c1b
+--- /dev/null
++++ b/app/api/auth/[...nextauth]/route.ts
+@@ -0,0 +1,6 @@
++import NextAuth from "next-auth";
++import { authOptions } from "@/lib/auth";
++
++const handler = NextAuth(authOptions);
++
++export { handler as GET, handler as POST };
+diff --git a/app/api/documents/route.ts b/app/api/documents/route.ts
+new file mode 100644
+index 0000000..1833223
+--- /dev/null
++++ b/app/api/documents/route.ts
+@@ -0,0 +1,14 @@
++import { NextResponse } from "next/server";
++import { runDocumentPipeline } from "@/lib/services/document-pipeline";
++
++export async function POST(req: Request) {
++  const body = await req.json();
++  const fileName = typeof body.fileName === "string" ? body.fileName : "unknown.file";
++  const pipeline = await runDocumentPipeline(fileName);
++
++  return NextResponse.json({
++    status: "accepted",
++    message: "Upload recorded. Extraction pipeline queued for review-required processing.",
++    pipeline
++  });
++}
+diff --git a/app/api/updates/ingest/route.ts b/app/api/updates/ingest/route.ts
+new file mode 100644
+index 0000000..263d371
+--- /dev/null
++++ b/app/api/updates/ingest/route.ts
+@@ -0,0 +1,14 @@
++import { NextResponse } from "next/server";
++import { SeededHomeAffairsConnector } from "@/lib/connectors/update-connector";
++import { ingestUpdates } from "@/lib/services/update-ingestion";
++
++export async function POST() {
++  const updates = await ingestUpdates([new SeededHomeAffairsConnector()]);
++
++  return NextResponse.json({
++    fetched: updates.length,
++    deduped: updates.length,
++    cronReady: true,
++    updates
++  });
++}
+diff --git a/app/app/assistant/page.tsx b/app/app/assistant/page.tsx
+new file mode 100644
+index 0000000..e7cc5a5
+--- /dev/null
++++ b/app/app/assistant/page.tsx
+@@ -0,0 +1,34 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++
++const prompts = [
++  "What is missing from this matter?",
++  "Summarize the current issues on this file",
++  "Which matters may be impacted by recent updates?",
++  "Draft a checklist for this client",
++  "Explain this issue in plain English for internal review"
++];
++
++export default function AssistantPage() {
++  return (
++    <AppShell title="AI Assistant">
++      <PageHeader title="AI Assistant Workspace" subtitle="Context-aware AI-assisted drafting with citation panel and review-required actions." />
++      <section className="grid gap-4 md:grid-cols-[2fr_1fr]">
++        <Card>
++          <h3 className="font-semibold">Matter-specific mode</h3>
++          <div className="mt-3 h-80 rounded-lg border border-border bg-[#0c1525] p-3 text-sm text-muted">
++            <p>Assistant: I found two unresolved issues for this file and one high-impact official update that may alter evidence requirements.</p>
++            <p className="mt-2">Citations: Validation panel, Update monitor feed, Field review source snippets.</p>
++            <p className="mt-2">Recommended actions: verify passport expiry, reconcile employment dates, update checklist.</p>
++          </div>
++          <div className="mt-3 flex gap-2"><input className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Ask about readiness, issues, impacts, or tasks..." /><button className="rounded-lg bg-accent px-4 py-2 text-sm">Send</button></div>
++        </Card>
++        <Card>
++          <h3 className="font-semibold">Suggested prompts</h3>
++          <ul className="mt-3 space-y-2 text-sm text-muted">{prompts.map((p) => <li key={p} className="rounded-lg border border-border p-2">{p}</li>)}</ul>
++        </Card>
++      </section>
++    </AppShell>
++  );
++}
+diff --git a/app/app/documents/page.tsx b/app/app/documents/page.tsx
+new file mode 100644
+index 0000000..513fd45
+--- /dev/null
++++ b/app/app/documents/page.tsx
+@@ -0,0 +1,41 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function DocumentsPage() {
++  const { documents } = getOverview();
++
++  return (
++    <AppShell title="Documents">
++      <PageHeader title="Document Intake & Organization" subtitle="Upload evidence, classify content, and progress extraction with review-required controls." />
++      <section className="grid gap-4 md:grid-cols-[2fr_1fr]">
++        <Card>
++          <h3 className="font-semibold">Upload queue</h3>
++          <div className="mt-4 rounded-xl border border-dashed border-accent/50 bg-accent/5 p-8 text-center text-sm text-muted">Drag and drop files, or browse to upload. Pipeline steps: classify → extract → review → verify.</div>
++          <div className="mt-4 flex gap-2 text-xs"><span className="rounded bg-[#111a2b] px-2 py-1">Filter: category</span><span className="rounded bg-[#111a2b] px-2 py-1">Filter: extraction status</span><span className="rounded bg-[#111a2b] px-2 py-1">Filter: review status</span></div>
++          <div className="mt-4 overflow-hidden rounded-xl border border-border">
++            <table className="w-full text-sm"><thead className="bg-[#101a2e] text-muted"><tr><th className="p-2 text-left">File</th><th className="p-2">Category</th><th className="p-2">Extraction</th><th className="p-2">Review</th><th className="p-2">Preview</th></tr></thead><tbody>
++              {documents.slice(0, 18).map((d) => (
++                <tr key={d.id} className="border-t border-border">
++                  <td className="p-2">{d.fileName}</td>
++                  <td className="p-2 text-center">{d.category}</td>
++                  <td className="p-2 text-center"><StatusChip label={d.extractionStatus} /></td>
++                  <td className="p-2 text-center"><StatusChip label={d.reviewStatus} /></td>
++                  <td className="p-2 text-center text-muted">Placeholder</td>
++                </tr>
++              ))}
++            </tbody></table>
++          </div>
++        </Card>
++
++        <Card>
++          <h3 className="font-semibold">Suggested Folder Structure</h3>
++          <ul className="mt-3 space-y-2 text-sm text-muted">{["Identity","Travel","Employment","Education","Financial","Relationship","Health / Police","Forms","Other Evidence"].map((f)=><li key={f} className="rounded-lg border border-border p-2">/{f}</li>)}</ul>
++          <p className="mt-4 text-xs text-muted">Consistent folders improve extraction quality and field mapping reliability.</p>
++        </Card>
++      </section>
++    </AppShell>
++  );
++}
+diff --git a/app/app/forms/page.tsx b/app/app/forms/page.tsx
+new file mode 100644
+index 0000000..e16cbe6
+--- /dev/null
++++ b/app/app/forms/page.tsx
+@@ -0,0 +1,44 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function FormsPage() {
++  const { extractedFields, documents } = getOverview();
++
++  return (
++    <AppShell title="Forms & Field Review">
++      <PageHeader title="Form Draft & Field Review" subtitle="Source-linked extracted fields. Manual verification is required before submission readiness." />
++      <Card>
++        <div className="space-y-3">
++          {extractedFields.map((f) => {
++            const doc = documents.find((d) => d.id === f.documentId);
++            return (
++              <div key={f.id} className="rounded-xl border border-border p-3">
++                <div className="flex items-start justify-between gap-3">
++                  <div>
++                    <p className="text-xs text-muted">Section · {f.fieldKey.split("_")[0]}</p>
++                    <p className="font-medium">{f.fieldLabel}</p>
++                    <p className="text-sm">{f.fieldValue || "— Missing —"}</p>
++                    <p className="text-xs text-muted">Source: {doc?.fileName} · {f.sourcePageRef}</p>
++                    <p className="mt-1 text-xs text-muted">Snippet: “{f.sourceSnippet}”</p>
++                  </div>
++                  <div className="text-right text-xs">
++                    <p className="mb-2">Confidence: {Math.round(f.confidence * 100)}%</p>
++                    <StatusChip label={f.status} />
++                    <div className="mt-3 flex gap-1">
++                      <button className="rounded border border-border px-2 py-1">Verify</button>
++                      <button className="rounded border border-border px-2 py-1">Needs review</button>
++                      <button className="rounded border border-border px-2 py-1">Override</button>
++                    </div>
++                  </div>
++                </div>
++              </div>
++            );
++          })}
++        </div>
++      </Card>
++    </AppShell>
++  );
++}
+diff --git a/app/app/layout.tsx b/app/app/layout.tsx
+new file mode 100644
+index 0000000..1ea12e0
+--- /dev/null
++++ b/app/app/layout.tsx
+@@ -0,0 +1,13 @@
++import { cookies } from "next/headers";
++import { redirect } from "next/navigation";
++
++export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
++  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE !== "false";
++  const session = cookies().get("aria_session")?.value;
++
++  if (!demoMode && !session) {
++    redirect("/auth/sign-in");
++  }
++
++  return children;
++}
+diff --git a/app/app/matters/[matterId]/page.tsx b/app/app/matters/[matterId]/page.tsx
+new file mode 100644
+index 0000000..d9f9d95
+--- /dev/null
++++ b/app/app/matters/[matterId]/page.tsx
+@@ -0,0 +1,48 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { getOverview } from "@/lib/data/demo-repository";
++
++const tabs = ["Overview", "Documents", "Field Review", "Validation", "Tasks", "Updates", "AI Assistant"];
++
++export default function MatterDetailPage({ params }: { params: { matterId: string } }) {
++  const { matters, documents, issues, impacts, tasks } = getOverview();
++  const matter = matters.find((m) => m.id === params.matterId) ?? matters[0];
++
++  return (
++    <AppShell title="Matters">
++      <PageHeader title={`${matter.client} · ${matter.title}`} subtitle="AI-assisted matter workspace with source-linked review controls." />
++      <Card>
++        <div className="flex flex-wrap gap-2 text-sm">{tabs.map((tab, idx) => <span key={tab} className={`rounded-full px-3 py-1 ${idx === 0 ? "bg-accent/20 text-accent" : "bg-[#111a2b] text-muted"}`}>{tab}</span>)}</div>
++        <div className="mt-4 grid gap-3 md:grid-cols-4 text-sm">
++          <div className="rounded-xl border border-border p-3"><p className="text-muted">Status</p><p className="font-medium">{matter.status}</p></div>
++          <div className="rounded-xl border border-border p-3"><p className="text-muted">Stage</p><p className="font-medium">{matter.stage}</p></div>
++          <div className="rounded-xl border border-border p-3"><p className="text-muted">Readiness</p><p className="font-medium">{matter.readiness}%</p></div>
++          <div className="rounded-xl border border-border p-3"><p className="text-muted">Lodgement target</p><p className="font-medium">2026-06-14</p></div>
++        </div>
++      </Card>
++
++      <section className="mt-4 grid gap-4 md:grid-cols-2">
++        <Card>
++          <h3 className="font-semibold">Checklist summary</h3>
++          <ul className="mt-3 list-disc pl-5 text-sm text-muted">
++            <li>Identity evidence: complete</li>
++            <li>Employment evidence: review required</li>
++            <li>Health / police bundle: pending</li>
++            <li>Field verification: in progress</li>
++          </ul>
++        </Card>
++        <Card>
++          <h3 className="font-semibold">Flagged issues</h3>
++          <ul className="mt-3 list-disc pl-5 text-sm text-muted">{issues.filter((x)=>x.matterId===matter.id).slice(0,4).map((i) => <li key={i.id}>{i.title}</li>)}</ul>
++        </Card>
++      </section>
++
++      <section className="mt-4 grid gap-4 md:grid-cols-3">
++        <Card><h3 className="font-semibold">Documents</h3><p className="mt-2 text-sm text-muted">{documents.filter((d) => d.matterId === matter.id).length} linked files</p></Card>
++        <Card><h3 className="font-semibold">Potential impacts</h3><p className="mt-2 text-sm text-muted">{impacts.filter((i) => i.matterId === matter.id).length} open update matches</p></Card>
++        <Card><h3 className="font-semibold">Open tasks</h3><p className="mt-2 text-sm text-muted">{tasks.filter((t) => t.matterId === matter.id && t.status !== "Done").length} active tasks</p></Card>
++      </section>
++    </AppShell>
++  );
++}
+diff --git a/app/app/matters/page.tsx b/app/app/matters/page.tsx
+new file mode 100644
+index 0000000..0171664
+--- /dev/null
++++ b/app/app/matters/page.tsx
+@@ -0,0 +1,32 @@
++import Link from "next/link";
++import { AppShell } from "@/components/app/app-shell";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function MattersPage() {
++  const { matters } = getOverview();
++
++  return (
++    <AppShell title="Matters">
++      <PageHeader title="Matter Register" subtitle="Track status, stage, ownership, and submission readiness across all active files." />
++      <div className="panel overflow-hidden">
++        <table className="w-full text-sm">
++          <thead className="bg-[#101a2e] text-muted"><tr><th className="p-3 text-left">Client</th><th className="p-3 text-left">Matter</th><th className="p-3">Subclass</th><th className="p-3">Stream</th><th className="p-3">Owner</th><th className="p-3">Stage</th><th className="p-3">Readiness</th></tr></thead>
++          <tbody>
++            {matters.map((m) => (
++              <tr key={m.id} className="border-t border-border hover:bg-[#0f1727]">
++                <td className="p-3"><Link href={`/app/matters/${m.id}`} className="text-accent">{m.client}</Link></td>
++                <td className="p-3">{m.title}</td>
++                <td className="p-3 text-center">{m.visaSubclass}</td>
++                <td className="p-3 text-center">{m.visaStream}</td>
++                <td className="p-3 text-center">Mia Patel</td>
++                <td className="p-3 text-center">{m.stage}</td>
++                <td className="p-3 text-center">{m.readiness}%</td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++      </div>
++    </AppShell>
++  );
++}
+diff --git a/app/app/overview/page.tsx b/app/app/overview/page.tsx
+new file mode 100644
+index 0000000..bd71996
+--- /dev/null
++++ b/app/app/overview/page.tsx
+@@ -0,0 +1,54 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { StatCard } from "@/components/app/blocks/stat-card";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function OverviewPage() {
++  const { matters, issues, updates, tasks } = getOverview();
++
++  return (
++    <AppShell title="Overview">
++      <PageHeader title="Operations Overview" subtitle="Live workspace snapshot of submission readiness, flagged inconsistencies, and update impact." />
++      <section className="grid gap-4 md:grid-cols-4">
++        <StatCard label="Active matters" value={`${matters.length}`} hint="Across all stages" />
++        <StatCard label="Avg readiness" value={`${Math.round(matters.reduce((a,m)=>a+m.readiness,0)/matters.length)}%`} hint="Review-required score" />
++        <StatCard label="Open validation issues" value={`${issues.filter((x)=>x.resolutionStatus === "Open").length}`} hint="Prioritize critical first" />
++        <StatCard label="Recent official updates" value={`${updates.length}`} hint="Source-linked feed" />
++      </section>
++
++      <section className="mt-4 grid gap-4 md:grid-cols-2">
++        <Card>
++          <h3 className="font-semibold">Matters needing attention</h3>
++          <div className="mt-3 space-y-2">
++            {matters.slice(0, 6).map((matter) => (
++              <div key={matter.id} className="flex items-center justify-between rounded-lg border border-border p-3">
++                <div>
++                  <p className="font-medium">{matter.client}</p>
++                  <p className="text-xs text-muted">Subclass {matter.visaSubclass} · {matter.stage}</p>
++                </div>
++                <StatusChip label={matter.readiness < 70 ? "high" : "low"} />
++              </div>
++            ))}
++          </div>
++        </Card>
++
++        <Card>
++          <h3 className="font-semibold">Upcoming tasks</h3>
++          <div className="mt-3 space-y-2">
++            {tasks.slice(0, 6).map((task) => (
++              <div key={task.id} className="flex items-center justify-between rounded-lg border border-border p-3">
++                <div>
++                  <p className="font-medium">{task.title}</p>
++                  <p className="text-xs text-muted">Due {task.dueDate} · Matter {task.matterId}</p>
++                </div>
++                <StatusChip label={task.priority} />
++              </div>
++            ))}
++          </div>
++        </Card>
++      </section>
++    </AppShell>
++  );
++}
+diff --git a/app/app/settings/page.tsx b/app/app/settings/page.tsx
+new file mode 100644
+index 0000000..667c39e
+--- /dev/null
++++ b/app/app/settings/page.tsx
+@@ -0,0 +1,18 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++
++export default function SettingsPage() {
++  return (
++    <AppShell title="Settings">
++      <PageHeader title="Workspace Settings" subtitle="Configure organization profile, access roles, AI configuration, update sources, and billing controls." />
++      <section className="grid gap-4 md:grid-cols-2">
++        <Card><h3 className="font-semibold">Workspace profile</h3><p className="mt-2 text-sm text-muted">Name, slug, timezone, and branding placeholders.</p></Card>
++        <Card><h3 className="font-semibold">Team members & roles</h3><p className="mt-2 text-sm text-muted">Invite users and assign role boundaries for review-safe operations.</p></Card>
++        <Card><h3 className="font-semibold">AI settings</h3><p className="mt-2 text-sm text-muted">Provider adapter key, prompt safety mode, and citation requirements.</p></Card>
++        <Card><h3 className="font-semibold">Update source settings</h3><p className="mt-2 text-sm text-muted">Enable official connectors, schedule fetch cadence, and dedupe rules.</p></Card>
++        <Card><h3 className="font-semibold">Billing</h3><p className="mt-2 text-sm text-muted">Starter / Growth / Pro plan management placeholder.</p></Card>
++      </section>
++    </AppShell>
++  );
++}
+diff --git a/app/app/tasks/page.tsx b/app/app/tasks/page.tsx
+new file mode 100644
+index 0000000..ad5dfd0
+--- /dev/null
++++ b/app/app/tasks/page.tsx
+@@ -0,0 +1,19 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function TasksPage() {
++  const { tasks } = getOverview();
++
++  return (
++    <AppShell title="Tasks">
++      <PageHeader title="Task Board" subtitle="Matter-linked operational tasks with owner, priority, due date, and completion status." />
++      <Card>
++        <div className="mb-3 flex gap-2 text-xs"><span className="rounded bg-[#111a2b] px-2 py-1">Open tasks</span><span className="rounded bg-[#111a2b] px-2 py-1">Due this week</span><span className="rounded bg-[#111a2b] px-2 py-1">Assigned to me</span></div>
++        <div className="space-y-2">{tasks.map((task) => <div key={task.id} className="flex items-center justify-between rounded-lg border border-border p-3"><div><p className="font-medium">{task.title}</p><p className="text-xs text-muted">Matter {task.matterId} · Due {task.dueDate}</p></div><div className="flex items-center gap-2"><StatusChip label={task.priority} /><StatusChip label={task.status} /></div></div>)}</div>
++      </Card>
++    </AppShell>
++  );
++}
+diff --git a/app/app/updates/[updateId]/page.tsx b/app/app/updates/[updateId]/page.tsx
+new file mode 100644
+index 0000000..bf2172c
+--- /dev/null
++++ b/app/app/updates/[updateId]/page.tsx
+@@ -0,0 +1,25 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function UpdateDetailPage({ params }: { params: { updateId: string } }) {
++  const { updates, impacts } = getOverview();
++  const update = updates.find((u) => u.id === params.updateId) ?? updates[0];
++  const related = impacts.filter((i) => i.officialUpdateId === update.id);
++
++  return (
++    <AppShell title="Updates Monitor">
++      <PageHeader title={update.title} subtitle={`${update.source} · Effective ${update.effectiveDate ?? "TBC"}`} />
++      <Card>
++        <p className="text-sm text-muted">{update.summary}</p>
++        <a href={update.sourceUrl} className="mt-2 block text-sm text-accent" target="_blank">Open source publication</a>
++      </Card>
++      <Card className="mt-4">
++        <h3 className="font-semibold">Potentially affected matters</h3>
++        <div className="mt-3 space-y-2">{related.map((impact) => <div key={impact.id} className="rounded-lg border border-border p-3"><div className="flex items-center justify-between"><p className="font-medium">{impact.matterId}</p><StatusChip label={impact.impactLevel} /></div><p className="text-sm text-muted">Why matched: {impact.reason}</p><p className="text-xs text-muted">Action state: {impact.status}</p></div>)}</div>
++      </Card>
++    </AppShell>
++  );
++}
+diff --git a/app/app/updates/page.tsx b/app/app/updates/page.tsx
+new file mode 100644
+index 0000000..f6c928f
+--- /dev/null
++++ b/app/app/updates/page.tsx
+@@ -0,0 +1,26 @@
++import Link from "next/link";
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function UpdatesPage() {
++  const { updates, impacts } = getOverview();
++
++  return (
++    <AppShell title="Updates Monitor">
++      <PageHeader title="Official Updates Monitor" subtitle="Track source-linked policy and procedure updates, then map likely matter impact." />
++      <section className="grid gap-4 md:grid-cols-[2fr_1fr]">
++        <Card>
++          <div className="mb-3 flex gap-2 text-xs"><span className="rounded bg-[#111a2b] px-2 py-1">Source: all official</span><span className="rounded bg-[#111a2b] px-2 py-1">Type: all</span><span className="rounded bg-[#111a2b] px-2 py-1">Window: 90 days</span></div>
++          <div className="space-y-3">{updates.map((u) => <Link href={`/app/updates/${u.id}`} key={u.id} className="block rounded-lg border border-border p-3 hover:bg-[#0f1727]"><p className="font-medium">{u.title}</p><p className="text-sm text-muted">{u.source} · Published {u.publishedAt}</p><p className="text-sm text-muted">{u.summary}</p></Link>)}</div>
++        </Card>
++        <Card>
++          <h3 className="font-semibold">Impact Summary</h3>
++          <div className="mt-3 space-y-2">{impacts.slice(0, 8).map((impact) => <div key={impact.id} className="rounded-lg border border-border p-2"><div className="flex items-center justify-between"><p className="text-sm">{impact.matterId}</p><StatusChip label={impact.impactLevel} /></div><p className="mt-1 text-xs text-muted">{impact.reason}</p></div>)}</div>
++        </Card>
++      </section>
++    </AppShell>
++  );
++}
+diff --git a/app/app/validation/page.tsx b/app/app/validation/page.tsx
+new file mode 100644
+index 0000000..ce3b3f5
+--- /dev/null
++++ b/app/app/validation/page.tsx
+@@ -0,0 +1,30 @@
++import { AppShell } from "@/components/app/app-shell";
++import { Card } from "@/components/ui/card";
++import { PageHeader } from "@/components/app/blocks/page-header";
++import { StatusChip } from "@/components/app/blocks/status-chip";
++import { getOverview } from "@/lib/data/demo-repository";
++
++export default function ValidationPage() {
++  const { issues } = getOverview();
++
++  return (
++    <AppShell title="Validation">
++      <PageHeader title="Validation Engine" subtitle="Automated checks identify data inconsistencies and missing evidence. Practitioner review required." />
++      <Card>
++        <div className="space-y-2">
++          {issues.map((issue) => (
++            <div key={issue.id} className="rounded-lg border border-border p-3">
++              <div className="flex items-center justify-between">
++                <p className="font-medium">{issue.title}</p>
++                <StatusChip label={issue.severity} />
++              </div>
++              <p className="mt-1 text-sm text-muted">Type: {issue.type} · Related field: {issue.relatedFieldKey ?? "n/a"}</p>
++              <p className="mt-1 text-sm text-muted">Recommendation: review source-linked fields/documents and resolve before final submission readiness check.</p>
++              <div className="mt-2 flex gap-2 text-xs text-muted"><span className="rounded bg-[#111a2b] px-2 py-1">Resolution: {issue.resolutionStatus}</span><span className="rounded bg-[#111a2b] px-2 py-1">Link to affected matter</span></div>
++            </div>
++          ))}
++        </div>
++      </Card>
++    </AppShell>
++  );
++}
+diff --git a/app/auth/sign-in/page.tsx b/app/auth/sign-in/page.tsx
+new file mode 100644
+index 0000000..f4abbf6
+--- /dev/null
++++ b/app/auth/sign-in/page.tsx
+@@ -0,0 +1,19 @@
++import Link from "next/link";
++import { Button } from "@/components/ui/button";
++
++export default function SignInPage() {
++  return (
++    <div className="flex min-h-screen items-center justify-center p-6">
++      <div className="panel w-full max-w-md p-8">
++        <h1 className="text-2xl font-semibold">Sign in</h1>
++        <p className="mt-2 text-sm text-muted">Access your workspace to continue AI-assisted review workflows.</p>
++        <div className="mt-6 space-y-3">
++          <input className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Email" />
++          <input className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Password" type="password" />
++          <Link href="/app/overview"><Button className="w-full">Sign in</Button></Link>
++        </div>
++        <p className="mt-4 text-sm text-muted">No account? <Link href="/auth/sign-up" className="text-accent">Create one</Link></p>
++      </div>
++    </div>
++  );
++}
+diff --git a/app/auth/sign-up/page.tsx b/app/auth/sign-up/page.tsx
+new file mode 100644
+index 0000000..923de45
+--- /dev/null
++++ b/app/auth/sign-up/page.tsx
+@@ -0,0 +1,19 @@
++import Link from "next/link";
++import { Button } from "@/components/ui/button";
++
++export default function SignUpPage() {
++  return (
++    <div className="flex min-h-screen items-center justify-center p-6">
++      <div className="panel w-full max-w-md p-8">
++        <h1 className="text-2xl font-semibold">Create account</h1>
++        <p className="mt-2 text-sm text-muted">Set up your migration practice workspace.</p>
++        <div className="mt-6 space-y-3">
++          <input className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Full name" />
++          <input className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Work email" />
++          <input className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Password" type="password" />
++          <Link href="/app/overview"><Button className="w-full">Create workspace</Button></Link>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/app/globals.css b/app/globals.css
+new file mode 100644
+index 0000000..4a6a2d1
+--- /dev/null
++++ b/app/globals.css
+@@ -0,0 +1,15 @@
++@tailwind base;
++@tailwind components;
++@tailwind utilities;
++
++:root {
++  color-scheme: dark;
++}
++
++body {
++  @apply bg-background text-white antialiased;
++}
++
++.panel {
++  @apply rounded-2xl border border-border bg-surface shadow-premium;
++}
+diff --git a/app/layout.tsx b/app/layout.tsx
+new file mode 100644
+index 0000000..c6c5aee
+--- /dev/null
++++ b/app/layout.tsx
+@@ -0,0 +1,15 @@
++import "./globals.css";
++import type { Metadata } from "next";
++
++export const metadata: Metadata = {
++  title: "Aria for Migration Agents",
++  description: "AI-assisted migration operations platform for Australian migration practices."
++};
++
++export default function RootLayout({ children }: { children: React.ReactNode }) {
++  return (
++    <html lang="en">
++      <body>{children}</body>
++    </html>
++  );
++}
+diff --git a/app/page.tsx b/app/page.tsx
+new file mode 100644
+index 0000000..e153035
+--- /dev/null
++++ b/app/page.tsx
+@@ -0,0 +1,64 @@
++import Link from "next/link";
++import { ShieldCheck, Sparkles, Files, Radar, CheckCircle2, ArrowRight } from "lucide-react";
++import { Badge } from "@/components/ui/badge";
++import { Button } from "@/components/ui/button";
++import { Card } from "@/components/ui/card";
++
++export default function LandingPage() {
++  return (
++    <div className="min-h-screen bg-gradient-to-b from-[#050B17] to-[#03060D] px-6 py-10">
++      <div className="mx-auto max-w-6xl space-y-12">
++        <header className="flex items-center justify-between">
++          <div>
++            <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria for Migration Agents</p>
++            <h1 className="text-3xl font-semibold">AI-assisted migration operations for registered migration practices.</h1>
++          </div>
++          <div className="flex gap-2">
++            <Link href="/auth/sign-in"><Button className="border border-border bg-transparent">Sign in</Button></Link>
++            <Link href="/app/overview"><Button>Start trial</Button></Link>
++          </div>
++        </header>
++
++        <section className="panel p-10">
++          <Badge className="border-accent/40 bg-accent/10 text-accent">AI-assisted · Source-linked · Review required</Badge>
++          <h2 className="mt-4 max-w-3xl text-5xl font-semibold leading-tight">Reduce manual administration while improving submission readiness.</h2>
++          <p className="mt-4 max-w-2xl text-muted">Aria helps migration teams manage matters, organize evidence, review extracted draft fields, validate inconsistencies, monitor official changes, and identify potentially affected client files.</p>
++          <div className="mt-6 flex gap-3"><Button>Book demo</Button><Button className="border border-border bg-transparent">See pricing</Button></div>
++        </section>
++
++        <section className="grid gap-4 md:grid-cols-3">
++          {[{t:"Matter Operations",i:Files,d:"Track stages, status, ownership, and readiness across every active matter."},{t:"Field Review",i:Sparkles,d:"Review extracted draft fields with confidence scoring and source snippets."},{t:"Official Update Monitoring",i:Radar,d:"Monitor trusted sources and map impact across in-flight matters."}].map((item) => (
++            <Card key={item.t}><item.i className="mb-3 h-5 w-5 text-accent"/><h3 className="font-semibold">{item.t}</h3><p className="mt-2 text-sm text-muted">{item.d}</p></Card>
++          ))}
++        </section>
++
++        <section className="grid gap-4 md:grid-cols-2">
++          <Card>
++            <h3 className="font-semibold">How Aria improves operational quality</h3>
++            <ul className="mt-3 space-y-2 text-sm text-muted">
++              {[
++                "Standardize document intake and folder structures.",
++                "Catch flagged inconsistencies before final review.",
++                "Keep form draft fields source-linked and verifiable.",
++                "Coordinate team actions with tasks and audit trails."
++              ].map((x) => <li key={x} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-success"/>{x}</li>)}
++            </ul>
++          </Card>
++          <Card>
++            <h3 className="font-semibold">Security & trust posture</h3>
++            <p className="mt-3 text-sm text-muted">Workspace boundaries, role-aware access foundations, source-linked outputs, and explicit review-required workflows support responsible practice operations.</p>
++            <ShieldCheck className="mt-4 h-6 w-6 text-accent"/>
++          </Card>
++        </section>
++
++        <section className="panel p-8">
++          <h3 className="text-xl font-semibold">Pricing</h3>
++          <p className="mt-1 text-sm text-muted">Designed for solo agents through multi-user firms.</p>
++          <div className="mt-4 grid gap-4 md:grid-cols-3">
++            {[{tier:"Starter",price:"A$99",desc:"For solo agents and lean operations."},{tier:"Growth",price:"A$299",desc:"For active firms with larger matter volume."},{tier:"Pro",price:"A$699",desc:"For teams needing advanced workflow depth."}].map((p)=><Card key={p.tier} className="bg-[#0a1221]"><h4 className="font-semibold">{p.tier}</h4><p className="mt-1 text-sm text-muted">{p.desc}</p><p className="mt-4 text-2xl font-semibold">{p.price}<span className="text-sm text-muted">/mo</span></p><button className="mt-3 inline-flex items-center gap-1 text-sm text-accent">Start trial <ArrowRight className="h-4 w-4"/></button></Card>)}
++          </div>
++        </section>
++      </div>
++    </div>
++  );
++}
+diff --git a/components/app/app-shell.tsx b/components/app/app-shell.tsx
+new file mode 100644
+index 0000000..d40f810
+--- /dev/null
++++ b/components/app/app-shell.tsx
+@@ -0,0 +1,62 @@
++import Link from "next/link";
++import { Bell, Search, Building2 } from "lucide-react";
++import { cn } from "@/lib/utils";
++
++const nav = [
++  ["Overview", "/app/overview"],
++  ["Matters", "/app/matters"],
++  ["Documents", "/app/documents"],
++  ["Forms & Field Review", "/app/forms"],
++  ["Validation", "/app/validation"],
++  ["Updates Monitor", "/app/updates"],
++  ["AI Assistant", "/app/assistant"],
++  ["Tasks", "/app/tasks"],
++  ["Settings", "/app/settings"]
++] as const;
++
++export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
++  return (
++    <div className="min-h-screen bg-[#040912]">
++      <div className="mx-auto grid max-w-[1600px] grid-cols-[270px_1fr] gap-6 p-6">
++        <aside className="panel h-[calc(100vh-3rem)] p-4">
++          <div className="mb-6 space-y-3 border-b border-border pb-4">
++            <div>
++              <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria</p>
++              <h2 className="mt-1 text-lg font-semibold">Migration Operations</h2>
++            </div>
++            <button className="flex w-full items-center justify-between rounded-xl border border-border bg-[#0e182a] px-3 py-2 text-left text-sm">
++              <span className="flex items-center gap-2"><Building2 className="h-4 w-4 text-accent" /> Southern Cross Migration</span>
++              <span className="text-muted">▼</span>
++            </button>
++          </div>
++          <nav className="space-y-1">
++            {nav.map(([label, href]) => (
++              <Link key={href} href={href} className={cn("block rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-[#111a2b] hover:text-white", title === label && "bg-[#111a2b] text-white")}>
++                {label}
++              </Link>
++            ))}
++          </nav>
++          <div className="mt-6 rounded-xl border border-border bg-[#0e182a] p-3 text-xs text-muted">Role-aware UI foundation enabled. Permissions are enforced in service boundaries in next integration step.</div>
++        </aside>
++
++        <main>
++          <header className="panel mb-6 flex items-center justify-between p-4">
++            <div>
++              <h1 className="text-xl font-semibold">{title}</h1>
++              <p className="text-sm text-muted">AI-assisted workflow. Review required before submission.</p>
++            </div>
++            <div className="flex items-center gap-3">
++              <div className="flex min-w-[320px] items-center gap-2 rounded-lg border border-border bg-[#111a2b] px-3 py-2 text-sm text-muted">
++                <Search className="h-4 w-4" />
++                Command/search: matters, fields, updates, tasks...
++              </div>
++              <button className="rounded-lg border border-border p-2"><Bell className="h-4 w-4" /></button>
++              <div className="rounded-lg border border-border px-3 py-2 text-sm">Mia Patel (Admin) ▾</div>
++            </div>
++          </header>
++          {children}
++        </main>
++      </div>
++    </div>
++  );
++}
+diff --git a/components/app/blocks/page-header.tsx b/components/app/blocks/page-header.tsx
+new file mode 100644
+index 0000000..83c8827
+--- /dev/null
++++ b/components/app/blocks/page-header.tsx
+@@ -0,0 +1,11 @@
++export function PageHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
++  return (
++    <div className="mb-4 flex items-end justify-between gap-3">
++      <div>
++        <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
++        <p className="mt-1 text-sm text-muted">{subtitle}</p>
++      </div>
++      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
++    </div>
++  );
++}
+diff --git a/components/app/blocks/stat-card.tsx b/components/app/blocks/stat-card.tsx
+new file mode 100644
+index 0000000..8e8b9c5
+--- /dev/null
++++ b/components/app/blocks/stat-card.tsx
+@@ -0,0 +1,11 @@
++import { Card } from "@/components/ui/card";
++
++export function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
++  return (
++    <Card className="p-4">
++      <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
++      <p className="mt-2 text-3xl font-semibold">{value}</p>
++      <p className="mt-1 text-xs text-accent">{hint}</p>
++    </Card>
++  );
++}
+diff --git a/components/app/blocks/status-chip.tsx b/components/app/blocks/status-chip.tsx
+new file mode 100644
+index 0000000..f3586e7
+--- /dev/null
++++ b/components/app/blocks/status-chip.tsx
+@@ -0,0 +1,17 @@
++import { cn } from "@/lib/utils";
++
++const toneMap: Record<string, string> = {
++  high: "border-danger/40 bg-danger/10 text-danger",
++  critical: "border-danger/50 bg-danger/15 text-danger",
++  medium: "border-warning/40 bg-warning/10 text-warning",
++  low: "border-success/30 bg-success/10 text-success",
++  verified: "border-success/30 bg-success/10 text-success",
++  pending: "border-border bg-[#111a2b] text-muted",
++  flagged: "border-danger/40 bg-danger/10 text-danger",
++  reviewing: "border-warning/40 bg-warning/10 text-warning"
++};
++
++export function StatusChip({ label }: { label: string }) {
++  const key = label.toLowerCase();
++  return <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-xs font-medium", toneMap[key] ?? "border-border bg-[#111a2b] text-muted")}>{label}</span>;
++}
+diff --git a/components/ui/badge.tsx b/components/ui/badge.tsx
+new file mode 100644
+index 0000000..6fd3cce
+--- /dev/null
++++ b/components/ui/badge.tsx
+@@ -0,0 +1,5 @@
++import { cn } from "@/lib/utils";
++
++export function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
++  return <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium", className)}>{children}</span>;
++}
+diff --git a/components/ui/button.tsx b/components/ui/button.tsx
+new file mode 100644
+index 0000000..f98a446
+--- /dev/null
++++ b/components/ui/button.tsx
+@@ -0,0 +1,5 @@
++import { cn } from "@/lib/utils";
++
++export function Button({ children, className }: { children: React.ReactNode; className?: string }) {
++  return <button className={cn("rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90", className)}>{children}</button>;
++}
+diff --git a/components/ui/card.tsx b/components/ui/card.tsx
+new file mode 100644
+index 0000000..a05e154
+--- /dev/null
++++ b/components/ui/card.tsx
+@@ -0,0 +1,5 @@
++import { cn } from "@/lib/utils";
++
++export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
++  return <section className={cn("panel p-5", className)}>{children}</section>;
++}
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..fa59c33
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,28 @@
++version: "3.9"
++services:
++  db:
++    image: postgres:16-alpine
++    environment:
++      POSTGRES_USER: postgres
++      POSTGRES_PASSWORD: postgres
++      POSTGRES_DB: aria
++    ports:
++      - "5432:5432"
++    volumes:
++      - aria_pg:/var/lib/postgresql/data
++
++  app:
++    build: .
++    depends_on:
++      - db
++    ports:
++      - "3000:3000"
++    environment:
++      DATABASE_URL: postgresql://postgres:postgres@db:5432/aria
++      NEXTAUTH_URL: http://localhost:3000
++      NEXTAUTH_SECRET: local-dev-secret
++      NEXT_PUBLIC_DEMO_MODE: "true"
++    command: sh -c "npm run prisma:generate && npm run start"
++
++volumes:
++  aria_pg:
+diff --git a/lib/auth.ts b/lib/auth.ts
+new file mode 100644
+index 0000000..aef6a41
+--- /dev/null
++++ b/lib/auth.ts
+@@ -0,0 +1,22 @@
++import type { NextAuthOptions } from "next-auth";
++import CredentialsProvider from "next-auth/providers/credentials";
++
++export const authOptions: NextAuthOptions = {
++  session: { strategy: "jwt" },
++  providers: [
++    CredentialsProvider({
++      name: "Credentials",
++      credentials: {
++        email: { label: "Email", type: "email" },
++        password: { label: "Password", type: "password" }
++      },
++      async authorize(credentials) {
++        if (!credentials?.email) return null;
++        return { id: "demo-user", name: "Demo Agent", email: credentials.email };
++      }
++    })
++  ],
++  pages: {
++    signIn: "/auth/sign-in"
++  }
++};
+diff --git a/lib/connectors/update-connector.ts b/lib/connectors/update-connector.ts
+new file mode 100644
+index 0000000..f57be07
+--- /dev/null
++++ b/lib/connectors/update-connector.ts
+@@ -0,0 +1,34 @@
++export type OfficialUpdatePayload = {
++  source: string;
++  sourceUrl: string;
++  title: string;
++  summary: string;
++  updateType: string;
++  effectiveDate?: string;
++  publishedAt: string;
++  rawContent: string;
++};
++
++export interface OfficialUpdateConnector {
++  name: string;
++  fetchUpdates(): Promise<OfficialUpdatePayload[]>;
++}
++
++export class SeededHomeAffairsConnector implements OfficialUpdateConnector {
++  name = "home-affairs-seeded";
++
++  async fetchUpdates(): Promise<OfficialUpdatePayload[]> {
++    return [
++      {
++        source: "Department of Home Affairs",
++        sourceUrl: "https://example.gov.au/update/skilled-occupation-list",
++        title: "Skilled occupation list amendments",
++        summary: "Several ANZSCO occupations have updated caveats and evidence expectations.",
++        updateType: "Policy update",
++        effectiveDate: "2026-04-01",
++        publishedAt: "2026-03-28",
++        rawContent: "Seeded snapshot v1"
++      }
++    ];
++  }
++}
+diff --git a/lib/data/demo-repository.ts b/lib/data/demo-repository.ts
+new file mode 100644
+index 0000000..3b7026d
+--- /dev/null
++++ b/lib/data/demo-repository.ts
+@@ -0,0 +1,79 @@
++import { documents, matters, officialUpdates, validationIssues } from "@/lib/demo-data";
++import type { ExtractedField, MatterImpact, OfficialUpdate, Task, ValidationIssue } from "@/lib/domain";
++
++export const extractedFields: ExtractedField[] = [
++  {
++    id: "ef-1",
++    matterId: "matter-1",
++    documentId: "doc-1",
++    fieldKey: "applicant_given_names",
++    fieldLabel: "Given names",
++    fieldValue: "Aisha Fatima",
++    confidence: 0.98,
++    sourceSnippet: "Given names: AISHA FATIMA",
++    sourcePageRef: "Passport p.1",
++    status: "high confidence",
++    needsReview: false,
++    createdAt: "2026-04-10"
++  },
++  {
++    id: "ef-2",
++    matterId: "matter-1",
++    documentId: "doc-2",
++    fieldKey: "passport_expiry",
++    fieldLabel: "Passport expiry",
++    fieldValue: "",
++    confidence: 0.12,
++    sourceSnippet: "No explicit expiry found",
++    sourcePageRef: "Passport p.2",
++    status: "missing",
++    needsReview: true,
++    createdAt: "2026-04-10"
++  }
++];
++
++export const issueRows: ValidationIssue[] = validationIssues.map((title, idx) => ({
++  id: `issue-${idx + 1}`,
++  matterId: matters[idx % matters.length].id,
++  severity: ["critical", "high", "medium", "low"][idx % 4] as ValidationIssue["severity"],
++  type: "Data consistency",
++  title,
++  description: "Cross-document validation detected a discrepancy requiring manual review.",
++  relatedFieldKey: idx % 2 ? "passport_expiry" : "residential_address",
++  resolutionStatus: "Open",
++  createdAt: `2026-04-${String(10 + idx).padStart(2, "0")}`
++}));
++
++export const impactRows: MatterImpact[] = matters.slice(0, 10).map((matter, idx) => ({
++  id: `impact-${idx + 1}`,
++  officialUpdateId: officialUpdates[idx % officialUpdates.length].id,
++  matterId: matter.id,
++  impactLevel: ["High", "Medium", "Low"][idx % 3] as MatterImpact["impactLevel"],
++  reason: "Matched by visa subclass, stage, and near-term lodgement target date.",
++  status: ["New", "Reviewing", "Actioned"][idx % 3] as MatterImpact["status"],
++  createdAt: `2026-04-${String(idx + 1).padStart(2, "0")}`
++}));
++
++export const taskRows: Task[] = matters.slice(0, 10).map((matter, idx) => ({
++  id: `task-${idx + 1}`,
++  workspaceId: "ws-1",
++  matterId: matter.id,
++  assignedToUserId: `user-${(idx % 3) + 1}`,
++  title: ["Request passport refresh", "Resolve address mismatch", "Review employment evidence", "Complete validation pass"][idx % 4],
++  description: "Action required to advance submission readiness.",
++  dueDate: `2026-04-${String(22 + (idx % 7)).padStart(2, "0")}`,
++  status: ["Open", "In progress", "Done"][idx % 3] as Task["status"],
++  priority: ["Urgent", "High", "Medium", "Low"][idx % 4] as Task["priority"]
++}));
++
++export function getOverview() {
++  return {
++    matters,
++    documents,
++    updates: officialUpdates as OfficialUpdate[],
++    issues: issueRows,
++    impacts: impactRows,
++    tasks: taskRows,
++    extractedFields
++  };
++}
+diff --git a/lib/demo-data.ts b/lib/demo-data.ts
+new file mode 100644
+index 0000000..c6f54d4
+--- /dev/null
++++ b/lib/demo-data.ts
+@@ -0,0 +1,45 @@
++export const overviewStats = [
++  { label: "Active matters", value: "42", delta: "+6 this month" },
++  { label: "Submission readiness avg", value: "78%", delta: "+4%" },
++  { label: "Open validation issues", value: "19", delta: "5 critical" },
++  { label: "Updates awaiting review", value: "3", delta: "2 high impact" }
++];
++
++export const matters = Array.from({ length: 10 }).map((_, i) => ({
++  id: `matter-${i + 1}`,
++  client: ["Aisha Rahman", "Luca Rossi", "Priya Menon", "Daniel Kim", "Maria Santos"][i % 5],
++  title: ["Subclass 189 Skilled Independent", "Subclass 482 Employer Sponsored", "Subclass 500 Student", "Partner 820/801", "Subclass 190 State Nominated"][i % 5],
++  visaSubclass: ["189", "482", "500", "820", "190"][i % 5],
++  visaStream: ["Points-tested", "Medium-term", "Higher Education", "Onshore", "General Skilled"][i % 5],
++  status: ["In progress", "Awaiting docs", "Ready for review", "Draft in progress"][i % 4],
++  stage: ["Intake", "Evidence", "Field review", "Validation", "Submission prep"][i % 5],
++  readiness: 58 + i * 4
++}));
++
++export const documents = Array.from({ length: 32 }).map((_, i) => ({
++  id: `doc-${i + 1}`,
++  fileName: `Document-${i + 1}.pdf`,
++  category: ["Identity", "Travel", "Employment", "Education", "Financial", "Relationship", "Health / Police", "Forms", "Other Evidence"][i % 9],
++  extractionStatus: ["Queued", "Extracted", "Needs review"][i % 3],
++  reviewStatus: ["Pending", "Verified", "Flagged"][i % 3],
++  matterId: matters[i % matters.length].id
++}));
++
++export const officialUpdates = Array.from({ length: 7 }).map((_, i) => ({
++  id: `upd-${i + 1}`,
++  source: ["Department of Home Affairs", "Federal Register of Legislation", "OMARA/MARA notice"][i % 3],
++  title: ["Skilled occupation list amendments", "Student visa genuine student guidance update", "Form 80 supporting evidence adjustment", "English language evidence policy note", "Priority processing category revision", "Health examination validity clarification", "Character document translation reminder"][i],
++  publishedAt: `2026-0${(i % 3) + 1}-1${i}`,
++  impact: ["High", "Medium", "Low"][i % 3]
++}));
++
++export const validationIssues = [
++  "Missing passport expiry",
++  "Inconsistent name spelling across identity docs",
++  "Address mismatch between bank statement and form draft",
++  "Employment dates conflict between CV and reference",
++  "Missing required evidence: AFP police check",
++  "Unsupported field value in prior travel history",
++  "Stale health document older than 12 months",
++  "Missing certified translation"
++];
+diff --git a/lib/domain.ts b/lib/domain.ts
+new file mode 100644
+index 0000000..0a19405
+--- /dev/null
++++ b/lib/domain.ts
+@@ -0,0 +1,101 @@
++export type Severity = "low" | "medium" | "high" | "critical";
++export type ReviewState = "high confidence" | "supported" | "needs review" | "conflicting" | "missing";
++
++export type Workspace = { id: string; name: string; slug: string; plan: "Starter" | "Growth" | "Pro"; createdAt: string };
++export type User = { id: string; name: string; email: string; role: "Admin" | "Agent" | "Reviewer" | "Ops"; workspaceId: string };
++export type Client = { id: string; workspaceId: string; firstName: string; lastName: string; dob: string; nationality: string; email: string; phone: string; notes?: string; createdAt: string };
++
++export type Matter = {
++  id: string;
++  workspaceId: string;
++  clientId: string;
++  title: string;
++  visaSubclass: string;
++  visaStream: string;
++  status: string;
++  stage: string;
++  lodgementTargetDate?: string;
++  assignedToUserId: string;
++  readinessScore: number;
++  lastReviewedAt?: string;
++  createdAt: string;
++  updatedAt: string;
++};
++
++export type MatterDocument = {
++  id: string;
++  workspaceId: string;
++  clientId: string;
++  matterId: string;
++  fileName: string;
++  storageKey: string;
++  mimeType: string;
++  category: string;
++  subcategory?: string;
++  uploadedByUserId: string;
++  extractionStatus: "Queued" | "Extracted" | "Needs review";
++  reviewStatus: "Pending" | "Verified" | "Flagged";
++  createdAt: string;
++};
++
++export type ExtractedField = {
++  id: string;
++  matterId: string;
++  documentId: string;
++  fieldKey: string;
++  fieldLabel: string;
++  fieldValue: string;
++  confidence: number;
++  sourceSnippet: string;
++  sourcePageRef: string;
++  status: ReviewState;
++  needsReview: boolean;
++  createdAt: string;
++};
++
++export type ValidationIssue = {
++  id: string;
++  matterId: string;
++  severity: Severity;
++  type: string;
++  title: string;
++  description: string;
++  relatedFieldKey?: string;
++  resolutionStatus: "Open" | "In review" | "Resolved" | "Dismissed";
++  createdAt: string;
++};
++
++export type OfficialUpdate = {
++  id: string;
++  source: string;
++  sourceUrl: string;
++  title: string;
++  summary: string;
++  updateType: string;
++  effectiveDate?: string;
++  publishedAt: string;
++  rawContentHash: string;
++  createdAt: string;
++};
++
++export type MatterImpact = {
++  id: string;
++  officialUpdateId: string;
++  matterId: string;
++  impactLevel: "Low" | "Medium" | "High";
++  reason: string;
++  status: "New" | "Reviewing" | "Actioned" | "Dismissed";
++  createdAt: string;
++};
++
++export type Task = {
++  id: string;
++  workspaceId: string;
++  matterId: string;
++  assignedToUserId: string;
++  title: string;
++  description: string;
++  dueDate: string;
++  status: "Open" | "In progress" | "Done";
++  priority: "Low" | "Medium" | "High" | "Urgent";
++};
+diff --git a/lib/services/ai-adapter.ts b/lib/services/ai-adapter.ts
+new file mode 100644
+index 0000000..c7f227e
+--- /dev/null
++++ b/lib/services/ai-adapter.ts
+@@ -0,0 +1,16 @@
++export type AiReply = {
++  content: string;
++  citations: { label: string; href: string }[];
++  recommendedActions: string[];
++};
++
++export async function generateSeededAiReply(prompt: string): Promise<AiReply> {
++  return {
++    content: `AI-assisted draft for: ${prompt}. Review required prior to any lodgement action.`,
++    citations: [
++      { label: "Matter validation panel", href: "/app/validation" },
++      { label: "Official update feed", href: "/app/updates" }
++    ],
++    recommendedActions: ["Review flagged inconsistencies", "Verify source-linked fields", "Confirm submission readiness checklist"]
++  };
++}
+diff --git a/lib/services/document-pipeline.ts b/lib/services/document-pipeline.ts
+new file mode 100644
+index 0000000..54f57af
+--- /dev/null
++++ b/lib/services/document-pipeline.ts
+@@ -0,0 +1,15 @@
++export type DocumentPipelineResult = {
++  classification: string;
++  extractionStatus: "queued" | "extracted" | "needs_review";
++  reviewStatus: "pending" | "verified" | "flagged";
++};
++
++export async function runDocumentPipeline(fileName: string): Promise<DocumentPipelineResult> {
++  const extension = fileName.split(".").pop()?.toLowerCase();
++  const classification = extension === "pdf" ? "Forms" : "Other Evidence";
++  return {
++    classification,
++    extractionStatus: "queued",
++    reviewStatus: "pending"
++  };
++}
+diff --git a/lib/services/update-ingestion.ts b/lib/services/update-ingestion.ts
+new file mode 100644
+index 0000000..8cf91f2
+--- /dev/null
++++ b/lib/services/update-ingestion.ts
+@@ -0,0 +1,21 @@
++import crypto from "crypto";
++import type { OfficialUpdateConnector, OfficialUpdatePayload } from "@/lib/connectors/update-connector";
++
++export function hashUpdateContent(rawContent: string) {
++  return crypto.createHash("sha256").update(rawContent).digest("hex");
++}
++
++export function dedupeByHash(updates: OfficialUpdatePayload[]) {
++  const seen = new Set<string>();
++  return updates.filter((update) => {
++    const hash = hashUpdateContent(update.rawContent);
++    if (seen.has(hash)) return false;
++    seen.add(hash);
++    return true;
++  });
++}
++
++export async function ingestUpdates(connectors: OfficialUpdateConnector[]) {
++  const fetched = await Promise.all(connectors.map((connector) => connector.fetchUpdates()));
++  return dedupeByHash(fetched.flat());
++}
+diff --git a/lib/utils.ts b/lib/utils.ts
+new file mode 100644
+index 0000000..a5ef193
+--- /dev/null
++++ b/lib/utils.ts
+@@ -0,0 +1,6 @@
++import { clsx, type ClassValue } from "clsx";
++import { twMerge } from "tailwind-merge";
++
++export function cn(...inputs: ClassValue[]) {
++  return twMerge(clsx(inputs));
++}
+diff --git a/next-env.d.ts b/next-env.d.ts
+new file mode 100644
+index 0000000..84ab714
+--- /dev/null
++++ b/next-env.d.ts
+@@ -0,0 +1,4 @@
++/// <reference types="next" />
++/// <reference types="next/image-types/global" />
++
++// NOTE: This file should not be edited
+diff --git a/next.config.mjs b/next.config.mjs
+new file mode 100644
+index 0000000..b44fec7
+--- /dev/null
++++ b/next.config.mjs
+@@ -0,0 +1,8 @@
++/** @type {import('next').NextConfig} */
++const nextConfig = {
++  experimental: {
++    typedRoutes: true
++  }
++};
++
++export default nextConfig;
+diff --git a/package.json b/package.json
+new file mode 100644
+index 0000000..ce619b7
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,42 @@
++{
++  "name": "aria-migration-agents",
++  "version": "1.0.0",
++  "private": true,
++  "scripts": {
++    "dev": "next dev",
++    "build": "next build",
++    "start": "next start",
++    "lint": "next lint",
++    "prisma:generate": "prisma generate",
++    "prisma:migrate": "prisma migrate dev",
++    "prisma:seed": "tsx prisma/seed.ts"
++  },
++  "prisma": {
++    "seed": "tsx prisma/seed.ts"
++  },
++  "dependencies": {
++    "@prisma/client": "^5.22.0",
++    "class-variance-authority": "^0.7.1",
++    "clsx": "^2.1.1",
++    "lucide-react": "^0.468.0",
++    "next": "14.2.24",
++    "next-auth": "^4.24.11",
++    "react": "18.3.1",
++    "react-dom": "18.3.1",
++    "tailwind-merge": "^2.5.5",
++    "zod": "^3.24.1"
++  },
++  "devDependencies": {
++    "@types/node": "^22.10.2",
++    "@types/react": "^18.3.18",
++    "@types/react-dom": "^18.3.5",
++    "autoprefixer": "^10.4.20",
++    "eslint": "^8.57.1",
++    "eslint-config-next": "14.2.24",
++    "postcss": "^8.4.49",
++    "prisma": "^5.22.0",
++    "tailwindcss": "^3.4.17",
++    "tsx": "^4.19.2",
++    "typescript": "^5.7.2"
++  }
++}
+diff --git a/postcss.config.mjs b/postcss.config.mjs
+new file mode 100644
+index 0000000..ba80730
+--- /dev/null
++++ b/postcss.config.mjs
+@@ -0,0 +1,6 @@
++export default {
++  plugins: {
++    tailwindcss: {},
++    autoprefixer: {}
++  }
++};
+diff --git a/prisma/migrations/202604210001_init/migration.sql b/prisma/migrations/202604210001_init/migration.sql
+new file mode 100644
+index 0000000..4124281
+--- /dev/null
++++ b/prisma/migrations/202604210001_init/migration.sql
+@@ -0,0 +1,180 @@
++-- Initial schema for Aria for Migration Agents
++CREATE EXTENSION IF NOT EXISTS "pgcrypto";
++
++DO $$ BEGIN CREATE TYPE "WorkspacePlan" AS ENUM ('STARTER', 'GROWTH', 'PRO'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'AGENT', 'REVIEWER', 'OPS'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "MatterStatus" AS ENUM ('IN_PROGRESS', 'AWAITING_DOCS', 'READY_FOR_REVIEW', 'DRAFT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "MatterStage" AS ENUM ('INTAKE', 'EVIDENCE', 'FIELD_REVIEW', 'VALIDATION', 'SUBMISSION_PREP'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "ExtractionStatus" AS ENUM ('QUEUED', 'EXTRACTED', 'NEEDS_REVIEW'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'VERIFIED', 'FLAGGED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "FieldStatus" AS ENUM ('HIGH_CONFIDENCE', 'SUPPORTED', 'NEEDS_REVIEW', 'CONFLICTING', 'MISSING', 'VERIFIED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "IssueSeverity" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "ResolutionStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'DISMISSED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "ImpactLevel" AS ENUM ('LOW', 'MEDIUM', 'HIGH'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "ImpactStatus" AS ENUM ('NEW', 'REVIEWING', 'ACTIONED', 'DISMISSED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "TaskStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'DONE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "TaskPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++DO $$ BEGIN CREATE TYPE "ChatRole" AS ENUM ('SYSTEM', 'USER', 'ASSISTANT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
++
++CREATE TABLE IF NOT EXISTS "Workspace" (
++  "id" TEXT PRIMARY KEY,
++  "name" TEXT NOT NULL,
++  "slug" TEXT NOT NULL UNIQUE,
++  "plan" "WorkspacePlan" NOT NULL,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "User" (
++  "id" TEXT PRIMARY KEY,
++  "name" TEXT NOT NULL,
++  "email" TEXT NOT NULL UNIQUE,
++  "role" "UserRole" NOT NULL,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE
++);
++
++CREATE TABLE IF NOT EXISTS "Client" (
++  "id" TEXT PRIMARY KEY,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE,
++  "firstName" TEXT NOT NULL,
++  "lastName" TEXT NOT NULL,
++  "dob" TIMESTAMPTZ NOT NULL,
++  "nationality" TEXT NOT NULL,
++  "email" TEXT NOT NULL,
++  "phone" TEXT NOT NULL,
++  "notes" TEXT,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "Matter" (
++  "id" TEXT PRIMARY KEY,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE,
++  "clientId" TEXT NOT NULL REFERENCES "Client"("id") ON DELETE CASCADE,
++  "title" TEXT NOT NULL,
++  "visaSubclass" TEXT NOT NULL,
++  "visaStream" TEXT NOT NULL,
++  "status" "MatterStatus" NOT NULL,
++  "stage" "MatterStage" NOT NULL,
++  "lodgementTargetDate" TIMESTAMPTZ,
++  "assignedToUserId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE RESTRICT,
++  "readinessScore" INTEGER NOT NULL,
++  "lastReviewedAt" TIMESTAMPTZ,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
++  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "Document" (
++  "id" TEXT PRIMARY KEY,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE,
++  "clientId" TEXT NOT NULL REFERENCES "Client"("id") ON DELETE CASCADE,
++  "matterId" TEXT NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
++  "fileName" TEXT NOT NULL,
++  "storageKey" TEXT NOT NULL,
++  "mimeType" TEXT NOT NULL,
++  "category" TEXT NOT NULL,
++  "subcategory" TEXT,
++  "uploadedByUserId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE RESTRICT,
++  "extractionStatus" "ExtractionStatus" NOT NULL,
++  "reviewStatus" "ReviewStatus" NOT NULL,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "ExtractedField" (
++  "id" TEXT PRIMARY KEY,
++  "matterId" TEXT NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
++  "documentId" TEXT NOT NULL REFERENCES "Document"("id") ON DELETE CASCADE,
++  "fieldKey" TEXT NOT NULL,
++  "fieldLabel" TEXT NOT NULL,
++  "fieldValue" TEXT NOT NULL,
++  "confidence" DOUBLE PRECISION NOT NULL,
++  "sourceSnippet" TEXT NOT NULL,
++  "sourcePageRef" TEXT NOT NULL,
++  "status" "FieldStatus" NOT NULL,
++  "needsReview" BOOLEAN NOT NULL,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "ValidationIssue" (
++  "id" TEXT PRIMARY KEY,
++  "matterId" TEXT NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
++  "severity" "IssueSeverity" NOT NULL,
++  "type" TEXT NOT NULL,
++  "title" TEXT NOT NULL,
++  "description" TEXT NOT NULL,
++  "relatedFieldKey" TEXT,
++  "resolutionStatus" "ResolutionStatus" NOT NULL,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "ChecklistItem" (
++  "id" TEXT PRIMARY KEY,
++  "matterId" TEXT NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
++  "category" TEXT NOT NULL,
++  "label" TEXT NOT NULL,
++  "status" TEXT NOT NULL,
++  "required" BOOLEAN NOT NULL,
++  "notes" TEXT
++);
++
++CREATE TABLE IF NOT EXISTS "OfficialUpdate" (
++  "id" TEXT PRIMARY KEY,
++  "source" TEXT NOT NULL,
++  "sourceUrl" TEXT NOT NULL,
++  "title" TEXT NOT NULL,
++  "summary" TEXT NOT NULL,
++  "updateType" TEXT NOT NULL,
++  "effectiveDate" TIMESTAMPTZ,
++  "publishedAt" TIMESTAMPTZ NOT NULL,
++  "rawContentHash" TEXT NOT NULL,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "MatterImpact" (
++  "id" TEXT PRIMARY KEY,
++  "officialUpdateId" TEXT NOT NULL REFERENCES "OfficialUpdate"("id") ON DELETE CASCADE,
++  "matterId" TEXT NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
++  "impactLevel" "ImpactLevel" NOT NULL,
++  "reason" TEXT NOT NULL,
++  "status" "ImpactStatus" NOT NULL,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "Task" (
++  "id" TEXT PRIMARY KEY,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE,
++  "matterId" TEXT NOT NULL REFERENCES "Matter"("id") ON DELETE CASCADE,
++  "assignedToUserId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE RESTRICT,
++  "title" TEXT NOT NULL,
++  "description" TEXT NOT NULL,
++  "dueDate" TIMESTAMPTZ NOT NULL,
++  "status" "TaskStatus" NOT NULL,
++  "priority" "TaskPriority" NOT NULL
++);
++
++CREATE TABLE IF NOT EXISTS "AiChatThread" (
++  "id" TEXT PRIMARY KEY,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE,
++  "matterId" TEXT REFERENCES "Matter"("id") ON DELETE SET NULL,
++  "title" TEXT NOT NULL,
++  "createdByUserId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE RESTRICT,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "AiChatMessage" (
++  "id" TEXT PRIMARY KEY,
++  "threadId" TEXT NOT NULL REFERENCES "AiChatThread"("id") ON DELETE CASCADE,
++  "role" "ChatRole" NOT NULL,
++  "content" TEXT NOT NULL,
++  "citationsJson" JSONB,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
++
++CREATE TABLE IF NOT EXISTS "AuditEvent" (
++  "id" TEXT PRIMARY KEY,
++  "workspaceId" TEXT NOT NULL REFERENCES "Workspace"("id") ON DELETE CASCADE,
++  "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE RESTRICT,
++  "entityType" TEXT NOT NULL,
++  "entityId" TEXT NOT NULL,
++  "action" TEXT NOT NULL,
++  "metadataJson" JSONB,
++  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
++);
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+new file mode 100644
+index 0000000..968be5a
+--- /dev/null
++++ b/prisma/schema.prisma
+@@ -0,0 +1,234 @@
++generator client {
++  provider = "prisma-client-js"
++}
++
++datasource db {
++  provider = "postgresql"
++  url      = env("DATABASE_URL")
++}
++
++enum WorkspacePlan { STARTER GROWTH PRO }
++enum UserRole { ADMIN AGENT REVIEWER OPS }
++enum MatterStatus { IN_PROGRESS AWAITING_DOCS READY_FOR_REVIEW DRAFT }
++enum MatterStage { INTAKE EVIDENCE FIELD_REVIEW VALIDATION SUBMISSION_PREP }
++enum ExtractionStatus { QUEUED EXTRACTED NEEDS_REVIEW }
++enum ReviewStatus { PENDING VERIFIED FLAGGED }
++enum FieldStatus { HIGH_CONFIDENCE SUPPORTED NEEDS_REVIEW CONFLICTING MISSING VERIFIED }
++enum IssueSeverity { LOW MEDIUM HIGH CRITICAL }
++enum ResolutionStatus { OPEN IN_PROGRESS RESOLVED DISMISSED }
++enum ImpactLevel { LOW MEDIUM HIGH }
++enum ImpactStatus { NEW REVIEWING ACTIONED DISMISSED }
++enum TaskStatus { OPEN IN_PROGRESS DONE }
++enum TaskPriority { LOW MEDIUM HIGH URGENT }
++enum ChatRole { SYSTEM USER ASSISTANT }
++
++model Workspace {
++  id         String   @id @default(cuid())
++  name       String
++  slug       String   @unique
++  plan       WorkspacePlan
++  createdAt  DateTime @default(now())
++  users      User[]
++  clients    Client[]
++  matters    Matter[]
++  documents  Document[]
++  tasks      Task[]
++  aiThreads  AiChatThread[]
++  auditEvents AuditEvent[]
++}
++
++model User {
++  id          String   @id @default(cuid())
++  name        String
++  email       String   @unique
++  role        UserRole
++  workspaceId String
++  workspace   Workspace @relation(fields: [workspaceId], references: [id])
++  mattersAssigned Matter[] @relation("MatterAssignee")
++  uploadedDocuments Document[] @relation("DocumentUploader")
++  tasksAssigned Task[] @relation("TaskAssignee")
++  createdThreads AiChatThread[] @relation("ThreadCreator")
++  auditEvents AuditEvent[]
++}
++
++model Client {
++  id          String   @id @default(cuid())
++  workspaceId String
++  workspace   Workspace @relation(fields: [workspaceId], references: [id])
++  firstName   String
++  lastName    String
++  dob         DateTime
++  nationality String
++  email       String
++  phone       String
++  notes       String?
++  createdAt   DateTime @default(now())
++  matters     Matter[]
++  documents   Document[]
++}
++
++model Matter {
++  id                 String   @id @default(cuid())
++  workspaceId        String
++  workspace          Workspace @relation(fields: [workspaceId], references: [id])
++  clientId           String
++  client             Client @relation(fields: [clientId], references: [id])
++  title              String
++  visaSubclass       String
++  visaStream         String
++  status             MatterStatus
++  stage              MatterStage
++  lodgementTargetDate DateTime?
++  assignedToUserId   String
++  assignedToUser     User @relation("MatterAssignee", fields: [assignedToUserId], references: [id])
++  readinessScore     Int
++  lastReviewedAt     DateTime?
++  createdAt          DateTime @default(now())
++  updatedAt          DateTime @updatedAt
++  documents          Document[]
++  extractedFields    ExtractedField[]
++  validationIssues   ValidationIssue[]
++  checklistItems     ChecklistItem[]
++  impacts            MatterImpact[]
++  tasks              Task[]
++  aiThreads          AiChatThread[]
++}
++
++model Document {
++  id               String   @id @default(cuid())
++  workspaceId      String
++  workspace        Workspace @relation(fields: [workspaceId], references: [id])
++  clientId         String
++  client           Client @relation(fields: [clientId], references: [id])
++  matterId         String
++  matter           Matter @relation(fields: [matterId], references: [id])
++  fileName         String
++  storageKey       String
++  mimeType         String
++  category         String
++  subcategory      String?
++  uploadedByUserId String
++  uploadedByUser   User @relation("DocumentUploader", fields: [uploadedByUserId], references: [id])
++  extractionStatus ExtractionStatus
++  reviewStatus     ReviewStatus
++  createdAt        DateTime @default(now())
++  extractedFields  ExtractedField[]
++}
++
++model ExtractedField {
++  id            String   @id @default(cuid())
++  matterId      String
++  matter        Matter @relation(fields: [matterId], references: [id])
++  documentId    String
++  document      Document @relation(fields: [documentId], references: [id])
++  fieldKey      String
++  fieldLabel    String
++  fieldValue    String
++  confidence    Float
++  sourceSnippet String
++  sourcePageRef String
++  status        FieldStatus
++  needsReview   Boolean
++  createdAt     DateTime @default(now())
++}
++
++model ValidationIssue {
++  id               String   @id @default(cuid())
++  matterId         String
++  matter           Matter @relation(fields: [matterId], references: [id])
++  severity         IssueSeverity
++  type             String
++  title            String
++  description      String
++  relatedFieldKey  String?
++  resolutionStatus ResolutionStatus
++  createdAt        DateTime @default(now())
++}
++
++model ChecklistItem {
++  id        String   @id @default(cuid())
++  matterId  String
++  matter    Matter @relation(fields: [matterId], references: [id])
++  category  String
++  label     String
++  status    String
++  required  Boolean
++  notes     String?
++}
++
++model OfficialUpdate {
++  id             String   @id @default(cuid())
++  source         String
++  sourceUrl      String
++  title          String
++  summary        String
++  updateType     String
++  effectiveDate  DateTime?
++  publishedAt    DateTime
++  rawContentHash String
++  createdAt      DateTime @default(now())
++  impacts        MatterImpact[]
++}
++
++model MatterImpact {
++  id               String   @id @default(cuid())
++  officialUpdateId String
++  officialUpdate   OfficialUpdate @relation(fields: [officialUpdateId], references: [id])
++  matterId         String
++  matter           Matter @relation(fields: [matterId], references: [id])
++  impactLevel      ImpactLevel
++  reason           String
++  status           ImpactStatus
++  createdAt        DateTime @default(now())
++}
++
++model Task {
++  id               String   @id @default(cuid())
++  workspaceId      String
++  workspace        Workspace @relation(fields: [workspaceId], references: [id])
++  matterId         String
++  matter           Matter @relation(fields: [matterId], references: [id])
++  assignedToUserId String
++  assignedToUser   User @relation("TaskAssignee", fields: [assignedToUserId], references: [id])
++  title            String
++  description      String
++  dueDate          DateTime
++  status           TaskStatus
++  priority         TaskPriority
++}
++
++model AiChatThread {
++  id              String   @id @default(cuid())
++  workspaceId     String
++  workspace       Workspace @relation(fields: [workspaceId], references: [id])
++  matterId        String?
++  matter          Matter? @relation(fields: [matterId], references: [id])
++  title           String
++  createdByUserId String
++  createdByUser   User @relation("ThreadCreator", fields: [createdByUserId], references: [id])
++  createdAt       DateTime @default(now())
++  messages        AiChatMessage[]
++}
++
++model AiChatMessage {
++  id            String   @id @default(cuid())
++  threadId      String
++  thread        AiChatThread @relation(fields: [threadId], references: [id])
++  role          ChatRole
++  content       String
++  citationsJson Json?
++  createdAt     DateTime @default(now())
++}
++
++model AuditEvent {
++  id          String   @id @default(cuid())
++  workspaceId String
++  workspace   Workspace @relation(fields: [workspaceId], references: [id])
++  userId      String
++  user        User @relation(fields: [userId], references: [id])
++  entityType  String
++  entityId    String
++  action      String
++  metadataJson Json?
++  createdAt   DateTime @default(now())
++}
+diff --git a/prisma/seed.ts b/prisma/seed.ts
+new file mode 100644
+index 0000000..29d8217
+--- /dev/null
++++ b/prisma/seed.ts
+@@ -0,0 +1,104 @@
++import { PrismaClient, WorkspacePlan, UserRole, MatterStatus, MatterStage, ExtractionStatus, ReviewStatus, FieldStatus, IssueSeverity, ResolutionStatus, ImpactLevel, ImpactStatus, TaskStatus, TaskPriority, ChatRole } from "@prisma/client";
++
++const prisma = new PrismaClient();
++
++async function main() {
++  await prisma.auditEvent.deleteMany();
++  await prisma.aiChatMessage.deleteMany();
++  await prisma.aiChatThread.deleteMany();
++  await prisma.task.deleteMany();
++  await prisma.matterImpact.deleteMany();
++  await prisma.officialUpdate.deleteMany();
++  await prisma.checklistItem.deleteMany();
++  await prisma.validationIssue.deleteMany();
++  await prisma.extractedField.deleteMany();
++  await prisma.document.deleteMany();
++  await prisma.matter.deleteMany();
++  await prisma.client.deleteMany();
++  await prisma.user.deleteMany();
++  await prisma.workspace.deleteMany();
++
++  const workspace = await prisma.workspace.create({ data: { name: "Southern Cross Migration", slug: "southern-cross", plan: WorkspacePlan.GROWTH } });
++
++  const users = await Promise.all([
++    prisma.user.create({ data: { name: "Mia Patel", email: "mia@southerncross.example", role: UserRole.ADMIN, workspaceId: workspace.id } }),
++    prisma.user.create({ data: { name: "Arun Iyer", email: "arun@southerncross.example", role: UserRole.AGENT, workspaceId: workspace.id } }),
++    prisma.user.create({ data: { name: "Sofia Tran", email: "sofia@southerncross.example", role: UserRole.REVIEWER, workspaceId: workspace.id } })
++  ]);
++
++  const clients = await Promise.all(Array.from({ length: 10 }).map((_, i) => prisma.client.create({ data: {
++    workspaceId: workspace.id, firstName: ["Aisha", "Luca", "Priya", "Daniel", "Maria", "Wei", "Fatima", "Noah", "Elena", "Ravi"][i],
++    lastName: ["Rahman", "Rossi", "Menon", "Kim", "Santos", "Zhang", "Hassan", "Reed", "Popov", "Nair"][i],
++    dob: new Date(1990 + i % 8, i % 12, 10 + i), nationality: ["Indian", "Brazilian", "Italian", "Korean", "Filipino"][i % 5],
++    email: `client${i + 1}@example.com`, phone: `+61 400 000 ${String(i).padStart(3, "0")}`, notes: "Demo client profile"
++  }})));
++
++  const matters = await Promise.all(clients.map((client, i) => prisma.matter.create({ data: {
++    workspaceId: workspace.id, clientId: client.id, title: `Visa matter ${i + 1}`,
++    visaSubclass: ["189", "190", "482", "500", "820"][i % 5], visaStream: ["Points-tested", "State nominated", "Medium-term", "Higher Education", "Onshore"][i % 5],
++    status: [MatterStatus.IN_PROGRESS, MatterStatus.AWAITING_DOCS, MatterStatus.READY_FOR_REVIEW, MatterStatus.DRAFT][i % 4],
++    stage: [MatterStage.INTAKE, MatterStage.EVIDENCE, MatterStage.FIELD_REVIEW, MatterStage.VALIDATION, MatterStage.SUBMISSION_PREP][i % 5],
++    lodgementTargetDate: new Date(2026, 5, i + 1), assignedToUserId: users[i % users.length].id, readinessScore: 55 + i * 4,
++    lastReviewedAt: new Date(2026, 3, 10 + i)
++  }})));
++
++  for (let i = 0; i < 32; i++) {
++    const matter = matters[i % matters.length];
++    const client = clients[i % clients.length];
++    const uploader = users[i % users.length];
++    const document = await prisma.document.create({ data: {
++      workspaceId: workspace.id, clientId: client.id, matterId: matter.id, fileName: `evidence-${i + 1}.pdf`, storageKey: `demo/${matter.id}/evidence-${i + 1}.pdf`,
++      mimeType: "application/pdf", category: ["Identity", "Travel", "Employment", "Education", "Financial", "Relationship", "Health / Police", "Forms", "Other Evidence"][i % 9],
++      subcategory: "Primary", uploadedByUserId: uploader.id, extractionStatus: [ExtractionStatus.QUEUED, ExtractionStatus.EXTRACTED, ExtractionStatus.NEEDS_REVIEW][i % 3],
++      reviewStatus: [ReviewStatus.PENDING, ReviewStatus.VERIFIED, ReviewStatus.FLAGGED][i % 3]
++    }});
++
++    await prisma.extractedField.create({ data: {
++      matterId: matter.id, documentId: document.id, fieldKey: `field_${i + 1}`, fieldLabel: "Sample extracted field", fieldValue: `Value ${i + 1}`,
++      confidence: ((60 + (i % 40)) / 100), sourceSnippet: "Seeded source snippet with evidence text.", sourcePageRef: "p.1",
++      status: [FieldStatus.HIGH_CONFIDENCE, FieldStatus.SUPPORTED, FieldStatus.NEEDS_REVIEW, FieldStatus.CONFLICTING, FieldStatus.MISSING][i % 5], needsReview: i % 2 === 0
++    }});
++  }
++
++  for (const [idx, matter] of matters.entries()) {
++    await prisma.validationIssue.create({ data: {
++      matterId: matter.id, severity: [IssueSeverity.CRITICAL, IssueSeverity.HIGH, IssueSeverity.MEDIUM, IssueSeverity.LOW][idx % 4],
++      type: "Data consistency", title: ["Missing passport expiry", "Name mismatch", "Address mismatch", "Employment dates conflict"][idx % 4],
++      description: "Generated issue for demo validation workflow.", relatedFieldKey: "passport_expiry", resolutionStatus: ResolutionStatus.OPEN
++    }});
++
++    await prisma.checklistItem.create({ data: { matterId: matter.id, category: "Evidence", label: "Identity documents verified", status: idx % 2 ? "complete" : "pending", required: true, notes: "Review required" } });
++
++    await prisma.task.create({ data: {
++      workspaceId: workspace.id, matterId: matter.id, assignedToUserId: users[idx % users.length].id,
++      title: `Task for matter ${idx + 1}`, description: "Follow up evidence and confirm readiness", dueDate: new Date(2026, 4, 10 + idx),
++      status: [TaskStatus.OPEN, TaskStatus.IN_PROGRESS, TaskStatus.DONE][idx % 3], priority: [TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW, TaskPriority.URGENT][idx % 4]
++    }});
++  }
++
++  const updates = await Promise.all(Array.from({ length: 7 }).map((_, i) => prisma.officialUpdate.create({ data: {
++    source: ["Department of Home Affairs", "Federal Register of Legislation", "OMARA/MARA notices"][i % 3], sourceUrl: `https://example.gov.au/updates/${i + 1}`,
++    title: `Official update ${i + 1}`, summary: "Seeded official update summary for review workflows.", updateType: ["Policy", "Procedure", "Notice"][i % 3],
++    effectiveDate: new Date(2026, 2, i + 1), publishedAt: new Date(2026, 1, i + 10), rawContentHash: `hash-${i + 1}`
++  }})));
++
++  for (let i = 0; i < 12; i++) {
++    await prisma.matterImpact.create({ data: {
++      officialUpdateId: updates[i % updates.length].id, matterId: matters[i % matters.length].id,
++      impactLevel: [ImpactLevel.HIGH, ImpactLevel.MEDIUM, ImpactLevel.LOW][i % 3], reason: "Matched by visa subclass and stage criteria.",
++      status: [ImpactStatus.NEW, ImpactStatus.REVIEWING, ImpactStatus.ACTIONED][i % 3]
++    }});
++  }
++
++  for (const [i, matter] of matters.slice(0, 4).entries()) {
++    const thread = await prisma.aiChatThread.create({ data: { workspaceId: workspace.id, matterId: matter.id, title: `Matter ${i + 1} review thread`, createdByUserId: users[0].id } });
++    await prisma.aiChatMessage.createMany({ data: [
++      { threadId: thread.id, role: ChatRole.USER, content: "What is missing from this matter?", citationsJson: null },
++      { threadId: thread.id, role: ChatRole.ASSISTANT, content: "AI-assisted summary: missing police check and passport expiry. Review required.", citationsJson: [{ label: "Validation", href: "/app/validation" }] }
++    ]});
++  }
++
++  await prisma.auditEvent.create({ data: { workspaceId: workspace.id, userId: users[0].id, entityType: "Matter", entityId: matters[0].id, action: "created", metadataJson: { source: "seed" } } });
++}
++
++main().finally(() => prisma.$disconnect());
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+new file mode 100644
+index 0000000..d8adf77
+--- /dev/null
++++ b/tailwind.config.ts
+@@ -0,0 +1,26 @@
++import type { Config } from "tailwindcss";
++
++const config: Config = {
++  darkMode: ["class"],
++  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
++  theme: {
++    extend: {
++      colors: {
++        background: "#060A14",
++        surface: "#0B1220",
++        border: "#1F2A3D",
++        muted: "#96A0B5",
++        accent: "#7C9DFF",
++        success: "#35C58A",
++        warning: "#FFBD59",
++        danger: "#FF6E74"
++      },
++      boxShadow: {
++        premium: "0 12px 40px rgba(2,8,24,0.35)"
++      }
++    }
++  },
++  plugins: []
++};
++
++export default config;
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..8b1f373
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,21 @@
++{
++  "compilerOptions": {
++    "target": "ES2017",
++    "lib": ["dom", "dom.iterable", "esnext"],
++    "allowJs": false,
++    "skipLibCheck": true,
++    "strict": true,
++    "noEmit": true,
++    "esModuleInterop": true,
++    "module": "esnext",
++    "moduleResolution": "bundler",
++    "resolveJsonModule": true,
++    "isolatedModules": true,
++    "jsx": "preserve",
++    "incremental": true,
++    "plugins": [{ "name": "next" }],
++    "paths": { "@/*": ["./*"] }
++  },
++  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
++  "exclude": ["node_modules"]
++}
+-- 
+2.43.0
+
+
+From d3faa556faf18245b9e9b3f487c51fd9c528deb5 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Wed, 22 Apr 2026 00:56:36 +0000
+Subject: [PATCH 2/3] Add explicit post-deploy verification checklist and
+ limitations
+
+---
+ README.md | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/README.md b/README.md
+index 5adfabe..0670e8b 100644
+--- a/README.md
++++ b/README.md
+@@ -119,3 +119,45 @@ To allow the agent/environment to push straight to GitHub, confirm these repo/en
+    ```
+ 
+ If `git ls-remote origin` fails with `403`/`CONNECT tunnel failed`, the blocker is network/proxy or token permissions (not repository code).
++
++## Post-deploy verification checklist
++I cannot fully validate a cloud deployment from this environment when package install and outbound registry access are blocked. Use this checklist right after deploying:
++
++1. **Build and runtime health**
++   ```bash
++   npm ci
++   npm run build
++   npm run start
++   ```
++
++2. **Database + Prisma**
++   ```bash
++   npm run prisma:generate
++   npm run prisma:migrate
++   npm run prisma:seed
++   ```
++
++3. **Critical route checks**
++   - `/` (landing)
++   - `/auth/sign-in`
++   - `/app/overview`
++   - `/app/matters`
++   - `/app/documents`
++   - `/app/forms`
++   - `/app/validation`
++   - `/app/updates`
++   - `/app/assistant`
++   - `/app/tasks`
++   - `/app/settings`
++
++4. **API checks**
++   - `POST /api/documents`
++   - `POST /api/assistant`
++   - `POST /api/updates/ingest`
++
++5. **Operational checks**
++   - Verify env vars are set (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`).
++   - Confirm auth session creation works.
++   - Confirm seeded records render in overview/matters/updates/tasks.
++
++If any step fails, capture logs and re-run with `NODE_ENV=production` to match deploy behavior.
+-- 
+2.43.0
+
+
+From 0c324dc7dcb6cd0565f4039c122fa6261d8594c4 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Wed, 22 Apr 2026 01:02:40 +0000
+Subject: [PATCH 3/3] Add Aria AI migration agent with full features
+
+-- 
+2.43.0
+
