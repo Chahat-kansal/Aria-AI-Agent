@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { persistDocumentStorageObject, prepareMatterDocumentUpload } from "@/lib/services/storage";
+import { extractReadableText } from "@/lib/services/document-extraction";
 
 export async function POST(req: Request) {
   const contentType = req.headers.get("content-type") ?? "";
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
   const mimeType = file.type || "application/octet-stream";
   const bytes = Buffer.from(await file.arrayBuffer());
   const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes });
+  const extractedText = extractReadableText(bytes, mimeType);
 
   const context = await getCurrentWorkspaceContext();
   if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
@@ -29,6 +31,7 @@ export async function POST(req: Request) {
     storageKey: upload?.storageKey,
     fileSize: upload?.fileSize,
     contentHash: upload?.contentHash,
+    extractedText,
     uploadedByUserId: context.user.id
   });
 

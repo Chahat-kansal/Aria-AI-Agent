@@ -78,7 +78,7 @@ export default async function SettingsPage() {
               <span>Plan management</span>
               <StatusChip label="Coming soon" />
             </div>
-            <p className="mt-3 text-xs text-muted">Billing is not active in this phase and no fake subscription data is shown.</p>
+            <p className="mt-3 text-xs text-muted">Billing is not active in this phase and no subscription data is shown.</p>
           </Card>
         </section>
       ) : (

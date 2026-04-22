@@ -107,6 +107,19 @@ export async function getDocumentsData(workspaceId: string) {
   });
 }
 
+export async function getDocumentDetailData(workspaceId: string, documentId: string) {
+  return prisma.document.findFirst({
+    where: { id: documentId, workspaceId },
+    include: {
+      matter: { include: { client: true } },
+      uploadedByUser: true,
+      extractionResults: { orderBy: { createdAt: "desc" } },
+      extractedFields: { orderBy: { createdAt: "desc" } },
+      storageObject: true
+    }
+  });
+}
+
 export async function getTasksData(workspaceId: string) {
   return prisma.task.findMany({
     where: { workspaceId },

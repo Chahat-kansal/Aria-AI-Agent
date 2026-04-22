@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/prisma";
+import { ClientReviewActions } from "@/components/app/client-review-actions";
 
 export default async function ClientReviewPage({ params }: { params: { requestId: string } }) {
   const request = await prisma.matterReviewRequest.findUnique({
@@ -15,6 +16,14 @@ export default async function ClientReviewPage({ params }: { params: { requestId
     return <main className="min-h-screen bg-[#040912] p-8 text-white">Review request not found.</main>;
   }
 
+  if (request.status === "SENT_TO_CLIENT") {
+    await prisma.matterReviewRequest.update({
+      where: { id: request.id },
+      data: { status: "VIEWED_BY_CLIENT", viewedAt: new Date() }
+    });
+    request.status = "VIEWED_BY_CLIENT";
+  }
+
   return (
     <main className="min-h-screen bg-[#040912] p-6 text-white">
       <div className="mx-auto max-w-4xl space-y-4">
@@ -25,6 +34,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
             This is a client confirmation workflow foundation. The draft remains AI-assisted and requires registered migration agent review before final submission preparation.
           </p>
           <p className="mt-3 text-sm">{request.matter.client.firstName} {request.matter.client.lastName} · {request.matter.title}</p>
+          <p className="mt-2 text-sm text-muted">Current status: {request.status.replaceAll("_", " ").toLowerCase()}</p>
         </Card>
 
         <Card>
@@ -40,12 +50,10 @@ export default async function ClientReviewPage({ params }: { params: { requestId
         </Card>
 
         <Card>
-          <h2 className="font-semibold">Confirmation states</h2>
-          <div className="mt-3 grid gap-2 text-sm text-muted md:grid-cols-3">
-            {["sent to client", "viewed by client", "signed / confirmed", "returned to agent", "requires follow-up"].map((state) => (
-              <div key={state} className="rounded-lg border border-border p-3 capitalize">{state}</div>
-            ))}
-          </div>
+          <h2 className="font-semibold">Client confirmation</h2>
+          <p className="mb-3 mt-2 text-sm text-muted">Confirming records client acknowledgement only. It is not a final legal decision and does not replace migration agent review.</p>
+          <ClientReviewActions requestId={request.id} />
+          <p className="mt-3 text-xs text-muted">External e-sign provider integration is pending; this records secure review workflow status inside Aria.</p>
         </Card>
       </div>
     </main>

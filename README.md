@@ -65,10 +65,10 @@ docker compose up --build
 ```
 
 ## Optional development seed data
-The seed script can create local development records for manual QA, but the app does not use seed arrays or demo repositories as a runtime fallback. Production pages expect real Prisma/Postgres records for the signed-in workspace.
+The seed script can create optional local development records for manual QA, but the app does not use seed arrays or sample repositories as a runtime fallback. Production pages expect real Prisma/Postgres records for the signed-in workspace.
 
 ## Trust-safe positioning
-Aria is AI-assisted and review-required. It does not replace a registered migration agent and does not guarantee visa outcomes.
+Aria is AI-assisted and review-required. It does not replace a registered migration agent and does not promise visa outcomes.
 
 ## Downloading a source bundle (when artifact links are not clickable)
 If your chat/artifact UI does not render clickable links, create and fetch a source-only archive from the repository root:
