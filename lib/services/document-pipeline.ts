@@ -4,12 +4,24 @@ export type DocumentPipelineResult = {
   reviewStatus: "pending" | "verified" | "flagged";
 };
 
-export async function runDocumentPipeline(fileName: string): Promise<DocumentPipelineResult> {
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  const classification = extension === "pdf" ? "Forms" : "Other Evidence";
+export async function runDocumentPipeline(fileName: string, extractedText = ""): Promise<DocumentPipelineResult> {
+  const haystack = `${fileName} ${extractedText}`.toLowerCase();
+  const classification = haystack.includes("passport") || haystack.includes("identity")
+    ? "Identity"
+    : haystack.includes("coe") || haystack.includes("enrol") || haystack.includes("course")
+      ? "Education"
+      : haystack.includes("bank") || haystack.includes("fund") || haystack.includes("financial")
+        ? "Financial"
+        : haystack.includes("oshc") || haystack.includes("insurance") || haystack.includes("health") || haystack.includes("police")
+          ? "Health / Insurance"
+          : haystack.includes("statement") || haystack.includes("declaration")
+            ? "Statements / Declarations"
+            : haystack.includes("form") || fileName.toLowerCase().endsWith(".pdf")
+              ? "Forms"
+              : "Other Evidence";
   return {
     classification,
-    extractionStatus: "queued",
+    extractionStatus: extractedText.trim().length ? "extracted" : "needs_review",
     reviewStatus: "pending"
   };
 }

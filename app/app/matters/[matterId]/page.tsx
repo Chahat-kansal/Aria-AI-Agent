@@ -66,13 +66,21 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
         <Card><h3 className="font-semibold">Open tasks</h3><p className="mt-2 text-sm text-muted">{openTasks} active tasks</p></Card>
       </section>
 
-      {matter.visaSubclass === "500" ? (
-        <Card className="mt-4">
-          <h3 className="font-semibold">Subclass 500 draft workflow</h3>
-          <p className="mt-2 text-sm text-muted">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, and client review preparation.</p>
-          <Link href={`/app/matters/${matter.id}/draft`} className="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-sm text-white">Open draft workflow</Link>
-        </Card>
-      ) : null}
+      <Card className="mt-4">
+        {matter.visaSubclass === "500" ? (
+          <>
+            <h3 className="font-semibold">Subclass 500 draft workflow</h3>
+            <p className="mt-2 text-sm text-muted">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, and client review preparation.</p>
+            <Link href={`/app/matters/${matter.id}/draft`} className="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-sm text-white">Open draft workflow</Link>
+          </>
+        ) : (
+          <>
+            <h3 className="font-semibold">Draft template not yet configured</h3>
+            <p className="mt-2 text-sm text-muted">Subclass {matter.visaSubclass} can use stored official visa knowledge and Aria research, but field-level draft filling is currently configured only for Subclass 500. This matter will not show fabricated draft fields.</p>
+            <Link href="/app/knowledge" className="mt-3 inline-flex rounded-lg border border-border px-4 py-2 text-sm text-accent">Review visa knowledge</Link>
+          </>
+        )}
+      </Card>
     </AppShell>
   );
 }

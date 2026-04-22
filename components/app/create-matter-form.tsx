@@ -3,10 +3,25 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-export function CreateMatterForm() {
+type VisaOption = {
+  subclassCode: string | null;
+  title: string;
+  stream: string | null;
+};
+
+const fallbackOptions = [
+  { subclassCode: "500", title: "Student visa Subclass 500", stream: "Higher Education" },
+  { subclassCode: "189", title: "Skilled Independent Subclass 189", stream: "Points-tested" },
+  { subclassCode: "190", title: "Skilled Nominated Subclass 190", stream: "State nominated" },
+  { subclassCode: "482", title: "Skills in Demand / TSS Subclass 482", stream: "Employer sponsored" },
+  { subclassCode: "820", title: "Partner visa Subclass 820", stream: "Onshore" }
+];
+
+export function CreateMatterForm({ visaOptions = [] }: { visaOptions?: VisaOption[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const options = visaOptions.length ? visaOptions.filter((option) => option.subclassCode) : fallbackOptions;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,11 +57,11 @@ export function CreateMatterForm() {
       <input name="nationality" placeholder="Nationality" className="rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
       <input name="title" required placeholder="Matter title" className="rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
       <select name="visaSubclass" defaultValue="500" className="rounded-lg border border-border bg-[#0d1728] p-2 text-sm">
-        <option value="500">Student visa Subclass 500</option>
-        <option value="189">Skilled Independent Subclass 189</option>
-        <option value="190">Skilled Nominated Subclass 190</option>
-        <option value="482">Skills in Demand / TSS Subclass 482</option>
-        <option value="820">Partner visa Subclass 820</option>
+        {options.map((option) => (
+          <option key={`${option.subclassCode}-${option.title}`} value={option.subclassCode ?? ""}>
+            {option.title}
+          </option>
+        ))}
       </select>
       <input name="visaStream" required defaultValue="Higher Education" placeholder="Stream" className="rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
       <input name="lodgementTargetDate" type="date" className="rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />

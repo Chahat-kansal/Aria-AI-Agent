@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { StatusChip } from "@/components/app/blocks/status-chip";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getSettingsData } from "@/lib/data/workspace-repository";
+import { prisma } from "@/lib/prisma";
 
 function ConfigStatus({ configured }: { configured: boolean }) {
   return <StatusChip label={configured ? "Configured" : "Disabled"} />;
@@ -12,6 +13,7 @@ function ConfigStatus({ configured }: { configured: boolean }) {
 export default async function SettingsPage() {
   const context = await getCurrentWorkspaceContext();
   const workspace = context ? await getSettingsData(context.workspace.id) : null;
+  const visaKnowledgeCount = await prisma.visaKnowledgeRecord.count();
 
   return (
     <AppShell title="Settings">
@@ -47,6 +49,14 @@ export default async function SettingsPage() {
             <p className="mt-3 text-xs text-muted">AI output remains AI-assisted, source-linked where available, and review required.</p>
           </Card>
           <Card>
+            <h3 className="font-semibold">Live web research</h3>
+            <div className="mt-3 flex items-center justify-between text-sm text-muted">
+              <span>{process.env.WEB_RESEARCH_PROVIDER || "Provider not selected"}</span>
+              <ConfigStatus configured={Boolean((process.env.WEB_RESEARCH_PROVIDER === "tavily" && process.env.TAVILY_API_KEY) || (process.env.WEB_RESEARCH_PROVIDER === "firecrawl" && process.env.FIRECRAWL_API_KEY) || (!process.env.WEB_RESEARCH_PROVIDER && (process.env.TAVILY_API_KEY || process.env.FIRECRAWL_API_KEY)))} />
+            </div>
+            <p className="mt-3 text-xs text-muted">When configured, Aria can retrieve source-linked official web results. Without provider keys, live research is disabled honestly.</p>
+          </Card>
+          <Card>
             <h3 className="font-semibold">Storage settings</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
               <span>Persistent storage provider</span>
@@ -71,6 +81,14 @@ export default async function SettingsPage() {
               )}
             </div>
             <p className="mt-3 text-xs text-muted">Live ingestion can be enabled for official-source monitoring. Every potential impact remains review required.</p>
+          </Card>
+          <Card>
+            <h3 className="font-semibold">Visa knowledge</h3>
+            <div className="mt-3 flex items-center justify-between text-sm text-muted">
+              <span>Stored official knowledge records</span>
+              <span className="text-white">{visaKnowledgeCount}</span>
+            </div>
+            <p className="mt-3 text-xs text-muted">Records are refreshed from official/public source-linked retrieval and used for broader subclass selection and Aria grounding.</p>
           </Card>
           <Card>
             <h3 className="font-semibold">Billing</h3>

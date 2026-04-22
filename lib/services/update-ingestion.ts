@@ -8,6 +8,11 @@ const DEFAULT_OFFICIAL_SOURCES: OfficialSourceConfig[] = [
     name: "Department of Home Affairs - Immigration and citizenship news",
     sourceType: "HOME_AFFAIRS_NEWS",
     url: "https://immi.homeaffairs.gov.au/news-media/archive"
+  },
+  {
+    name: "Federal Register of Legislation - Migration instruments",
+    sourceType: "GENERIC_OFFICIAL_PAGE",
+    url: "https://www.legislation.gov.au/search?query=migration%20visa"
   }
 ];
 

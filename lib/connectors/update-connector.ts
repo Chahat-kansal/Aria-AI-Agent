@@ -116,7 +116,47 @@ export class HomeAffairsNewsConnector implements OfficialUpdateConnector {
   }
 }
 
+export class GenericOfficialPageConnector implements OfficialUpdateConnector {
+  source: OfficialSourceConfig;
+
+  constructor(source: OfficialSourceConfig) {
+    this.source = source;
+  }
+
+  async fetchUpdates(): Promise<OfficialUpdatePayload[]> {
+    const html = await fetchText(this.source.url);
+    const links = Array.from(html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
+    const seen = new Set<string>();
+    const updates: OfficialUpdatePayload[] = [];
+
+    for (const [, href, labelHtml] of links) {
+      const title = stripTags(labelHtml);
+      const sourceUrl = toAbsoluteUrl(href, this.source.url);
+      if (!sourceUrl || seen.has(sourceUrl)) continue;
+      if (title.length < 10) continue;
+      if (!/migration|visa|citizenship|subclass|instrument|regulation|immi/i.test(`${title} ${sourceUrl}`)) continue;
+
+      seen.add(sourceUrl);
+      updates.push({
+        sourceName: this.source.name,
+        sourceType: this.source.sourceType,
+        sourceUrl,
+        title,
+        summary: title,
+        publishedAt: inferDateFromText(title) ?? new Date().toISOString(),
+        rawContent: `${title}\n${sourceUrl}`,
+        metadata: { connector: "generic-official-page", sourceId: this.source.id ?? null }
+      });
+
+      if (updates.length >= 20) break;
+    }
+
+    return updates;
+  }
+}
+
 export function createOfficialUpdateConnector(source: OfficialSourceConfig): OfficialUpdateConnector | null {
   if (source.sourceType === "HOME_AFFAIRS_NEWS") return new HomeAffairsNewsConnector(source);
+  if (source.sourceType === "GENERIC_OFFICIAL_PAGE") return new GenericOfficialPageConnector(source);
   return null;
 }

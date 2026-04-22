@@ -5,10 +5,12 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { CreateMatterForm } from "@/components/app/create-matter-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getMattersData } from "@/lib/data/workspace-repository";
+import { getVisaSubclassOptions } from "@/lib/services/visa-knowledge";
 
 export default async function MattersPage() {
   const context = await getCurrentWorkspaceContext();
   const matters = context ? await getMattersData(context.workspace.id) : [];
+  const visaOptions = await getVisaSubclassOptions();
 
   return (
     <AppShell title="Matters">
@@ -16,7 +18,7 @@ export default async function MattersPage() {
       <Card className="mb-4">
         <h3 className="font-semibold">Create matter</h3>
         <p className="mb-3 mt-1 text-sm text-muted">Create a real client matter, select the application workflow, then upload evidence for AI-assisted review.</p>
-        <CreateMatterForm />
+        <CreateMatterForm visaOptions={visaOptions} />
       </Card>
       <div className="panel overflow-hidden">
         {matters.length ? (

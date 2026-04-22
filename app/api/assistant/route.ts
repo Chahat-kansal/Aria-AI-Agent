@@ -2,7 +2,22 @@ import { NextResponse } from "next/server";
 import { getDraftReviewData } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterPathwayAnalyses } from "@/lib/services/pathway-analysis";
+import { getVisaKnowledgeForAssistant } from "@/lib/services/visa-knowledge";
+import { researchMigrationQuestion } from "@/lib/services/web-research";
 import { prisma } from "@/lib/prisma";
+
+function wantsLiveResearch(prompt: string) {
+  return /\b(current|latest|today|recent|changed|official|web|internet|source|policy|news|update|visa rule|home affairs)\b/i.test(prompt);
+}
+
+function summarizeResearch(results: Awaited<ReturnType<typeof researchMigrationQuestion>>) {
+  if (!results.configured) return results.setupMessage ?? "Live web research is not configured.";
+  if (!results.results.length) return "No live official web results were returned for this question.";
+  return results.results
+    .slice(0, 3)
+    .map((result) => `${result.sourceType === "official" ? "Official source" : "Public source"}: ${result.title} - ${result.content.slice(0, 240)}`)
+    .join(" | ");
+}
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -23,16 +38,27 @@ export async function POST(req: Request) {
     const pathwaySummary = pathways
       .map((analysis) => `${analysis.title}: ${analysis.options[0]?.title ?? "evidence intake required"}`)
       .join(" | ");
+    const visaKnowledge = await getVisaKnowledgeForAssistant(prompt);
+    const research = wantsLiveResearch(prompt) ? await researchMigrationQuestion(prompt).catch((error) => ({
+      provider: "error",
+      configured: false,
+      query: prompt,
+      results: [],
+      setupMessage: `Live research failed: ${error instanceof Error ? error.message : "unknown error"}`
+    })) : null;
+    const researchSummary = research ? summarizeResearch(research) : "Live web research was not requested for this answer.";
 
     return NextResponse.json({
       mode: "matter-specific",
       reviewRequired: true,
-      content: `AI-assisted answer for: ${prompt}. Current draft readiness is ${data.draft.readinessScore}%. Open review items: ${openIssueTitles.join(", ") || "none recorded"}. Official update impacts flagged for review: ${impactTitles.join(" | ") || "none recorded"}. Pathway analysis context: ${pathwaySummary || "no linked pathway analysis recorded"}. Registered migration agent review is required before client advice or submission preparation.`,
+      content: `AI-assisted answer for: ${prompt}. Current draft readiness is ${data.draft.readinessScore}%. Open review items: ${openIssueTitles.join(", ") || "none recorded"}. Official update impacts flagged for review: ${impactTitles.join(" | ") || "none recorded"}. Pathway analysis context: ${pathwaySummary || "no linked pathway analysis recorded"}. Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}. Live research: ${researchSummary}. Registered migration agent review is required before client advice or submission preparation.`,
       citations: [
         { label: "Draft fields", href: `/app/matters/${matterId}/draft` },
         { label: "Validation issues", href: `/app/matters/${matterId}/draft` },
         { label: "Official update impacts", href: `/app/matters/${matterId}` },
-        { label: "Pathway analyses", href: "/app/pathways" }
+        { label: "Pathway analyses", href: "/app/pathways" },
+        { label: "Visa knowledge", href: "/app/knowledge" },
+        ...(research?.results ?? []).slice(0, 3).map((result) => ({ label: result.title, href: result.url }))
       ],
       recommendedActions: impacts.length
         ? impacts.slice(0, 3).map((impact) => impact.actionRequired ?? "Review the source-linked official update against this matter.")
@@ -62,15 +88,26 @@ export async function POST(req: Request) {
       })
     : [];
   const pathwayLines = pathways.map((analysis) => `${analysis.title}: ${analysis.options[0]?.title ?? "evidence intake required"}`);
+  const visaKnowledge = await getVisaKnowledgeForAssistant(prompt);
+  const research = wantsLiveResearch(prompt) ? await researchMigrationQuestion(prompt).catch((error) => ({
+    provider: "error",
+    configured: false,
+    query: prompt,
+    results: [],
+    setupMessage: `Live research failed: ${error instanceof Error ? error.message : "unknown error"}`
+  })) : null;
+  const researchSummary = research ? summarizeResearch(research) : "Live web research was not requested for this answer.";
 
   return NextResponse.json({
     mode: "workspace",
     reviewRequired: true,
-    content: `AI-assisted workspace answer for: ${prompt}. ${impacts.length} matter update impact alerts are currently flagged for review. Recent pathway context: ${pathwayLines.join(" | ") || "no pathway analyses recorded"}. No official guidance is fabricated; use linked source records and practitioner review before action.`,
+    content: `AI-assisted workspace answer for: ${prompt}. ${impacts.length} matter update impact alerts are currently flagged for review. Recent pathway context: ${pathwayLines.join(" | ") || "no pathway analyses recorded"}. Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}. Live research: ${researchSummary}. No official guidance is fabricated; use linked source records and practitioner review before action.`,
     citations: [
       { label: "Official updates", href: "/app/updates" },
       { label: "Validation", href: "/app/validation" },
-      { label: "Pathway Analysis", href: "/app/pathways" }
+      { label: "Pathway Analysis", href: "/app/pathways" },
+      { label: "Visa Knowledge", href: "/app/knowledge" },
+      ...(research?.results ?? []).slice(0, 3).map((result) => ({ label: result.title, href: result.url }))
     ],
     recommendedActions: impacts.length
       ? impacts.slice(0, 3).map((impact) => `${impact.matter.client.firstName} ${impact.matter.client.lastName}: ${impact.actionRequired ?? impact.reason}`)

@@ -8,6 +8,7 @@ const nav = [
   ["Overview", "/app/overview"],
   ["Matters", "/app/matters"],
   ["Pathway Analysis", "/app/pathways"],
+  ["Visa Knowledge", "/app/knowledge"],
   ["Documents", "/app/documents"],
   ["Forms & Field Review", "/app/forms"],
   ["Validation", "/app/validation"],
@@ -45,8 +46,8 @@ export async function AppShell({ title, children }: { title: string; children: R
 
   return (
     <div className="min-h-screen bg-[#040912]">
-      <div className="mx-auto grid max-w-[1600px] grid-cols-[270px_1fr] gap-6 p-6">
-        <aside className="panel h-[calc(100vh-3rem)] p-4">
+      <div className="mx-auto grid max-w-[1680px] gap-4 p-3 lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-6 lg:p-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="panel p-4 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:overflow-y-auto">
           <div className="mb-6 space-y-3 border-b border-border pb-4">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria</p>
@@ -57,7 +58,7 @@ export async function AppShell({ title, children }: { title: string; children: R
               <span className="text-muted">v</span>
             </div>
           </div>
-          <nav className="space-y-1">
+          <nav className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:block lg:space-y-1">
             {nav.map(([label, href]) => (
               <Link key={href} href={href} className={cn("block rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-[#111a2b] hover:text-white", title === label && "bg-[#111a2b] text-white")}>
                 {label}
@@ -69,14 +70,14 @@ export async function AppShell({ title, children }: { title: string; children: R
           </div>
         </aside>
 
-        <main>
-          <header className="panel mb-6 flex items-center justify-between p-4">
+        <main className="min-w-0">
+          <header className="panel mb-4 flex flex-col gap-4 p-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h1 className="text-xl font-semibold">{title}</h1>
               <p className="text-sm text-muted">AI-assisted workflow. Review required before submission.</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex min-w-[320px] items-center gap-2 rounded-lg border border-border bg-[#111a2b] px-3 py-2 text-sm text-muted">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex min-w-full items-center gap-2 rounded-lg border border-border bg-[#111a2b] px-3 py-2 text-sm text-muted sm:min-w-[300px]">
                 <Search className="h-4 w-4" />
                 Command/search: matters, fields, updates, tasks...
               </div>

@@ -27,7 +27,7 @@ export default async function PathwaysPage() {
       <Card className="mb-4">
         <h3 className="font-semibold">Create pathway analysis</h3>
         <p className="mb-3 mt-1 text-sm text-muted">
-          Capture structured facts and free-text context. Aria will rank potential pathway groups, evidence gaps, blockers, and next review actions without presenting a final legal determination.
+          Capture structured facts and free-text context. Aria will rank potential pathway groups, evidence gaps, blockers, and next review actions as review-required scenario analysis.
         </p>
         <PathwayAnalysisForm matters={matters} />
       </Card>

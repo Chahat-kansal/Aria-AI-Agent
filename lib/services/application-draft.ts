@@ -48,22 +48,30 @@ function inferredFields(fileName: string, category: string, extractedText = "") 
   const lower = `${fileName} ${extractedText}`.toLowerCase();
   const fields: Array<{ key: string; value: string; confidence: number; snippet: string }> = [];
   const fullName = extractedText.match(/\b(?:name|full name)\s*[:\-]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i)?.[1];
+  const dateOfBirth = extractedText.match(/\b(?:date of birth|dob|birth date)\s*[:\-]?\s*(\d{1,2}[\/\-\s][A-Za-z0-9]{2,9}[\/\-\s]\d{2,4})/i)?.[1];
+  const nationality = extractedText.match(/\b(?:nationality|citizenship)\s*[:\-]\s*([A-Za-z ]{3,40})/i)?.[1];
   const passportNumber = extractedText.match(/\b(?:passport(?: number| no\.?)?)\s*[:\-]?\s*([A-Z0-9]{6,12})\b/i)?.[1];
   const coeNumber = extractedText.match(/\b(?:coe|confirmation of enrolment)\s*(?:number|no\.?)?\s*[:\-]?\s*([A-Z0-9-]{6,20})\b/i)?.[1];
   const provider = extractedText.match(/\b(?:provider|institution|university|college)\s*[:\-]\s*([A-Za-z0-9 &,'-]{4,80})/i)?.[1];
+  const courseName = extractedText.match(/\b(?:course|program|qualification)\s*(?:name)?\s*[:\-]\s*([A-Za-z0-9 &,'()-]{4,100})/i)?.[1];
+  const courseStart = extractedText.match(/\b(?:course start|start date|commencement)\s*[:\-]?\s*(\d{1,2}[\/\-\s][A-Za-z0-9]{2,9}[\/\-\s]\d{2,4})/i)?.[1];
   const funds = extractedText.match(/\b(?:funds|balance|available funds)\s*[:\-]?\s*(?:AUD|A\$|\$)?\s*([0-9,]{4,})\b/i)?.[1];
   const oshc = extractedText.match(/\b(?:oshc|health insurance)\s*(?:provider)?\s*[:\-]?\s*([A-Za-z &'-]{3,80})/i)?.[1];
 
   if (category === "Identity") {
     fields.push(
       { key: "applicant.full_name", value: fullName ?? "Review against passport", confidence: fullName ? 0.86 : 0.62, snippet: findSnippet(extractedText, /(?:name|full name)/i, `Identity evidence from ${fileName}`) },
+      { key: "applicant.date_of_birth", value: dateOfBirth ?? "Needs manual DOB review", confidence: dateOfBirth ? 0.84 : 0.54, snippet: findSnippet(extractedText, /date of birth|dob|birth date/i, `Date of birth evidence from ${fileName}`) },
+      { key: "applicant.nationality", value: nationality ?? "Needs manual nationality review", confidence: nationality ? 0.82 : 0.54, snippet: findSnippet(extractedText, /nationality|citizenship/i, `Nationality evidence from ${fileName}`) },
       { key: "applicant.passport_number", value: passportNumber ?? "Needs manual passport review", confidence: passportNumber ? 0.9 : 0.55, snippet: findSnippet(extractedText, /passport/i, `Passport reference detected in ${fileName}`) }
     );
   }
   if (category === "Education") {
     fields.push(
       { key: "study.provider", value: provider ?? "Education provider requires review", confidence: provider ? 0.82 : 0.6, snippet: findSnippet(extractedText, /provider|institution|university|college/i, `Provider evidence from ${fileName}`) },
-      { key: "study.coe_number", value: coeNumber ?? (lower.includes("coe") ? "CoE reference present" : "Needs CoE review"), confidence: coeNumber ? 0.88 : 0.62, snippet: findSnippet(extractedText, /coe|confirmation of enrolment/i, `CoE evidence from ${fileName}`) }
+      { key: "study.course_name", value: courseName ?? "Course name requires review", confidence: courseName ? 0.8 : 0.58, snippet: findSnippet(extractedText, /course|program|qualification/i, `Course evidence from ${fileName}`) },
+      { key: "study.coe_number", value: coeNumber ?? (lower.includes("coe") ? "CoE reference present" : "Needs CoE review"), confidence: coeNumber ? 0.88 : 0.62, snippet: findSnippet(extractedText, /coe|confirmation of enrolment/i, `CoE evidence from ${fileName}`) },
+      { key: "study.course_start_date", value: courseStart ?? "Course start requires review", confidence: courseStart ? 0.78 : 0.56, snippet: findSnippet(extractedText, /course start|start date|commencement/i, `Course start evidence from ${fileName}`) }
     );
   }
   if (category === "Financial") {

@@ -4,7 +4,11 @@ import { createOrGetSubclass500Draft } from "@/lib/services/application-draft";
 export async function POST(req: Request) {
   const body = await req.json();
   if (body.subclassCode !== "500") {
-    return NextResponse.json({ error: "Only Subclass 500 draft workflows are available in this phase." }, { status: 400 });
+    return NextResponse.json({
+      error: "This subclass is available in official visa knowledge, but a field-level draft template is not configured yet.",
+      templateConfigured: false,
+      reviewRequired: true
+    }, { status: 409 });
   }
 
   const matterId = typeof body.matterId === "string" ? body.matterId : null;

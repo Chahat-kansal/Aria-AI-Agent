@@ -173,7 +173,7 @@ export async function getSettingsData(workspaceId: string) {
     include: {
       users: { orderBy: { name: "asc" } },
       officialSources: { orderBy: { name: "asc" } },
-      _count: { select: { matters: true, documents: true, tasks: true } }
+      _count: { select: { matters: true, documents: true, tasks: true, visaKnowledgeRecords: true } }
     }
   });
 }
