@@ -7,6 +7,7 @@ import { SignOutButton } from "@/components/app/sign-out-button";
 const nav = [
   ["Overview", "/app/overview"],
   ["Matters", "/app/matters"],
+  ["Pathway Analysis", "/app/pathways"],
   ["Documents", "/app/documents"],
   ["Forms & Field Review", "/app/forms"],
   ["Validation", "/app/validation"],

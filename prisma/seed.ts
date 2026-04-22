@@ -44,7 +44,7 @@ async function main() {
     workspaceId: workspace.id, firstName: ["Aisha", "Luca", "Priya", "Daniel", "Maria", "Wei", "Fatima", "Noah", "Elena", "Ravi"][i],
     lastName: ["Rahman", "Rossi", "Menon", "Kim", "Santos", "Zhang", "Hassan", "Reed", "Popov", "Nair"][i],
     dob: new Date(1990 + i % 8, i % 12, 10 + i), nationality: ["Indian", "Brazilian", "Italian", "Korean", "Filipino"][i % 5],
-    email: `client${i + 1}@example.com`, phone: `+61 400 000 ${String(i).padStart(3, "0")}`, notes: "Demo client profile"
+    email: `client${i + 1}@example.com`, phone: `+61 400 000 ${String(i).padStart(3, "0")}`, notes: "Development seed client profile"
   }})));
 
   const matters = await Promise.all(clients.map((client, i) => prisma.matter.create({ data: {
@@ -61,7 +61,7 @@ async function main() {
     const client = clients[i % clients.length];
     const uploader = users[i % users.length];
     const document = await prisma.document.create({ data: {
-      workspaceId: workspace.id, clientId: client.id, matterId: matter.id, fileName: `evidence-${i + 1}.pdf`, storageKey: `demo/${matter.id}/evidence-${i + 1}.pdf`,
+      workspaceId: workspace.id, clientId: client.id, matterId: matter.id, fileName: `evidence-${i + 1}.pdf`, storageKey: `dev-seed/${matter.id}/evidence-${i + 1}.pdf`,
       mimeType: "application/pdf", category: ["Identity", "Travel", "Employment", "Education", "Financial", "Relationship", "Health / Police", "Forms", "Other Evidence"][i % 9],
       subcategory: "Primary", uploadedByUserId: uploader.id, extractionStatus: [ExtractionStatus.QUEUED, ExtractionStatus.EXTRACTED, ExtractionStatus.NEEDS_REVIEW][i % 3],
       reviewStatus: [ReviewStatus.PENDING, ReviewStatus.VERIFIED, ReviewStatus.FLAGGED][i % 3]
@@ -78,7 +78,7 @@ async function main() {
     await prisma.validationIssue.create({ data: {
       matterId: matter.id, severity: [IssueSeverity.CRITICAL, IssueSeverity.HIGH, IssueSeverity.MEDIUM, IssueSeverity.LOW][idx % 4],
       type: "Data consistency", title: ["Missing passport expiry", "Name mismatch", "Address mismatch", "Employment dates conflict"][idx % 4],
-      description: "Generated issue for demo validation workflow.", relatedFieldKey: "passport_expiry", resolutionStatus: ResolutionStatus.OPEN
+      description: "Generated issue for development seed validation workflow.", relatedFieldKey: "passport_expiry", resolutionStatus: ResolutionStatus.OPEN
     }});
 
     await prisma.checklistItem.create({ data: { matterId: matter.id, category: "Evidence", label: "Identity documents verified", status: idx % 2 ? "complete" : "pending", required: true, notes: "Review required" } });

@@ -156,38 +156,41 @@ model Workspace {
   auditEvents           AuditEvent[]
   visaSubclassTemplates VisaSubclassTemplate[]
   officialSources       OfficialSource[]
+  pathwayAnalyses       PathwayAnalysis[]
 }
 
 model User {
-  id                String         @id @default(cuid())
+  id                String            @id @default(cuid())
   name              String
-  email             String         @unique
+  email             String            @unique
   hashedPassword    String?
   role              UserRole
   workspaceId       String
-  workspace         Workspace      @relation(fields: [workspaceId], references: [id])
-  mattersAssigned   Matter[]       @relation("MatterAssignee")
-  uploadedDocuments Document[]     @relation("DocumentUploader")
-  tasksAssigned     Task[]         @relation("TaskAssignee")
-  createdThreads    AiChatThread[] @relation("ThreadCreator")
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id])
+  mattersAssigned   Matter[]          @relation("MatterAssignee")
+  uploadedDocuments Document[]        @relation("DocumentUploader")
+  tasksAssigned     Task[]            @relation("TaskAssignee")
+  createdThreads    AiChatThread[]    @relation("ThreadCreator")
   auditEvents       AuditEvent[]
+  pathwayAnalyses   PathwayAnalysis[]
 }
 
 model Client {
-  id          String     @id @default(cuid())
-  clientReference String? @unique
-  workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
-  firstName   String
-  lastName    String
-  dob         DateTime
-  nationality String
-  email       String
-  phone       String
-  notes       String?
-  createdAt   DateTime   @default(now())
-  matters     Matter[]
-  documents   Document[]
+  id              String            @id @default(cuid())
+  clientReference String?           @unique
+  workspaceId     String
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id])
+  firstName       String
+  lastName        String
+  dob             DateTime
+  nationality     String
+  email           String
+  phone           String
+  notes           String?
+  createdAt       DateTime          @default(now())
+  matters         Matter[]
+  documents       Document[]
+  pathwayAnalyses PathwayAnalysis[]
 }
 
 model Matter {
@@ -218,6 +221,48 @@ model Matter {
   aiThreads           AiChatThread[]
   applicationDrafts   MatterApplicationDraft[]
   reviewRequests      MatterReviewRequest[]
+  pathwayAnalyses     PathwayAnalysis[]
+}
+
+model PathwayAnalysis {
+  id               String          @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUserId  String
+  createdByUser    User            @relation(fields: [createdByUserId], references: [id])
+  clientId         String?
+  client           Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId         String?
+  matter           Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  title            String
+  profileJson      Json
+  summary          String
+  assumptionsJson  Json
+  blockersJson     Json
+  evidenceGapsJson Json
+  reviewNotes      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  options          PathwayOption[]
+
+  @@index([workspaceId, createdAt])
+  @@index([matterId])
+}
+
+model PathwayOption {
+  id              String          @id @default(cuid())
+  analysisId      String
+  analysis        PathwayAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  rank            Int
+  pathwayType     String
+  title           String
+  relevance       String
+  confidence      Float
+  conditionsJson  Json
+  missingJson     Json
+  risksJson       Json
+  nextActionsJson Json
+  createdAt       DateTime        @default(now())
 }
 
 model Document {
@@ -455,21 +500,21 @@ model MatterReviewRequest {
 }
 
 model OfficialUpdate {
-  id             String         @id @default(cuid())
+  id               String          @id @default(cuid())
   officialSourceId String?
   officialSource   OfficialSource? @relation(fields: [officialSourceId], references: [id])
-  source         String
-  sourceUrl      String
-  title          String
-  summary        String
-  updateType     String
-  effectiveDate  DateTime?
-  publishedAt    DateTime
-  rawContentHash String
-  sourceMetadata Json?
-  ingestedAt     DateTime       @default(now())
-  createdAt      DateTime       @default(now())
-  impacts        MatterImpact[]
+  source           String
+  sourceUrl        String
+  title            String
+  summary          String
+  updateType       String
+  effectiveDate    DateTime?
+  publishedAt      DateTime
+  rawContentHash   String
+  sourceMetadata   Json?
+  ingestedAt       DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  impacts          MatterImpact[]
 
   @@unique([sourceUrl, rawContentHash])
   @@index([publishedAt])
@@ -477,18 +522,18 @@ model OfficialUpdate {
 }
 
 model OfficialSource {
-  id          String           @id @default(cuid())
-  workspaceId String?
-  workspace   Workspace?       @relation(fields: [workspaceId], references: [id])
-  name        String
-  sourceType  String
-  url         String
-  active      Boolean          @default(true)
-  metadataJson Json?
+  id            String           @id @default(cuid())
+  workspaceId   String?
+  workspace     Workspace?       @relation(fields: [workspaceId], references: [id])
+  name          String
+  sourceType    String
+  url           String
+  active        Boolean          @default(true)
+  metadataJson  Json?
   lastFetchedAt DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  updates     OfficialUpdate[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  updates       OfficialUpdate[]
 
   @@unique([url])
   @@index([active, sourceType])
