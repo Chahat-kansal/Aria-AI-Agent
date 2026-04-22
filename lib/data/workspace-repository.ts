@@ -30,8 +30,9 @@ export async function getOverviewData(workspaceId: string) {
     }),
     prisma.officialUpdate.findMany({
       include: {
+        officialSource: true,
         impacts: {
-          where: { matter: { workspaceId } }
+          where: { matter: { workspaceId }, status: { in: ["NEW", "REVIEWING"] } }
         }
       },
       orderBy: { publishedAt: "desc" },
@@ -128,6 +129,7 @@ export async function getValidationData(workspaceId: string) {
 export async function getUpdatesData(workspaceId: string) {
   return prisma.officialUpdate.findMany({
     include: {
+      officialSource: true,
       impacts: {
         where: { matter: { workspaceId } },
         include: { matter: { include: { client: true } } },
@@ -142,6 +144,7 @@ export async function getUpdateDetailData(workspaceId: string, updateId: string)
   return prisma.officialUpdate.findFirst({
     where: { id: updateId },
     include: {
+      officialSource: true,
       impacts: {
         where: { matter: { workspaceId } },
         include: { matter: { include: { client: true } } },
@@ -156,6 +159,7 @@ export async function getSettingsData(workspaceId: string) {
     where: { id: workspaceId },
     include: {
       users: { orderBy: { name: "asc" } },
+      officialSources: { orderBy: { name: "asc" } },
       _count: { select: { matters: true, documents: true, tasks: true } }
     }
   });

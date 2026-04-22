@@ -44,6 +44,24 @@ export default async function OverviewPage() {
         </Card>
 
         <Card>
+          <h3 className="font-semibold">Official update alerts</h3>
+          <div className="mt-3 space-y-2">
+            {updates.length ? updates.map((update) => (
+              <div key={update.id} className="rounded-lg border border-border p-3">
+                <div>
+                  <p className="font-medium">{update.title}</p>
+                  <p className="text-xs text-muted">{update.source} · {formatDate(update.publishedAt)} · {update.impacts.length} potential impacts</p>
+                </div>
+              </div>
+            )) : (
+              <p className="rounded-lg border border-border p-4 text-sm text-muted">No official update alerts are recorded for this workspace.</p>
+            )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="mt-4">
+        <Card>
           <h3 className="font-semibold">Upcoming tasks</h3>
           <div className="mt-3 space-y-2">
             {tasks.length ? tasks.map((task) => (

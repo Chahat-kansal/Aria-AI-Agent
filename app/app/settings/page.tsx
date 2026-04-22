@@ -58,9 +58,19 @@ export default async function SettingsPage() {
             <h3 className="font-semibold">Update source settings</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
               <span>Scheduled ingestion</span>
-              <ConfigStatus configured={process.env.OFFICIAL_UPDATE_SCHEDULER_ENABLED === "true"} />
+              <ConfigStatus configured={process.env.OFFICIAL_UPDATE_INGESTION_ENABLED === "true"} />
             </div>
-            <p className="mt-3 text-xs text-muted">Live ingestion is intentionally disabled until official connectors are configured.</p>
+            <div className="mt-3 space-y-2">
+              {workspace.officialSources.length ? workspace.officialSources.map((source) => (
+                <div key={source.id} className="rounded-lg border border-border p-2 text-xs text-muted">
+                  <p className="text-white">{source.name}</p>
+                  <p>{source.sourceType} · {source.active ? "Active" : "Disabled"} · Last fetched {formatDate(source.lastFetchedAt)}</p>
+                </div>
+              )) : (
+                <p className="text-xs text-muted">Global official sources are created when ingestion runs. Workspace-specific sources are not configured.</p>
+              )}
+            </div>
+            <p className="mt-3 text-xs text-muted">Live ingestion can be enabled for official-source monitoring. Every potential impact remains review required.</p>
           </Card>
           <Card>
             <h3 className="font-semibold">Billing</h3>

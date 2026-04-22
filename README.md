@@ -30,7 +30,7 @@ Aria is an AI-assisted migration operations platform for Australian migration pr
 
 ## Key integration points
 - **Document ingestion**: `POST /api/documents` + `lib/services/document-pipeline.ts`
-- **AI assistant**: `POST /api/assistant` + `lib/services/ai-adapter.ts`
+- **AI assistant**: `POST /api/assistant` grounded in matter, validation, and official update impact records.
 - **Update ingestion**: `POST /api/updates/ingest` + connector interface + hash dedupe service
 
 ## Local development

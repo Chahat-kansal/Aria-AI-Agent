@@ -155,6 +155,7 @@ model Workspace {
   aiThreads             AiChatThread[]
   auditEvents           AuditEvent[]
   visaSubclassTemplates VisaSubclassTemplate[]
+  officialSources       OfficialSource[]
 }
 
 model User {
@@ -440,6 +441,8 @@ model MatterReviewRequest {
 
 model OfficialUpdate {
   id             String         @id @default(cuid())
+  officialSourceId String?
+  officialSource   OfficialSource? @relation(fields: [officialSourceId], references: [id])
   source         String
   sourceUrl      String
   title          String
@@ -448,8 +451,32 @@ model OfficialUpdate {
   effectiveDate  DateTime?
   publishedAt    DateTime
   rawContentHash String
+  sourceMetadata Json?
+  ingestedAt     DateTime       @default(now())
   createdAt      DateTime       @default(now())
   impacts        MatterImpact[]
+
+  @@unique([sourceUrl, rawContentHash])
+  @@index([publishedAt])
+  @@index([updateType])
+}
+
+model OfficialSource {
+  id          String           @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace?       @relation(fields: [workspaceId], references: [id])
+  name        String
+  sourceType  String
+  url         String
+  active      Boolean          @default(true)
+  metadataJson Json?
+  lastFetchedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  updates     OfficialUpdate[]
+
+  @@unique([url])
+  @@index([active, sourceType])
 }
 
 model MatterImpact {
@@ -460,8 +487,11 @@ model MatterImpact {
   matter           Matter         @relation(fields: [matterId], references: [id])
   impactLevel      ImpactLevel
   reason           String
+  actionRequired   String?
   status           ImpactStatus
   createdAt        DateTime       @default(now())
+
+  @@unique([officialUpdateId, matterId])
 }
 
 model Task {

@@ -19,7 +19,8 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
       <PageHeader title={update.title} subtitle={`${update.source} · Effective ${formatDate(update.effectiveDate)}`} />
       <Card>
         <p className="text-sm text-muted">{update.summary}</p>
-        <p className="mt-2 text-xs text-muted">Published {formatDate(update.publishedAt)} · Type {update.updateType}</p>
+        <p className="mt-2 text-xs text-muted">Published {formatDate(update.publishedAt)} · Type {update.updateType} · Ingested {formatDate(update.ingestedAt)}</p>
+        <p className="mt-1 text-xs text-muted">Source monitor: {update.officialSource?.name ?? update.source}</p>
         <a href={update.sourceUrl} className="mt-2 block text-sm text-accent" target="_blank">Open source publication</a>
       </Card>
       <Card className="mt-4">
@@ -32,7 +33,8 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
                 <StatusChip label={formatEnum(impact.impactLevel)} />
               </div>
               <p className="text-sm text-muted">Why matched: {impact.reason}</p>
-              <p className="text-xs text-muted">Action state: {formatEnum(impact.status)}</p>
+              <p className="text-xs text-muted">Action required: {impact.actionRequired ?? "Review source-linked update against the matter."}</p>
+              <p className="text-xs text-muted">Review state: {formatEnum(impact.status)}</p>
             </div>
           )) : (
             <p className="rounded-lg border border-border p-4 text-sm text-muted">This update has no affected matters recorded for the current workspace.</p>

@@ -54,7 +54,13 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
 
       <section className="mt-4 grid gap-4 md:grid-cols-3">
         <Card><h3 className="font-semibold">Documents</h3><p className="mt-2 text-sm text-muted">{matter.documents.length} linked files</p></Card>
-        <Card><h3 className="font-semibold">Potential impacts</h3><p className="mt-2 text-sm text-muted">{matter.impacts.length} update matches</p></Card>
+        <Card>
+          <h3 className="font-semibold">Potential impacts</h3>
+          <p className="mt-2 text-sm text-muted">{matter.impacts.length} update matches</p>
+          {matter.impacts[0] ? (
+            <p className="mt-2 text-xs text-muted">{matter.impacts[0].officialUpdate.title}: {matter.impacts[0].actionRequired ?? "Review required."}</p>
+          ) : null}
+        </Card>
         <Card><h3 className="font-semibold">Open tasks</h3><p className="mt-2 text-sm text-muted">{openTasks} active tasks</p></Card>
       </section>
 
