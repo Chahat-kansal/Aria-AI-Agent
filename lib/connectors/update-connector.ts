@@ -14,21 +14,7 @@ export interface OfficialUpdateConnector {
   fetchUpdates(): Promise<OfficialUpdatePayload[]>;
 }
 
-export class SeededHomeAffairsConnector implements OfficialUpdateConnector {
-  name = "home-affairs-seeded";
-
-  async fetchUpdates(): Promise<OfficialUpdatePayload[]> {
-    return [
-      {
-        source: "Department of Home Affairs",
-        sourceUrl: "https://example.gov.au/update/skilled-occupation-list",
-        title: "Skilled occupation list amendments",
-        summary: "Several ANZSCO occupations have updated caveats and evidence expectations.",
-        updateType: "Policy update",
-        effectiveDate: "2026-04-01",
-        publishedAt: "2026-03-28",
-        rawContent: "Seeded snapshot v1"
-      }
-    ];
-  }
+export function getConfiguredOfficialUpdateConnectors(): OfficialUpdateConnector[] {
+  // Real official-source connectors should be registered here when credentials and source URLs are configured.
+  return [];
 }

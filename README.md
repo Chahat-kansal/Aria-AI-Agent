@@ -23,10 +23,10 @@ Aria is an AI-assisted migration operations platform for Australian migration pr
 ## Architecture
 - `app/`: route structure for marketing, auth, authenticated app, and API endpoints.
 - `components/`: shell, shared UI primitives, and app-level blocks.
-- `lib/data/`: demo repository layer emulating production query boundaries.
+- `lib/data/`: Prisma-backed repository layer for workspace app pages.
 - `lib/services/`: integration adapters for OCR/extraction pipeline, AI provider output, and update ingestion.
 - `lib/connectors/`: official update source connector interfaces.
-- `prisma/`: schema, migration SQL, and seeded demo dataset.
+- `prisma/`: schema, migration SQL, and optional development seed dataset.
 
 ## Key integration points
 - **Document ingestion**: `POST /api/documents` + `lib/services/document-pipeline.ts`
@@ -50,7 +50,7 @@ Aria is an AI-assisted migration operations platform for Australian migration pr
    ```bash
    npm run prisma:migrate
    ```
-5. Seed demo data:
+5. Optionally seed development data:
    ```bash
    npm run prisma:seed
    ```
@@ -64,15 +64,8 @@ Aria is an AI-assisted migration operations platform for Australian migration pr
 docker compose up --build
 ```
 
-## Demo data included
-- 10 clients and 10 matters
-- 32 documents with extraction/review states
-- Extracted fields with confidence and source snippets
-- Validation issues with severity and status
-- Official updates + matter impacts
-- Matter-linked tasks
-- AI chat threads/messages
-- Audit events
+## Optional development seed data
+The seed script can create local development records for manual QA, but the app does not use seed arrays or demo repositories as a runtime fallback. Production pages expect real Prisma/Postgres records for the signed-in workspace.
 
 ## Trust-safe positioning
 Aria is AI-assisted and review-required. It does not replace a registered migration agent and does not guarantee visa outcomes.

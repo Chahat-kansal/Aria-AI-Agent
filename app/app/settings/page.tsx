@@ -42,7 +42,7 @@ export default async function SettingsPage() {
             <h3 className="font-semibold">AI settings</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
               <span>Provider adapter</span>
-              <ConfigStatus configured={Boolean(process.env.AI_PROVIDER && process.env.AI_PROVIDER !== "mock")} />
+              <ConfigStatus configured={Boolean(process.env.AI_PROVIDER)} />
             </div>
             <p className="mt-3 text-xs text-muted">AI output remains AI-assisted, source-linked where available, and review required.</p>
           </Card>
