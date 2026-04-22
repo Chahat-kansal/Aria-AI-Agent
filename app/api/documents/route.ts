@@ -8,13 +8,15 @@ export async function POST(req: Request) {
   const matterId = typeof body.matterId === "string" ? body.matterId : null;
   if (!matterId) return NextResponse.json({ error: "matterId is required" }, { status: 400 });
 
-  const { user } = await getCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+
   const document = await uploadDocumentToMatter({
     matterId,
     fileName,
     mimeType: typeof body.mimeType === "string" ? body.mimeType : "application/octet-stream",
     storageKey: typeof body.storageKey === "string" ? body.storageKey : undefined,
-    uploadedByUserId: user.id
+    uploadedByUserId: context.user.id
   });
 
   return NextResponse.json({

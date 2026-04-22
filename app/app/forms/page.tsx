@@ -6,12 +6,14 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { prisma } from "@/lib/prisma";
 
 export default async function FormsPage() {
-  const { workspace } = await getCurrentWorkspaceContext();
-  const matters = await prisma.matter.findMany({
-    where: { workspaceId: workspace.id, visaSubclass: "500" },
-    include: { client: true, applicationDrafts: true },
-    orderBy: { updatedAt: "desc" }
-  });
+  const context = await getCurrentWorkspaceContext();
+  const matters = context
+    ? await prisma.matter.findMany({
+        where: { workspaceId: context.workspace.id, visaSubclass: "500" },
+        include: { client: true, applicationDrafts: true },
+        orderBy: { updatedAt: "desc" }
+      })
+    : [];
 
   return (
     <AppShell title="Forms & Field Review">

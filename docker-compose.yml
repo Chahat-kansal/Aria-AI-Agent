@@ -21,7 +21,6 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/aria
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: local-dev-secret
-      NEXT_PUBLIC_DEMO_MODE: "true"
     command: sh -c "npm run prisma:generate && npm run start"
 
 volumes:
