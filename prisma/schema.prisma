@@ -161,6 +161,7 @@ model User {
   id                String         @id @default(cuid())
   name              String
   email             String         @unique
+  hashedPassword    String?
   role              UserRole
   workspaceId       String
   workspace         Workspace      @relation(fields: [workspaceId], references: [id])

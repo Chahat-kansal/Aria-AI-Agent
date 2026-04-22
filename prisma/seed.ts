@@ -1,4 +1,5 @@
 import { PrismaClient, WorkspacePlan, UserRole, MatterStatus, MatterStage, ExtractionStatus, ReviewStatus, FieldStatus, IssueSeverity, ResolutionStatus, ImpactLevel, ImpactStatus, TaskStatus, TaskPriority, ChatRole } from "@prisma/client";
+import { hash } from "bcryptjs";
 import { ensureSubclass500Template } from "../lib/services/subclass-templates";
 import { createOrGetSubclass500Draft, mapDocumentsToDraft } from "../lib/services/application-draft";
 
@@ -31,11 +32,12 @@ async function main() {
   await prisma.workspace.deleteMany();
 
   const workspace = await prisma.workspace.create({ data: { name: "Southern Cross Migration", slug: "southern-cross", plan: WorkspacePlan.GROWTH } });
+  const seededPassword = await hash("Password123!", 12);
 
   const users = await Promise.all([
-    prisma.user.create({ data: { name: "Mia Patel", email: "mia@southerncross.example", role: UserRole.ADMIN, workspaceId: workspace.id } }),
-    prisma.user.create({ data: { name: "Arun Iyer", email: "arun@southerncross.example", role: UserRole.AGENT, workspaceId: workspace.id } }),
-    prisma.user.create({ data: { name: "Sofia Tran", email: "sofia@southerncross.example", role: UserRole.REVIEWER, workspaceId: workspace.id } })
+    prisma.user.create({ data: { name: "Mia Patel", email: "mia@southerncross.example", hashedPassword: seededPassword, role: UserRole.ADMIN, workspaceId: workspace.id } }),
+    prisma.user.create({ data: { name: "Arun Iyer", email: "arun@southerncross.example", hashedPassword: seededPassword, role: UserRole.AGENT, workspaceId: workspace.id } }),
+    prisma.user.create({ data: { name: "Sofia Tran", email: "sofia@southerncross.example", hashedPassword: seededPassword, role: UserRole.REVIEWER, workspaceId: workspace.id } })
   ]);
 
   const clients = await Promise.all(Array.from({ length: 10 }).map((_, i) => prisma.client.create({ data: {
