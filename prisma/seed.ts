@@ -1,4 +1,6 @@
 import { PrismaClient, WorkspacePlan, UserRole, MatterStatus, MatterStage, ExtractionStatus, ReviewStatus, FieldStatus, IssueSeverity, ResolutionStatus, ImpactLevel, ImpactStatus, TaskStatus, TaskPriority, ChatRole } from "@prisma/client";
+import { ensureSubclass500Template } from "../lib/services/subclass-templates";
+import { createOrGetSubclass500Draft, mapDocumentsToDraft } from "../lib/services/application-draft";
 
 const prisma = new PrismaClient();
 
@@ -6,6 +8,16 @@ async function main() {
   await prisma.auditEvent.deleteMany();
   await prisma.aiChatMessage.deleteMany();
   await prisma.aiChatThread.deleteMany();
+  await prisma.matterReviewRequest.deleteMany();
+  await prisma.matterDraftFieldEvidenceLink.deleteMany();
+  await prisma.matterDraftField.deleteMany();
+  await prisma.matterApplicationDraft.deleteMany();
+  await prisma.documentExtractionResult.deleteMany();
+  await prisma.visaTemplateChecklistItem.deleteMany();
+  await prisma.visaTemplateRequirement.deleteMany();
+  await prisma.visaTemplateField.deleteMany();
+  await prisma.visaTemplateSection.deleteMany();
+  await prisma.visaSubclassTemplate.deleteMany();
   await prisma.task.deleteMany();
   await prisma.matterImpact.deleteMany();
   await prisma.officialUpdate.deleteMany();
@@ -93,12 +105,20 @@ async function main() {
   for (const [i, matter] of matters.slice(0, 4).entries()) {
     const thread = await prisma.aiChatThread.create({ data: { workspaceId: workspace.id, matterId: matter.id, title: `Matter ${i + 1} review thread`, createdByUserId: users[0].id } });
     await prisma.aiChatMessage.createMany({ data: [
-      { threadId: thread.id, role: ChatRole.USER, content: "What is missing from this matter?", citationsJson: null },
+      { threadId: thread.id, role: ChatRole.USER, content: "What is missing from this matter?" },
       { threadId: thread.id, role: ChatRole.ASSISTANT, content: "AI-assisted summary: missing police check and passport expiry. Review required.", citationsJson: [{ label: "Validation", href: "/app/validation" }] }
     ]});
   }
 
   await prisma.auditEvent.create({ data: { workspaceId: workspace.id, userId: users[0].id, entityType: "Matter", entityId: matters[0].id, action: "created", metadataJson: { source: "seed" } } });
+
+  const template = await ensureSubclass500Template(workspace.id);
+  const subclass500Matter = matters.find((matter) => matter.visaSubclass === "500");
+  if (subclass500Matter) {
+    await createOrGetSubclass500Draft(subclass500Matter.id);
+    await mapDocumentsToDraft(subclass500Matter.id);
+    console.log(`Seeded ${template.name} workflow for matter ${subclass500Matter.id}`);
+  }
 }
 
 main().finally(() => prisma.$disconnect());

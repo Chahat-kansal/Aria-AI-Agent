@@ -70,7 +70,7 @@ export function getOverview() {
   return {
     matters,
     documents,
-    updates: officialUpdates as OfficialUpdate[],
+    updates: officialUpdates as unknown as OfficialUpdate[],
     issues: issueRows,
     impacts: impactRows,
     tasks: taskRows,

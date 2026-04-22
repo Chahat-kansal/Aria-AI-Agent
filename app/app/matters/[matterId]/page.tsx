@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/blocks/page-header";
@@ -43,6 +44,14 @@ export default function MatterDetailPage({ params }: { params: { matterId: strin
         <Card><h3 className="font-semibold">Potential impacts</h3><p className="mt-2 text-sm text-muted">{impacts.filter((i) => i.matterId === matter.id).length} open update matches</p></Card>
         <Card><h3 className="font-semibold">Open tasks</h3><p className="mt-2 text-sm text-muted">{tasks.filter((t) => t.matterId === matter.id && t.status !== "Done").length} active tasks</p></Card>
       </section>
+
+      {matter.visaSubclass === "500" ? (
+        <Card className="mt-4">
+          <h3 className="font-semibold">Subclass 500 draft workflow</h3>
+          <p className="mt-2 text-sm text-muted">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, and client review preparation.</p>
+          <Link href={`/app/matters/${matter.id}/draft`} className="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-sm text-white">Open draft workflow</Link>
+        </Card>
+      ) : null}
     </AppShell>
   );
 }
