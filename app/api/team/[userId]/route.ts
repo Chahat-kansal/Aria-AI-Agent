@@ -25,11 +25,11 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
 
   const parsed = updateSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Valid team member updates are required." }, { status: 400 });
-  if (target.role === UserRole.COMPANY_OWNER && target.id === context.user.id && parsed.data.status === UserStatus.DISABLED) {
-    return NextResponse.json({ error: "Company Owner cannot deactivate their own account." }, { status: 400 });
+  if (target.role === UserRole.COMPANY_OWNER && (parsed.data.status === UserStatus.DISABLED || (parsed.data.role && parsed.data.role !== UserRole.COMPANY_OWNER))) {
+    return NextResponse.json({ error: "Company Owner access cannot be removed from team management." }, { status: 400 });
   }
 
-  const nextRole = parsed.data.role ?? target.role;
+  const nextRole = target.role === UserRole.COMPANY_OWNER ? UserRole.COMPANY_OWNER : (parsed.data.role ?? target.role);
   const permissionsJson = parsed.data.permissions ? serializePermissions(parsed.data.permissions, nextRole) : undefined;
   const { permissions, ...updates } = parsed.data;
 
@@ -37,6 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
     where: { id: target.id },
     data: {
       ...updates,
+      role: nextRole,
       permissionsJson,
       deactivatedAt: parsed.data.status === UserStatus.DISABLED ? new Date() : parsed.data.status === UserStatus.ACTIVE ? null : undefined
     },

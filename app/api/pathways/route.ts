@@ -27,7 +27,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   const context = await requireCurrentWorkspaceContext();
-  if (!hasPermission(context.user, "can_access_ai")) return NextResponse.json({ error: "You do not have permission to create AI-assisted pathway analyses." }, { status: 403 });
+  if (!hasPermission(context.user, "can_run_pathway_analysis")) return NextResponse.json({ error: "You do not have permission to create AI-assisted pathway analyses." }, { status: 403 });
   if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
   const parsed = schema.safeParse(await req.json());
 

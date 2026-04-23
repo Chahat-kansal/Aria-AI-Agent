@@ -10,7 +10,8 @@ export const authOptions: NextAuthOptions = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        workspaceSlug: { label: "Workspace", type: "text" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -25,11 +26,13 @@ export const authOptions: NextAuthOptions = {
             role: true,
             workspaceId: true,
             status: true,
-            visibilityScope: true
+            visibilityScope: true,
+            workspace: { select: { slug: true } }
           }
         });
 
-        if (!user?.hashedPassword || user.status === "DISABLED") return null;
+        if (!user?.hashedPassword || user.status !== "ACTIVE") return null;
+        if (credentials.workspaceSlug && user.workspace.slug !== credentials.workspaceSlug) return null;
 
         const isValidPassword = await compare(credentials.password, user.hashedPassword);
         if (!isValidPassword) return null;

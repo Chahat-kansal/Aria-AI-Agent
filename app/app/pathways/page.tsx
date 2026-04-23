@@ -10,7 +10,7 @@ import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 
 export default async function PathwaysPage() {
   const context = await getCurrentWorkspaceContext();
-  if (context && !hasPermission(context.user, "can_access_ai")) {
+  if (context && !hasPermission(context.user, "can_run_pathway_analysis")) {
     return (
       <AppShell title="Pathway Analysis">
         <PageHeader title="Pathway analysis unavailable" subtitle="Your company administrator controls AI-assisted pathway analysis access." />

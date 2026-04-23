@@ -6,10 +6,19 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { StatusChip } from "@/components/app/blocks/status-chip";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getUpdateDetailData } from "@/lib/data/workspace-repository";
+import { hasPermission } from "@/lib/services/roles";
 
 export default async function UpdateDetailPage({ params }: { params: { updateId: string } }) {
   const context = await getCurrentWorkspaceContext();
   if (!context) return <AppShell title="Updates Monitor"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review official update records." /></AppShell>;
+  if (!hasPermission(context.user, "can_access_update_monitor")) {
+    return (
+      <AppShell title="Updates Monitor">
+        <PageHeader title="Updates monitor unavailable" subtitle="Your company administrator controls official update monitoring access." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to view official update records.</p></Card>
+      </AppShell>
+    );
+  }
 
   const update = await getUpdateDetailData(context.workspace.id, params.updateId, context.user);
   if (!update) notFound();

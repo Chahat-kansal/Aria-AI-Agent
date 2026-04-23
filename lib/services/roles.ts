@@ -11,10 +11,12 @@ export type PermissionKey =
   | "can_manage_team"
   | "can_access_ai"
   | "can_access_visa_knowledge"
+  | "can_run_pathway_analysis"
   | "can_view_all_matters"
   | "can_edit_matters"
   | "can_run_cross_check"
-  | "can_view_financial_data";
+  | "can_view_financial_data"
+  | "can_access_update_monitor";
 
 export type PermissionMap = Record<PermissionKey, boolean>;
 
@@ -22,10 +24,12 @@ export const permissionDefinitions: Array<{ key: PermissionKey; label: string; d
   { key: "can_manage_team", label: "Manage team", description: "Create, edit, deactivate, and configure staff access." },
   { key: "can_access_ai", label: "Access Aria AI", description: "Use the AI assistant, draft analysis, and AI-grounded workspace answers." },
   { key: "can_access_visa_knowledge", label: "Access visa knowledge", description: "Search and view source-linked visa knowledge records." },
+  { key: "can_run_pathway_analysis", label: "Run pathway analysis", description: "Create AI-assisted PR/citizenship pathway analysis records." },
   { key: "can_view_all_matters", label: "View all matters", description: "See all matters and clients in the company workspace." },
   { key: "can_edit_matters", label: "Edit matters", description: "Create matters, upload documents, and update assigned matter workflows." },
   { key: "can_run_cross_check", label: "Run cross-checks", description: "Run final submission-readiness checks on accessible matters." },
-  { key: "can_view_financial_data", label: "View financial data", description: "Access financial evidence and future financial/billing views." }
+  { key: "can_view_financial_data", label: "View financial data", description: "Access financial evidence and future financial/billing views." },
+  { key: "can_access_update_monitor", label: "Access update monitor", description: "View official update monitoring and affected-matter alerts." }
 ];
 
 const allPermissions: PermissionMap = permissionDefinitions.reduce((acc, item) => ({ ...acc, [item.key]: true }), {} as PermissionMap);
@@ -63,7 +67,7 @@ export function defaultVisibilityScope(role: UserRole): UserVisibilityScope {
 
 export function defaultPermissionsForRole(role: UserRole): PermissionMap {
   if (role === UserRole.COMPANY_OWNER) return { ...allPermissions };
-  const base = falsePermissions();
+  const base = { ...falsePermissions(), can_access_ai: true };
 
   const fullOperationalRoles: UserRole[] = [UserRole.COMPANY_ADMIN, UserRole.ORGANISATION_ACCESS_ADMIN];
   if (fullOperationalRoles.includes(role)) {
@@ -77,29 +81,31 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
   if (role === UserRole.SENIOR_MIGRATION_AGENT) {
     return {
       ...base,
-      can_access_ai: true,
       can_access_visa_knowledge: true,
+      can_run_pathway_analysis: true,
       can_edit_matters: true,
-      can_run_cross_check: true
+      can_run_cross_check: true,
+      can_access_update_monitor: true
     };
   }
 
   if (role === UserRole.MIGRATION_AGENT) {
     return {
       ...base,
-      can_access_ai: true,
       can_access_visa_knowledge: true,
+      can_run_pathway_analysis: true,
       can_edit_matters: true,
-      can_run_cross_check: true
+      can_run_cross_check: true,
+      can_access_update_monitor: true
     };
   }
 
   if (role === UserRole.CASE_MANAGER) {
-    return { ...base, can_access_ai: true, can_edit_matters: true };
+    return { ...base, can_edit_matters: true, can_access_update_monitor: true };
   }
 
   if (role === UserRole.CLIENT_REVIEW_COORDINATOR) {
-    return { ...base, can_access_ai: true, can_edit_matters: true };
+    return { ...base, can_edit_matters: true };
   }
 
   if (role === UserRole.ADMIN_ASSISTANT) {

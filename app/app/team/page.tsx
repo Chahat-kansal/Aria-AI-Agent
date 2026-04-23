@@ -89,10 +89,14 @@ export default async function TeamPage() {
                 </div>
                 <TeamUserActions
                   userId={user.id}
+                  currentName={user.name}
+                  currentRole={user.role}
+                  currentJobTitle={user.jobTitle}
                   currentStatus={user.status}
                   isCompanyOwner={user.role === "COMPANY_OWNER"}
                   permissions={getUserPermissions(user)}
                   permissionDefinitions={permissionDefinitions}
+                  roleDefinitions={roleDefinitions}
                 />
               </div>
             ))}

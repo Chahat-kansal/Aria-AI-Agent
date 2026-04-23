@@ -40,7 +40,7 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="panel w-full max-w-md p-8">
         <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="mt-2 text-sm text-muted">Access your workspace to continue AI-assisted review workflows.</p>
+        <p className="mt-2 text-sm text-muted">Company owners can sign in here. Staff should use their company workspace portal link.</p>
         <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
           <input name="email" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Email" type="email" />
           <input name="password" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Password" type="password" />
@@ -54,7 +54,7 @@ export default function SignInPage() {
           </button>
         </form>
         <p className="mt-4 text-sm text-muted">
-          No account? <Link href="/auth/sign-up" className="text-accent">Create one</Link>
+          Starting a company workspace? <Link href="/auth/sign-up" className="text-accent">Create owner account</Link>
         </p>
       </div>
     </div>

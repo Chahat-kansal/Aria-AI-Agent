@@ -6,9 +6,18 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { UpdatesIngestAction } from "@/components/app/updates-ingest-action";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getUpdatesData } from "@/lib/data/workspace-repository";
+import { hasPermission } from "@/lib/services/roles";
 
 export default async function UpdatesPage() {
   const context = await getCurrentWorkspaceContext();
+  if (context && !hasPermission(context.user, "can_access_update_monitor")) {
+    return (
+      <AppShell title="Updates Monitor">
+        <PageHeader title="Updates monitor unavailable" subtitle="Your company administrator controls official update monitoring access." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to view official update monitoring or affected-matter alerts.</p></Card>
+      </AppShell>
+    );
+  }
   const updates = context ? await getUpdatesData(context.workspace.id, context.user) : [];
   const impacts = updates.flatMap((update) => update.impacts.map((impact) => ({ ...impact, update })));
 

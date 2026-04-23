@@ -5,11 +5,12 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { CompanyProfileForm } from "@/components/app/company-profile-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getCompanyProfileData } from "@/lib/data/workspace-repository";
-import { roleLabel } from "@/lib/services/roles";
+import { canManageTeam, roleLabel } from "@/lib/services/roles";
 
 export default async function CompanyPage() {
   const context = await getCurrentWorkspaceContext();
   const workspace = context ? await getCompanyProfileData(context.workspace.id) : null;
+  const canManageCompany = context ? canManageTeam(context.user) : false;
 
   return (
     <AppShell title="Company">
@@ -18,8 +19,19 @@ export default async function CompanyPage() {
         <section className="grid gap-4 xl:grid-cols-[1fr_0.7fr]">
           <Card>
             <h3 className="font-semibold">Business details</h3>
-            <p className="mb-4 mt-1 text-sm text-muted">Keep your trading identity, contact information, branding, and timezone current for team workflows.</p>
-            <CompanyProfileForm workspace={workspace} />
+            {canManageCompany ? (
+              <>
+                <p className="mb-4 mt-1 text-sm text-muted">Keep your trading identity, contact information, branding, and timezone current for team workflows.</p>
+                <CompanyProfileForm workspace={workspace} />
+              </>
+            ) : (
+              <div className="mt-3 space-y-2 text-sm text-muted">
+                <p><span className="text-[#182033]">Workspace:</span> {workspace.name}</p>
+                <p><span className="text-[#182033]">Business type:</span> {workspace.businessType ?? "Not set"}</p>
+                <p><span className="text-[#182033]">Timezone:</span> {workspace.timezone}</p>
+                <p>Company profile editing is managed by owners and authorised administrators.</p>
+              </div>
+            )}
           </Card>
           <div className="space-y-4">
             <Card>
@@ -33,7 +45,7 @@ export default async function CompanyPage() {
                 <p><span className="text-muted">Documents:</span> {workspace._count.documents}</p>
               </div>
             </Card>
-            <Card>
+            {canManageCompany ? <Card>
               <h3 className="font-semibold">Team overview</h3>
               <div className="mt-3 space-y-2">
                 {workspace.users.map((user) => (
@@ -46,7 +58,7 @@ export default async function CompanyPage() {
                   </div>
                 ))}
               </div>
-            </Card>
+            </Card> : null}
             <Card>
               <h3 className="font-semibold">Branding</h3>
               {workspace.logoUrl ? (

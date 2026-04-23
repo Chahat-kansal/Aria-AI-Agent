@@ -10,28 +10,30 @@ type UserOption = { id: string; name: string; email: string };
 export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleDefinition[]; supervisors: UserOption[]; permissions: PermissionDefinition[] }) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setIsSaving(true);
     setMessage(null);
-    const form = new FormData(event.currentTarget);
+    setInviteLink(null);
+    const form = new FormData(formElement);
     const payload: Record<string, unknown> = Object.fromEntries(form.entries());
     payload.permissions = permissions.reduce<Record<string, boolean>>((acc, permission) => {
       acc[permission.key] = form.has(permission.key);
       return acc;
     }, {});
     if (!payload.supervisorId) delete payload.supervisorId;
-    if (!payload.temporaryPassword) delete payload.temporaryPassword;
 
     const response = await fetch("/api/team", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const result = await response.json().catch(() => null) as { error?: string; temporaryPassword?: string } | null;
+    const result = await response.json().catch(() => null) as { error?: string; inviteLink?: string; emailDelivery?: { delivered?: boolean; reason?: string } } | null;
     setIsSaving(false);
 
     if (!response.ok) {
@@ -39,8 +41,9 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
       return;
     }
 
-    setMessage(`Staff user created. Temporary password: ${result?.temporaryPassword ?? "set by admin"}`);
-    (event.currentTarget as HTMLFormElement).reset();
+    setMessage(result?.emailDelivery?.delivered ? "Invite sent to staff member." : (result?.emailDelivery?.reason ?? "Invite created. Share the invite link with the staff member."));
+    setInviteLink(result?.inviteLink ?? null);
+    formElement.reset();
     setIsOpen(false);
     router.refresh();
   }
@@ -56,6 +59,7 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
           + Add Team Member
         </button>
         {message ? <p className="text-sm text-muted">{message}</p> : null}
+        {inviteLink ? <a href={inviteLink} className="break-all text-sm text-accent">{inviteLink}</a> : null}
       </div>
     );
   }
@@ -65,7 +69,7 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
       <div className="md:col-span-2 flex items-start justify-between gap-3">
         <div>
           <h4 className="font-semibold">Add Team Member</h4>
-          <p className="mt-1 text-xs text-muted">Create a real staff login and choose the permissions this user should have.</p>
+          <p className="mt-1 text-xs text-muted">Create a staff invitation. The user sets their own password from the invite link.</p>
         </div>
         <button className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs text-muted hover:bg-white" onClick={() => setIsOpen(false)} type="button">Cancel</button>
       </div>
@@ -84,12 +88,9 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
         <option value="">No supervising user</option>
         {supervisors.map((user) => <option key={user.id} value={user.id}>{user.name} - {user.email}</option>)}
       </select>
-      <select name="status" defaultValue="INVITED" className="rounded-lg border border-border bg-white/70 p-2 text-sm">
-        <option value="INVITED">Invited</option>
-        <option value="ACTIVE">Active</option>
-        <option value="DISABLED">Disabled</option>
+      <select name="status" defaultValue="INVITED" className="rounded-lg border border-border bg-white/70 p-2 text-sm" disabled>
+        <option value="INVITED">Invited until password is set</option>
       </select>
-      <input name="temporaryPassword" type="password" placeholder="Temporary password (optional)" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
       <textarea name="notes" placeholder="Internal access notes" className="min-h-24 rounded-lg border border-border bg-white/70 p-2 text-sm md:col-span-2" />
       <fieldset className="rounded-xl border border-border bg-white/50 p-3 md:col-span-2">
         <legend className="px-1 text-sm font-semibold">Feature permissions</legend>
@@ -97,7 +98,7 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
         <div className="grid gap-2 md:grid-cols-2">
           {permissions.map((permission) => (
             <label key={permission.key} className="flex gap-3 rounded-lg border border-border bg-white/60 p-3 text-sm">
-              <input name={permission.key} type="checkbox" defaultChecked className="mt-1" />
+              <input name={permission.key} type="checkbox" defaultChecked={permission.key === "can_access_ai"} className="mt-1" />
               <span>
                 <span className="block font-medium">{permission.label}</span>
                 <span className="text-xs text-muted">{permission.description}</span>

@@ -32,7 +32,7 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
   if (!context) {
     return <AppShell title="Pathway Analysis"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review pathway analyses." /></AppShell>;
   }
-  if (!hasPermission(context.user, "can_access_ai")) {
+  if (!hasPermission(context.user, "can_run_pathway_analysis")) {
     return (
       <AppShell title="Pathway Analysis">
         <PageHeader title="Pathway analysis unavailable" subtitle="Your company administrator controls AI-assisted pathway analysis access." />
