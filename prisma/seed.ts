@@ -2,7 +2,6 @@ import { PrismaClient, UserRole, UserVisibilityScope, WorkspacePlan } from "@pri
 import { hash } from "bcryptjs";
 import { ensureSubclass500Template } from "../lib/services/subclass-templates";
 import { defaultPermissionsForRole } from "../lib/services/roles";
-import { ensureVisaKnowledgeBaseline } from "../lib/services/visa-knowledge";
 
 const prisma = new PrismaClient();
 
@@ -44,8 +43,7 @@ async function main() {
   });
 
   await ensureSubclass500Template(workspace.id);
-  const visaKnowledge = await ensureVisaKnowledgeBaseline();
-  console.log(`Seeded minimal workspace ${workspace.slug} and ${visaKnowledge.stored} visa knowledge records. No matters, documents, updates, or client records were created.`);
+  console.log(`Seeded minimal workspace ${workspace.slug}. No matters, documents, updates, client records, or mock visa knowledge records were created.`);
 }
 
 main().finally(() => prisma.$disconnect());

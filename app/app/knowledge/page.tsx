@@ -23,7 +23,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
     );
   }
   const query = searchParams?.q ?? "";
-  const records = await getVisaKnowledgeRecords(query);
+  const records = await getVisaKnowledgeRecords(query, { liveRefresh: Boolean(query.trim()) });
 
   return (
     <AppShell title="Visa Knowledge">
@@ -52,7 +52,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
                   <p className="text-xs uppercase tracking-[0.18em] text-muted">{record.subclassCode ? `Subclass ${record.subclassCode}` : "Visa / citizenship knowledge"}</p>
                   <Link href={`/app/knowledge/${record.id}`} className="mt-1 block font-semibold text-[#182033] hover:text-accent">{record.title}</Link>
                   <p className="mt-2 line-clamp-3 text-sm text-muted">{record.summary}</p>
-                  <a href={record.sourceUrl} className="mt-2 inline-flex text-xs text-accent">Official source search</a>
+                  <a href={record.sourceUrl} className="mt-2 inline-flex text-xs text-accent">Live official source</a>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Key requirements</p>
@@ -72,7 +72,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
             <p className="mt-2 text-sm text-muted">
               {query
                 ? "Try searching by subclass number, visa name, stream, evidence type, or pathway term. If records are empty, refresh official visa knowledge first."
-                : "Aria automatically loads the built-in official-source baseline, then live refresh can add or update Home Affairs records when network access is configured."}
+                : "Refresh official visa knowledge to pull current Home Affairs records. Aria will not show template visa data as if it were live official knowledge."}
             </p>
           </div>
         )}

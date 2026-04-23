@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const q = url.searchParams.get("q") ?? "";
   if (!q.trim()) return NextResponse.json({ results: [] });
 
-  const records = await getVisaKnowledgeRecords(q);
+  const records = await getVisaKnowledgeRecords(q, { liveRefresh: true });
   return NextResponse.json({
     results: records.slice(0, 6).map((record) => ({
       id: record.id,
