@@ -4,22 +4,20 @@ import { cn } from "@/lib/utils";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
+import { canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
 
-const nav = [
-  ["Overview", "/app/overview"],
-  ["Matters", "/app/matters"],
-  ["Pathway Analysis", "/app/pathways"],
-  ["Visa Knowledge", "/app/knowledge"],
-  ["Documents", "/app/documents"],
-  ["Forms & Field Review", "/app/forms"],
-  ["Validation", "/app/validation"],
-  ["Updates Monitor", "/app/updates"],
-  ["AI Assistant", "/app/assistant"],
-  ["Tasks", "/app/tasks"],
-  ["Profile", "/app/profile"],
-  ["Company", "/app/company"],
-  ["Settings", "/app/settings"]
-] as const;
+const nav: Array<{ label: string; href: string; permission?: PermissionKey }> = [
+  { label: "Overview", href: "/app/overview" },
+  { label: "Matters", href: "/app/matters" },
+  { label: "Pathway Analysis", href: "/app/pathways", permission: "can_access_ai" },
+  { label: "Visa Knowledge", href: "/app/knowledge", permission: "can_access_visa_knowledge" },
+  { label: "Documents", href: "/app/documents" },
+  { label: "Forms & Field Review", href: "/app/forms" },
+  { label: "Validation", href: "/app/validation" },
+  { label: "Updates Monitor", href: "/app/updates" },
+  { label: "AI Assistant", href: "/app/assistant", permission: "can_access_ai" },
+  { label: "Tasks", href: "/app/tasks" }
+];
 
 function SetupState({ title }: { title: string }) {
   return (
@@ -46,6 +44,13 @@ export async function AppShell({ title, children }: { title: string; children: R
   }
 
   const { user, workspace } = context;
+  const shellNav = [
+    ...nav.filter((item) => !item.permission || hasPermission(user, item.permission)),
+    ...(canManageTeam(user) ? [{ label: "Team", href: "/app/team" }] : []),
+    { label: "Profile", href: "/app/profile" },
+    { label: "Company", href: "/app/company" },
+    { label: "Settings", href: "/app/settings" }
+  ];
 
   return (
     <div className="min-h-screen">
@@ -62,14 +67,14 @@ export async function AppShell({ title, children }: { title: string; children: R
             </div>
           </div>
           <nav className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:block lg:space-y-1">
-            {nav.map(([label, href]) => (
-              <Link key={href} href={href} className={cn("block rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-white/70 hover:text-[#182033]", title === label && "bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] text-white shadow-premium")}>
-                {label}
+            {shellNav.map((item) => (
+              <Link key={item.href} href={item.href as any} className={cn("block rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-white/70 hover:text-[#182033]", title === item.label && "bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] text-white shadow-premium")}>
+                {item.label}
               </Link>
             ))}
           </nav>
           <div className="mt-6 rounded-lg border border-border bg-white/55 p-3 text-xs text-muted">
-            Workspace plan: {workspace.plan}. AI-assisted workflows require practitioner review before use.
+            Workspace plan: {workspace.plan}. Active scope: {canManageTeam(user) ? "Company workspace" : "Assigned work"}.
           </div>
         </aside>
 
@@ -80,9 +85,9 @@ export async function AppShell({ title, children }: { title: string; children: R
               <p className="text-sm text-muted">AI-assisted workflow. Review required before submission.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <VisaKnowledgeSearch compact />
+              {hasPermission(user, "can_access_visa_knowledge") ? <VisaKnowledgeSearch compact /> : null}
               <Link href="/app/updates" className="rounded-lg border border-border bg-white/50 p-2 text-muted hover:bg-white"><Bell className="h-4 w-4" /></Link>
-              <Link href="/app/profile" className="rounded-lg border border-border bg-white/50 px-3 py-2 text-sm hover:bg-white">{user.name} ({user.role})</Link>
+              <Link href="/app/profile" className="rounded-lg border border-border bg-white/50 px-3 py-2 text-sm hover:bg-white">{user.name} ({roleLabel(user.role)})</Link>
               <SignOutButton />
             </div>
           </header>

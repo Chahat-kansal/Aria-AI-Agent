@@ -18,6 +18,27 @@ enum UserRole {
   AGENT
   REVIEWER
   OPS
+  COMPANY_OWNER
+  COMPANY_ADMIN
+  ORGANISATION_ACCESS_ADMIN
+  PRINCIPAL_REGISTERED_MIGRATION_AGENT
+  SENIOR_MIGRATION_AGENT
+  MIGRATION_AGENT
+  CASE_MANAGER
+  ADMIN_ASSISTANT
+  CLIENT_REVIEW_COORDINATOR
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum UserVisibilityScope {
+  ASSIGNED_ONLY
+  TEAM_OVERSIGHT
+  FIRM_WIDE
 }
 
 enum MatterStatus {
@@ -176,37 +197,51 @@ model Workspace {
 }
 
 model User {
-  id                String            @id @default(cuid())
+  id                String              @id @default(cuid())
   name              String
-  email             String            @unique
+  email             String              @unique
   hashedPassword    String?
   role              UserRole
+  status            UserStatus          @default(ACTIVE)
+  jobTitle          String?
+  notes             String?
+  permissionsJson   Json?
+  visibilityScope   UserVisibilityScope @default(ASSIGNED_ONLY)
+  invitedAt         DateTime?
+  lastActiveAt      DateTime?
+  deactivatedAt     DateTime?
   workspaceId       String
-  workspace         Workspace         @relation(fields: [workspaceId], references: [id])
-  mattersAssigned   Matter[]          @relation("MatterAssignee")
-  uploadedDocuments Document[]        @relation("DocumentUploader")
-  tasksAssigned     Task[]            @relation("TaskAssignee")
-  createdThreads    AiChatThread[]    @relation("ThreadCreator")
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id])
+  supervisorId      String?
+  supervisor        User?               @relation("UserSupervisor", fields: [supervisorId], references: [id])
+  supervisedUsers   User[]              @relation("UserSupervisor")
+  mattersAssigned   Matter[]            @relation("MatterAssignee")
+  clientsAssigned   Client[]            @relation("ClientAssignee")
+  uploadedDocuments Document[]          @relation("DocumentUploader")
+  tasksAssigned     Task[]              @relation("TaskAssignee")
+  createdThreads    AiChatThread[]      @relation("ThreadCreator")
   auditEvents       AuditEvent[]
   pathwayAnalyses   PathwayAnalysis[]
 }
 
 model Client {
-  id              String            @id @default(cuid())
-  clientReference String?           @unique
-  workspaceId     String
-  workspace       Workspace         @relation(fields: [workspaceId], references: [id])
-  firstName       String
-  lastName        String
-  dob             DateTime
-  nationality     String
-  email           String
-  phone           String
-  notes           String?
-  createdAt       DateTime          @default(now())
-  matters         Matter[]
-  documents       Document[]
-  pathwayAnalyses PathwayAnalysis[]
+  id               String            @id @default(cuid())
+  clientReference  String?           @unique
+  workspaceId      String
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id])
+  firstName        String
+  lastName         String
+  dob              DateTime
+  nationality      String
+  email            String
+  phone            String
+  notes            String?
+  assignedToUserId String?
+  assignedToUser   User?             @relation("ClientAssignee", fields: [assignedToUserId], references: [id])
+  createdAt        DateTime          @default(now())
+  matters          Matter[]
+  documents        Document[]
+  pathwayAnalyses  PathwayAnalysis[]
 }
 
 model Matter {

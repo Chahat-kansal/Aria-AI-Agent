@@ -6,20 +6,22 @@ import { CreateMatterForm } from "@/components/app/create-matter-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getMattersData } from "@/lib/data/workspace-repository";
 import { getVisaSubclassOptions } from "@/lib/services/visa-knowledge";
+import { hasPermission } from "@/lib/services/roles";
 
 export default async function MattersPage() {
   const context = await getCurrentWorkspaceContext();
-  const matters = context ? await getMattersData(context.workspace.id) : [];
+  const matters = context ? await getMattersData(context.workspace.id, context.user) : [];
   const visaOptions = await getVisaSubclassOptions();
+  const canEditMatter = context ? hasPermission(context.user, "can_edit_matters") : false;
 
   return (
     <AppShell title="Matters">
       <PageHeader title="Matter Register" subtitle="Track status, stage, ownership, and submission readiness across all active files." />
-      <Card className="mb-4">
+      {canEditMatter ? <Card className="mb-4">
         <h3 className="font-semibold">Create matter</h3>
         <p className="mb-3 mt-1 text-sm text-muted">Create a real client matter, select the application workflow, then upload evidence for AI-assisted review.</p>
         <CreateMatterForm visaOptions={visaOptions} />
-      </Card>
+      </Card> : <Card className="mb-4"><p className="text-sm text-muted">You can view assigned matter records, but you do not have permission to create or edit matters.</p></Card>}
       <div className="panel overflow-hidden">
         {matters.length ? (
           <table className="w-full text-sm">

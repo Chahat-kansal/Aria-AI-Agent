@@ -6,8 +6,19 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { StatusChip } from "@/components/app/blocks/status-chip";
 import { DraftFieldReviewControls, DraftWorkflowActions } from "@/components/app/draft-workflow-actions";
 import { createOrGetSubclass500Draft, getDraftReviewData } from "@/lib/services/application-draft";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getMatterDetailData } from "@/lib/data/workspace-repository";
+import { notFound } from "next/navigation";
+import { hasPermission } from "@/lib/services/roles";
 
 export default async function Subclass500DraftPage({ params }: { params: { matterId: string } }) {
+  const context = await getCurrentWorkspaceContext();
+  if (!context) return <AppShell title="Forms & Field Review"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review draft applications." /></AppShell>;
+  const allowedMatter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
+  if (!allowedMatter) notFound();
+  const canEditMatter = hasPermission(context.user, "can_edit_matters");
+  const canUseAi = hasPermission(context.user, "can_access_ai");
+  const canRunCrossCheck = hasPermission(context.user, "can_run_cross_check");
   await createOrGetSubclass500Draft(params.matterId);
   const { matter, template, draft, packageFolders, openIssues } = await getDraftReviewData(params.matterId);
   const sections = template.sections;
@@ -34,7 +45,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
         <Card>
           <h3 className="font-semibold">Workflow actions</h3>
           <div className="mt-3">
-            <DraftWorkflowActions matterId={matter.id} draftId={draft.id} />
+            <DraftWorkflowActions matterId={matter.id} draftId={draft.id} canEditMatter={canEditMatter} canUseAi={canUseAi} canRunCrossCheck={canRunCrossCheck} />
           </div>
         </Card>
       </section>
@@ -62,7 +73,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                           <div className="min-w-36 text-right text-xs">
                             <p className="mb-2">Confidence: {field.confidence == null ? "-" : `${Math.round(field.confidence * 100)}%`}</p>
                             <StatusChip label={field.status.replaceAll("_", " ").toLowerCase()} />
-                            <DraftFieldReviewControls draftFieldId={field.id} />
+                            {canEditMatter ? <DraftFieldReviewControls draftFieldId={field.id} /> : null}
                           </div>
                         </div>
                       </div>

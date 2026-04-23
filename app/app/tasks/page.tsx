@@ -7,7 +7,7 @@ import { formatDate, formatEnum, getTasksData } from "@/lib/data/workspace-repos
 
 export default async function TasksPage() {
   const context = await getCurrentWorkspaceContext();
-  const tasks = context ? await getTasksData(context.workspace.id) : [];
+  const tasks = context ? await getTasksData(context.workspace.id, context.user) : [];
 
   return (
     <AppShell title="Tasks">

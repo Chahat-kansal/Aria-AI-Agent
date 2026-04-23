@@ -23,11 +23,13 @@ export const authOptions: NextAuthOptions = {
             email: true,
             hashedPassword: true,
             role: true,
-            workspaceId: true
+            workspaceId: true,
+            status: true,
+            visibilityScope: true
           }
         });
 
-        if (!user?.hashedPassword) return null;
+        if (!user?.hashedPassword || user.status === "DISABLED") return null;
 
         const isValidPassword = await compare(credentials.password, user.hashedPassword);
         if (!isValidPassword) return null;
@@ -37,7 +39,9 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role,
-          workspaceId: user.workspaceId
+          workspaceId: user.workspaceId,
+          status: user.status,
+          visibilityScope: user.visibilityScope
         };
       }
     })
@@ -47,6 +51,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as typeof user & { role?: string }).role;
         token.workspaceId = (user as typeof user & { workspaceId?: string }).workspaceId;
+        token.status = (user as typeof user & { status?: string }).status;
+        token.visibilityScope = (user as typeof user & { visibilityScope?: string }).visibilityScope;
       }
       return token;
     },
@@ -55,6 +61,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub ?? "";
         session.user.role = token.role as string | undefined;
         session.user.workspaceId = token.workspaceId as string | undefined;
+        session.user.status = token.status as string | undefined;
+        session.user.visibilityScope = token.visibilityScope as string | undefined;
       }
       return session;
     }

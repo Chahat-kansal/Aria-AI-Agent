@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { CompanyProfileForm } from "@/components/app/company-profile-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getCompanyProfileData } from "@/lib/data/workspace-repository";
+import { roleLabel } from "@/lib/services/roles";
 
 export default async function CompanyPage() {
   const context = await getCurrentWorkspaceContext();
@@ -41,7 +42,7 @@ export default async function CompanyPage() {
                       <p className="font-medium">{user.name}</p>
                       <p className="text-xs text-muted">{user.email}</p>
                     </div>
-                    <StatusChip label={formatEnum(user.role)} />
+                    <StatusChip label={roleLabel(user.role)} />
                   </div>
                 ))}
               </div>

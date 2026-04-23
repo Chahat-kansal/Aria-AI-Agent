@@ -1,20 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
+import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getMatterDetailData } from "@/lib/data/workspace-repository";
+import { prisma } from "@/lib/prisma";
+import { canManageTeam, hasFirmWideAccess, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
   if (!context) return <AppShell title="Matters"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review matter records." /></AppShell>;
 
-  const matter = await getMatterDetailData(context.workspace.id, params.matterId);
+  const matter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
   if (!matter) notFound();
 
   const openTasks = matter.tasks.filter((task) => task.status !== "DONE").length;
   const openIssues = matter.validationIssues.filter((issue) => issue.resolutionStatus !== "RESOLVED" && issue.resolutionStatus !== "DISMISSED");
+  const canReassign = canManageTeam(context.user) || hasFirmWideAccess(context.user) || hasTeamOversight(context.user);
+  const assignableUsers = canReassign
+    ? await prisma.user.findMany({
+      where: { workspaceId: context.workspace.id, status: { not: "DISABLED" } },
+      orderBy: { name: "asc" }
+    })
+    : [];
   const workflowLinks = [
     ["Overview", `/app/matters/${matter.id}`],
     ["Upload documents", "/app/documents"],
@@ -43,8 +53,21 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Lodgement target</p><p className="font-medium">{formatDate(matter.lodgementTargetDate)}</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Matter ref</p><p className="font-medium">{matter.matterReference ?? matter.id.slice(0, 8)}</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Client ref</p><p className="font-medium">{matter.client.clientReference ?? matter.client.id.slice(0, 8)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3 md:col-span-2"><p className="text-muted">Assigned staff</p><p className="font-medium">{matter.assignedToUser.name ?? matter.assignedToUser.email} - {roleLabel(matter.assignedToUser.role)}</p></div>
         </div>
       </Card>
+
+      {canReassign ? (
+        <Card className="mt-4">
+          <h3 className="font-semibold">Matter assignment</h3>
+          <p className="mt-1 text-sm text-muted">Reassign this matter and linked client ownership within your company workspace. Access stays constrained by role and assignment scope.</p>
+          <MatterAssignmentForm
+            matterId={matter.id}
+            currentAssigneeId={matter.assignedToUserId}
+            users={assignableUsers.map((user) => ({ id: user.id, name: user.name, email: user.email, roleLabel: roleLabel(user.role) }))}
+          />
+        </Card>
+      ) : null}
 
       <section className="mt-4 grid gap-4 md:grid-cols-2">
         <Card>

@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { UserStatus } from "@prisma/client";
 
 export async function getCurrentWorkspaceContext() {
   const session = await getServerSession(authOptions);
@@ -13,7 +14,7 @@ export async function getCurrentWorkspaceContext() {
     include: { workspace: true }
   });
 
-  if (!user) return null;
+  if (!user || user.status === UserStatus.DISABLED) return null;
 
   return { user, workspace: user.workspace };
 }

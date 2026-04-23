@@ -1,8 +1,9 @@
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { UserRole, WorkspacePlan } from "@prisma/client";
+import { UserRole, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { defaultPermissionsForRole } from "@/lib/services/roles";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
@@ -11,7 +12,12 @@ const registerSchema = z.object({
   workspaceName: z.preprocess(
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().trim().min(2).optional()
-  )
+  ),
+  contactEmail: z.string().trim().email().optional(),
+  contactPhone: z.string().trim().optional(),
+  timezone: z.string().trim().optional(),
+  businessType: z.string().trim().optional(),
+  addressLine1: z.string().trim().optional()
 });
 
 function slugify(value: string) {
@@ -66,8 +72,14 @@ export async function POST(request: Request) {
     const workspace = await tx.workspace.create({
       data: {
         name: workspaceName,
+        legalName: workspaceName,
         slug: workspaceSlug,
-        plan: WorkspacePlan.STARTER
+        plan: WorkspacePlan.STARTER,
+        contactEmail: parsed.data.contactEmail || email,
+        contactPhone: parsed.data.contactPhone || null,
+        timezone: parsed.data.timezone || "Australia/Sydney",
+        businessType: parsed.data.businessType || "Migration firm",
+        addressLine1: parsed.data.addressLine1 || null
       }
     });
 
@@ -76,7 +88,9 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         email,
         hashedPassword,
-        role: UserRole.ADMIN,
+        role: UserRole.COMPANY_OWNER,
+        visibilityScope: UserVisibilityScope.FIRM_WIDE,
+        permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER),
         workspaceId: workspace.id
       },
       select: {

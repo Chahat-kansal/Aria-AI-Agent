@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { createMatter } from "@/lib/services/matters";
+import { hasPermission } from "@/lib/services/roles";
 
 const matterSchema = z.object({
   clientFirstName: z.string().trim().min(1),
@@ -25,6 +26,7 @@ function parseOptionalDate(value?: string) {
 export async function POST(request: Request) {
   const context = await getCurrentWorkspaceContext();
   if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+  if (!hasPermission(context.user, "can_edit_matters")) return NextResponse.json({ error: "You do not have permission to create matters." }, { status: 403 });
 
   const body = await request.json().catch(() => null);
   const parsed = matterSchema.safeParse(body);

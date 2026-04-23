@@ -6,13 +6,15 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getDocumentsData, getMattersData } from "@/lib/data/workspace-repository";
+import { hasPermission } from "@/lib/services/roles";
 
 const folders = ["Identity", "Travel", "Education", "Employment", "Financial", "Relationship", "Health / Insurance", "Statements / Declarations", "Forms", "Other Evidence"];
 
 export default async function DocumentsPage() {
   const context = await getCurrentWorkspaceContext();
-  const documents = context ? await getDocumentsData(context.workspace.id) : [];
-  const matters = context ? await getMattersData(context.workspace.id) : [];
+  const documents = context ? await getDocumentsData(context.workspace.id, context.user) : [];
+  const matters = context ? await getMattersData(context.workspace.id, context.user) : [];
+  const canEditMatter = context ? hasPermission(context.user, "can_edit_matters") : false;
   const categories = new Map<string, number>();
   for (const document of documents) categories.set(document.category, (categories.get(document.category) ?? 0) + 1);
 
@@ -53,8 +55,10 @@ export default async function DocumentsPage() {
           <h3 className="font-semibold">Evidence Package Structure</h3>
           <div className="mb-4 mt-3 rounded-xl border border-border bg-[#0e182a] p-3">
             <p className="mb-2 text-sm font-medium">Upload evidence to a matter</p>
-            {matters.length ? (
+            {canEditMatter && matters.length ? (
               <DocumentUploadForm matters={matters.map((matter) => ({ id: matter.id, label: `${matter.client.firstName} ${matter.client.lastName} · ${matter.title}` }))} />
+            ) : !canEditMatter ? (
+              <p className="text-sm text-muted">You do not have permission to upload documents or edit matter files.</p>
             ) : (
               <p className="text-sm text-muted">Create a matter before uploading documents.</p>
             )}

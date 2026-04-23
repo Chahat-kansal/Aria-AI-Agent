@@ -7,6 +7,7 @@ import { ProfileForm } from "@/components/app/profile-form";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum } from "@/lib/data/workspace-repository";
+import { roleDescription, roleLabel } from "@/lib/services/roles";
 
 export default async function ProfilePage() {
   const context = await getCurrentWorkspaceContext();
@@ -25,8 +26,19 @@ export default async function ProfilePage() {
               </div>
               <div className="rounded-lg border border-border bg-white/50 p-3">
                 <p className="text-muted">Role</p>
-                <StatusChip label={formatEnum(context.user.role)} />
+                <StatusChip label={roleLabel(context.user.role)} />
+                <p className="mt-2 text-xs text-muted">{roleDescription(context.user.role)}</p>
               </div>
+              <div className="rounded-lg border border-border bg-white/50 p-3">
+                <p className="text-muted">Visibility scope</p>
+                <p className="font-medium">{formatEnum(context.user.visibilityScope)}</p>
+              </div>
+              {context.user.jobTitle ? (
+                <div className="rounded-lg border border-border bg-white/50 p-3">
+                  <p className="text-muted">Job title</p>
+                  <p className="font-medium">{context.user.jobTitle}</p>
+                </div>
+              ) : null}
             </div>
             <div className="mt-5">
               <ProfileForm name={context.user.name} />

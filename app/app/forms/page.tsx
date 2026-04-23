@@ -5,12 +5,13 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getVisaSubclassOptions } from "@/lib/services/visa-knowledge";
 import { prisma } from "@/lib/prisma";
+import { scopedMatterWhere } from "@/lib/services/roles";
 
 export default async function FormsPage() {
   const context = await getCurrentWorkspaceContext();
   const matters = context
     ? await prisma.matter.findMany({
-        where: { workspaceId: context.workspace.id },
+        where: scopedMatterWhere(context.user),
         include: { client: true, applicationDrafts: true },
         orderBy: { updatedAt: "desc" }
       })

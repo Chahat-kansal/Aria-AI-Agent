@@ -10,7 +10,7 @@ export default async function DocumentDetailPage({ params }: { params: { documen
   const context = await getCurrentWorkspaceContext();
   if (!context) return <AppShell title="Documents"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review documents." /></AppShell>;
 
-  const document = await getDocumentDetailData(context.workspace.id, params.documentId);
+  const document = await getDocumentDetailData(context.workspace.id, params.documentId, context.user);
   if (!document) notFound();
 
   const extraction = document.extractionResults[0]?.extractedJson as any;

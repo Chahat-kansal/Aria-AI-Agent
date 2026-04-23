@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
+import type { User } from "@prisma/client";
+
+type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
 
 export type PathwayProfileInput = {
   title?: string;
@@ -213,9 +217,18 @@ export async function createPathwayAnalysis(input: PathwayProfileInput & { works
   });
 }
 
-export async function getPathwayAnalyses(workspaceId: string) {
+export async function getPathwayAnalyses(workspaceId: string, user?: ScopedUser) {
   return prisma.pathwayAnalysis.findMany({
-    where: { workspaceId },
+    where: user
+      ? {
+        workspaceId,
+        OR: [
+          { createdByUserId: user.id },
+          { matter: scopedMatterWhere(user) },
+          { client: scopedClientWhere(user) }
+        ]
+      }
+      : { workspaceId },
     include: {
       client: true,
       matter: true,
@@ -226,9 +239,19 @@ export async function getPathwayAnalyses(workspaceId: string) {
   });
 }
 
-export async function getPathwayAnalysisDetail(workspaceId: string, analysisId: string) {
+export async function getPathwayAnalysisDetail(workspaceId: string, analysisId: string, user?: ScopedUser) {
   return prisma.pathwayAnalysis.findFirst({
-    where: { id: analysisId, workspaceId },
+    where: user
+      ? {
+        id: analysisId,
+        workspaceId,
+        OR: [
+          { createdByUserId: user.id },
+          { matter: scopedMatterWhere(user) },
+          { client: scopedClientWhere(user) }
+        ]
+      }
+      : { id: analysisId, workspaceId },
     include: {
       client: true,
       matter: true,

@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { VisaKnowledgeIngestAction } from "@/components/app/visa-knowledge-ingest-action";
 import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { hasPermission } from "@/lib/services/roles";
 import { getVisaKnowledgeRecords } from "@/lib/services/visa-knowledge";
 
 function asList(value: unknown) {
@@ -11,6 +13,15 @@ function asList(value: unknown) {
 }
 
 export default async function KnowledgePage({ searchParams }: { searchParams?: { q?: string } }) {
+  const context = await getCurrentWorkspaceContext();
+  if (context && !hasPermission(context.user, "can_access_visa_knowledge")) {
+    return (
+      <AppShell title="Visa Knowledge">
+        <PageHeader title="Visa knowledge unavailable" subtitle="Your company administrator controls visa knowledge access for each staff user." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to search visa knowledge records. Ask a Company Owner or Access Administrator to enable “Access visa knowledge” for your account.</p></Card>
+      </AppShell>
+    );
+  }
   const query = searchParams?.q ?? "";
   const records = await getVisaKnowledgeRecords(query);
 

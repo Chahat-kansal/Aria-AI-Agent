@@ -5,6 +5,8 @@ import { getMatterPathwayAnalyses } from "@/lib/services/pathway-analysis";
 import { getVisaKnowledgeForAssistant } from "@/lib/services/visa-knowledge";
 import { researchMigrationQuestion } from "@/lib/services/web-research";
 import { prisma } from "@/lib/prisma";
+import { canAccessMatter, hasPermission, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
+import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
 
 function wantsLiveResearch(prompt: string) {
   return /\b(current|latest|today|recent|changed|official|web|internet|source|policy|news|update|visa rule|home affairs)\b/i.test(prompt);
@@ -20,11 +22,18 @@ function summarizeResearch(results: Awaited<ReturnType<typeof researchMigrationQ
 }
 
 export async function POST(req: Request) {
+  const context = await getCurrentWorkspaceContext();
+  if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+  if (!hasPermission(context.user, "can_access_ai")) return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
+  if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
+
   const body = await req.json();
   const prompt = typeof body.prompt === "string" ? body.prompt : "Summarize current matter";
   const matterId = typeof body.matterId === "string" ? body.matterId : null;
 
   if (matterId) {
+    const matter = await prisma.matter.findFirst({ where: { id: matterId, workspaceId: context.workspace.id }, include: { assignedToUser: true } });
+    if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
     const data = await getDraftReviewData(matterId);
     const impacts = await prisma.matterImpact.findMany({
       where: { matterId, status: { in: ["NEW", "REVIEWING"] } },
@@ -70,10 +79,9 @@ export async function POST(req: Request) {
     });
   }
 
-  const context = await getCurrentWorkspaceContext();
   const impacts = context
     ? await prisma.matterImpact.findMany({
-        where: { matter: { workspaceId: context.workspace.id }, status: { in: ["NEW", "REVIEWING"] } },
+        where: { matter: scopedMatterWhere(context.user), status: { in: ["NEW", "REVIEWING"] } },
         include: { matter: { include: { client: true } }, officialUpdate: true },
         orderBy: { createdAt: "desc" },
         take: 8
@@ -81,7 +89,14 @@ export async function POST(req: Request) {
     : [];
   const pathways = context
     ? await prisma.pathwayAnalysis.findMany({
-        where: { workspaceId: context.workspace.id },
+        where: {
+          workspaceId: context.workspace.id,
+          OR: [
+            { createdByUserId: context.user.id },
+            { matter: scopedMatterWhere(context.user) },
+            { client: scopedClientWhere(context.user) }
+          ]
+        },
         include: { client: true, matter: true, options: { orderBy: { rank: "asc" }, take: 2 } },
         orderBy: { createdAt: "desc" },
         take: 5

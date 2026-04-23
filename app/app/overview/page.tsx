@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getOverviewData } from "@/lib/data/workspace-repository";
+import { hasFirmWideAccess, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 
 export default async function OverviewPage() {
   const context = await getCurrentWorkspaceContext();
@@ -13,13 +14,13 @@ export default async function OverviewPage() {
     return <AppShell title="Overview"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to see live operational data." /></AppShell>;
   }
 
-  const { matters, activeMatterCount, averageReadiness, openIssueCount, updates, tasks } = await getOverviewData(context.workspace.id);
+  const { matters, activeMatterCount, averageReadiness, openIssueCount, updates, tasks } = await getOverviewData(context.workspace.id, context.user);
 
   return (
     <AppShell title="Overview">
-      <PageHeader title="Operations Overview" subtitle="Live workspace snapshot of submission readiness, flagged inconsistencies, and update impact." />
+      <PageHeader title={`${roleLabel(context.user.role)} Dashboard`} subtitle={`${hasFirmWideAccess(context.user) ? "Company-wide" : hasTeamOversight(context.user) ? "Team oversight" : "Assigned work"} snapshot of submission readiness, flagged inconsistencies, tasks, and update impacts.`} />
       <section className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Active matters" value={`${activeMatterCount}`} hint="Database-backed workspace files" />
+        <StatCard label="Visible matters" value={`${activeMatterCount}`} hint={hasFirmWideAccess(context.user) ? "Company-wide scope" : "Assigned scope"} />
         <StatCard label="Avg readiness" value={`${averageReadiness}%`} hint="Review-required score" />
         <StatCard label="Open validation issues" value={`${openIssueCount}`} hint="Prioritize critical first" />
         <StatCard label="Official updates" value={`${updates.length}`} hint="Stored source-linked records" />
@@ -33,7 +34,7 @@ export default async function OverviewPage() {
               <div key={matter.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="font-medium">{matter.client.firstName} {matter.client.lastName}</p>
-                  <p className="text-xs text-muted">Subclass {matter.visaSubclass} · {formatEnum(matter.stage)}</p>
+                  <p className="text-xs text-muted">Subclass {matter.visaSubclass} - {formatEnum(matter.stage)} - Owner {matter.assignedToUser.name}</p>
                 </div>
                 <StatusChip label={matter.readinessScore < 70 || matter.validationIssues.length ? "high" : "low"} />
               </div>
@@ -50,7 +51,7 @@ export default async function OverviewPage() {
               <div key={update.id} className="rounded-lg border border-border p-3">
                 <div>
                   <p className="font-medium">{update.title}</p>
-                  <p className="text-xs text-muted">{update.source} · {formatDate(update.publishedAt)} · {update.impacts.length} potential impacts</p>
+                  <p className="text-xs text-muted">{update.source} - {formatDate(update.publishedAt)} - {update.impacts.length} potential impacts</p>
                 </div>
               </div>
             )) : (
@@ -68,7 +69,7 @@ export default async function OverviewPage() {
               <div key={task.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="font-medium">{task.title}</p>
-                  <p className="text-xs text-muted">Due {formatDate(task.dueDate)} · {task.matter.client.firstName} {task.matter.client.lastName}</p>
+                  <p className="text-xs text-muted">Due {formatDate(task.dueDate)} - {task.matter.client.firstName} {task.matter.client.lastName}</p>
                 </div>
                 <StatusChip label={formatEnum(task.priority)} />
               </div>

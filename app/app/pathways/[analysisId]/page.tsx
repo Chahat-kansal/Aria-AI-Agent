@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getPathwayAnalysisDetail } from "@/lib/services/pathway-analysis";
+import { hasPermission } from "@/lib/services/roles";
 
 function asList(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)) : [];
@@ -31,8 +32,16 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
   if (!context) {
     return <AppShell title="Pathway Analysis"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review pathway analyses." /></AppShell>;
   }
+  if (!hasPermission(context.user, "can_access_ai")) {
+    return (
+      <AppShell title="Pathway Analysis">
+        <PageHeader title="Pathway analysis unavailable" subtitle="Your company administrator controls AI-assisted pathway analysis access." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to view AI-assisted pathway analyses.</p></Card>
+      </AppShell>
+    );
+  }
 
-  const analysis = await getPathwayAnalysisDetail(context.workspace.id, params.analysisId);
+  const analysis = await getPathwayAnalysisDetail(context.workspace.id, params.analysisId, context.user);
   if (!analysis) notFound();
 
   const profile = analysis.profileJson as Record<string, unknown>;

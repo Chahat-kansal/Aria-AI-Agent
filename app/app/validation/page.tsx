@@ -8,7 +8,7 @@ import { formatEnum, getValidationData } from "@/lib/data/workspace-repository";
 
 export default async function ValidationPage() {
   const context = await getCurrentWorkspaceContext();
-  const issues = context ? await getValidationData(context.workspace.id) : [];
+  const issues = context ? await getValidationData(context.workspace.id, context.user) : [];
 
   return (
     <AppShell title="Validation">

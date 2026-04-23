@@ -1,6 +1,7 @@
-import { MatterStage, MatterStatus, UserRole, WorkspacePlan } from "@prisma/client";
+import { MatterStage, MatterStatus, UserRole, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureSubclass500Template } from "@/lib/services/subclass-templates";
+import { defaultPermissionsForRole } from "@/lib/services/roles";
 
 function slugify(value: string) {
   return value
@@ -31,7 +32,9 @@ export async function ensureWorkspaceForUser(input: { userId: string; name: stri
         id: input.userId,
         name: input.name,
         email: input.email,
-        role: UserRole.ADMIN,
+        role: UserRole.COMPANY_OWNER,
+        visibilityScope: UserVisibilityScope.FIRM_WIDE,
+        permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER),
         workspaceId: workspace.id
       }
     });
@@ -62,6 +65,7 @@ export async function createMatter(input: {
     data: {
       clientReference,
       workspaceId: input.workspaceId,
+      assignedToUserId: input.assignedToUserId,
       firstName: input.clientFirstName,
       lastName: input.clientLastName,
       email: input.clientEmail,

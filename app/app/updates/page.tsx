@@ -9,7 +9,7 @@ import { formatDate, formatEnum, getUpdatesData } from "@/lib/data/workspace-rep
 
 export default async function UpdatesPage() {
   const context = await getCurrentWorkspaceContext();
-  const updates = context ? await getUpdatesData(context.workspace.id) : [];
+  const updates = context ? await getUpdatesData(context.workspace.id, context.user) : [];
   const impacts = updates.flatMap((update) => update.impacts.map((impact) => ({ ...impact, update })));
 
   return (

@@ -6,13 +6,22 @@ import { PathwayAnalysisForm } from "@/components/app/pathway-analysis-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getPathwayAnalyses } from "@/lib/services/pathway-analysis";
 import { prisma } from "@/lib/prisma";
+import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 
 export default async function PathwaysPage() {
   const context = await getCurrentWorkspaceContext();
-  const analyses = context ? await getPathwayAnalyses(context.workspace.id) : [];
+  if (context && !hasPermission(context.user, "can_access_ai")) {
+    return (
+      <AppShell title="Pathway Analysis">
+        <PageHeader title="Pathway analysis unavailable" subtitle="Your company administrator controls AI-assisted pathway analysis access." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to create or view AI-assisted pathway analyses.</p></Card>
+      </AppShell>
+    );
+  }
+  const analyses = context ? await getPathwayAnalyses(context.workspace.id, context.user) : [];
   const matters = context
     ? await prisma.matter.findMany({
-        where: { workspaceId: context.workspace.id },
+        where: scopedMatterWhere(context.user),
         include: { client: true },
         orderBy: { createdAt: "desc" }
       })

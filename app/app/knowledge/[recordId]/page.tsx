@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { hasPermission } from "@/lib/services/roles";
 import { getVisaKnowledgeRecord } from "@/lib/services/visa-knowledge";
 
 function asList(value: unknown) {
@@ -9,6 +11,15 @@ function asList(value: unknown) {
 }
 
 export default async function VisaKnowledgeDetailPage({ params }: { params: { recordId: string } }) {
+  const context = await getCurrentWorkspaceContext();
+  if (context && !hasPermission(context.user, "can_access_visa_knowledge")) {
+    return (
+      <AppShell title="Visa Knowledge">
+        <PageHeader title="Visa knowledge unavailable" subtitle="Your company administrator controls visa knowledge access for each staff user." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to view visa knowledge records.</p></Card>
+      </AppShell>
+    );
+  }
   const record = await getVisaKnowledgeRecord(params.recordId);
   if (!record) notFound();
 

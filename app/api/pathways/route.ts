@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { createPathwayAnalysis } from "@/lib/services/pathway-analysis";
 import { prisma } from "@/lib/prisma";
+import { canAccessMatter, hasPermission, scopedClientWhere } from "@/lib/services/roles";
+import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
 
 const schema = z.object({
   title: z.string().optional(),
@@ -25,6 +27,8 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   const context = await requireCurrentWorkspaceContext();
+  if (!hasPermission(context.user, "can_access_ai")) return NextResponse.json({ error: "You do not have permission to create AI-assisted pathway analyses." }, { status: 403 });
+  if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
   const parsed = schema.safeParse(await req.json());
 
   if (!parsed.success) {
@@ -37,13 +41,15 @@ export async function POST(req: Request) {
   if (input.matterId) {
     const matter = await prisma.matter.findFirst({
       where: { id: input.matterId, workspaceId: context.workspace.id },
-      select: { id: true, clientId: true }
+      include: { assignedToUser: true }
     });
-    if (!matter) return NextResponse.json({ error: "Matter not found for this workspace." }, { status: 404 });
+    if (!matter || !canAccessMatter(context.user, matter)) {
+      return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+    }
     clientId = matter.clientId;
   } else if (clientId) {
-    const client = await prisma.client.findFirst({ where: { id: clientId, workspaceId: context.workspace.id }, select: { id: true } });
-    if (!client) return NextResponse.json({ error: "Client not found for this workspace." }, { status: 404 });
+    const client = await prisma.client.findFirst({ where: { id: clientId, ...scopedClientWhere(context.user) }, select: { id: true } });
+    if (!client) return NextResponse.json({ error: "Client is not available for this user scope." }, { status: 403 });
   }
 
   const analysis = await createPathwayAnalysis({

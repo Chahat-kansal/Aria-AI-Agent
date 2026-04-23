@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { AssistantWorkspace } from "@/components/app/assistant-workspace";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getAssistantData, getMattersData } from "@/lib/data/workspace-repository";
+import { hasPermission } from "@/lib/services/roles";
 
 const prompts = [
   "What is missing from this matter?",
@@ -15,8 +16,16 @@ const prompts = [
 
 export default async function AssistantPage() {
   const context = await getCurrentWorkspaceContext();
-  const threads = context ? await getAssistantData(context.workspace.id) : [];
-  const matters = context ? await getMattersData(context.workspace.id) : [];
+  if (context && !hasPermission(context.user, "can_access_ai")) {
+    return (
+      <AppShell title="AI Assistant">
+        <PageHeader title="AI access unavailable" subtitle="Your company administrator controls AI access for each staff user." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to use Aria AI. Ask a Company Owner or Access Administrator to enable “Access Aria AI” for your account.</p></Card>
+      </AppShell>
+    );
+  }
+  const threads = context ? await getAssistantData(context.workspace.id, context.user) : [];
+  const matters = context ? await getMattersData(context.workspace.id, context.user) : [];
 
   return (
     <AppShell title="AI Assistant">

@@ -11,7 +11,7 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
   const context = await getCurrentWorkspaceContext();
   if (!context) return <AppShell title="Updates Monitor"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review official update records." /></AppShell>;
 
-  const update = await getUpdateDetailData(context.workspace.id, params.updateId);
+  const update = await getUpdateDetailData(context.workspace.id, params.updateId, context.user);
   if (!update) notFound();
 
   return (

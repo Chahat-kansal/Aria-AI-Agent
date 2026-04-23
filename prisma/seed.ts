@@ -1,6 +1,7 @@
-import { PrismaClient, UserRole, WorkspacePlan } from "@prisma/client";
+import { PrismaClient, UserRole, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { ensureSubclass500Template } from "../lib/services/subclass-templates";
+import { defaultPermissionsForRole } from "../lib/services/roles";
 
 const prisma = new PrismaClient();
 
@@ -25,14 +26,18 @@ async function main() {
     where: { email: adminEmail },
     update: {
       name: adminName,
-      role: UserRole.ADMIN,
+      role: UserRole.COMPANY_OWNER,
+      visibilityScope: UserVisibilityScope.FIRM_WIDE,
+      permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER),
       workspaceId: workspace.id
     },
     create: {
       name: adminName,
       email: adminEmail,
       hashedPassword: await hash(adminPassword, 12),
-      role: UserRole.ADMIN,
+      role: UserRole.COMPANY_OWNER,
+      visibilityScope: UserVisibilityScope.FIRM_WIDE,
+      permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER),
       workspaceId: workspace.id
     }
   });

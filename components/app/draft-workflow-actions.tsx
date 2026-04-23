@@ -3,7 +3,19 @@
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; draftId: string }) {
+export function DraftWorkflowActions({
+  matterId,
+  draftId,
+  canEditMatter,
+  canUseAi,
+  canRunCrossCheck
+}: {
+  matterId: string;
+  draftId: string;
+  canEditMatter: boolean;
+  canUseAi: boolean;
+  canRunCrossCheck: boolean;
+}) {
   const router = useRouter();
   const [recipientEmail, setRecipientEmail] = useState("");
   const [pending, startTransition] = useTransition();
@@ -60,7 +72,7 @@ export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; 
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-border bg-[#0e182a] p-3">
+      {canEditMatter ? <div className="rounded-xl border border-border bg-[#0e182a] p-3">
         <p className="text-sm font-semibold">Upload client document</p>
         <p className="mt-1 text-xs text-muted">Stores the file, records metadata in Postgres, classifies evidence, and maps supported values to the draft.</p>
         <form onSubmit={uploadDocument} className="mt-3 flex gap-2">
@@ -68,14 +80,14 @@ export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; 
           <input name="file" required type="file" className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
           <button disabled={pending} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Upload</button>
         </form>
-      </div>
-      <button onClick={runMapping} disabled={pending} className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Run AI-assisted draft mapping</button>
-      <button onClick={runFinalCrossCheck} disabled={pending} className="w-full rounded-xl border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60">Final submission-readiness cross-check</button>
-      <div className="rounded-xl border border-border bg-[#0e182a] p-3">
+      </div> : <p className="rounded-lg border border-border bg-white/50 p-3 text-xs text-muted">You do not have permission to upload or edit matter documents.</p>}
+      {canUseAi ? <button onClick={runMapping} disabled={pending} className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Run AI-assisted draft mapping</button> : null}
+      {canRunCrossCheck ? <button onClick={runFinalCrossCheck} disabled={pending} className="w-full rounded-xl border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60">Final submission-readiness cross-check</button> : null}
+      {canEditMatter ? <div className="rounded-xl border border-border bg-[#0e182a] p-3">
         <p className="text-sm font-semibold">Client review/signature foundation</p>
         <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-2 w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
         <button onClick={sendReview} disabled={pending} className="mt-2 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Send to client review</button>
-      </div>
+      </div> : null}
       {message ? <p className="rounded-lg border border-border bg-[#0e182a] p-2 text-xs text-muted">{message}</p> : null}
     </div>
   );

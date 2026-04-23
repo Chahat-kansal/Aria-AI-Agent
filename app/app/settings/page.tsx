@@ -6,9 +6,10 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getSettingsData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
+import { roleLabel } from "@/lib/services/roles";
 
 function ConfigStatus({ configured }: { configured: boolean }) {
-  return <StatusChip label={configured ? "Configured" : "Disabled"} />;
+  return <StatusChip label={configured ? "Configured" : "Not configured"} />;
 }
 
 export default async function SettingsPage() {
@@ -37,7 +38,7 @@ export default async function SettingsPage() {
               {workspace.users.map((user) => (
                 <div key={user.id} className="flex items-center justify-between rounded-lg border border-border p-2 text-sm">
                   <div><p>{user.name}</p><p className="text-xs text-muted">{user.email}</p></div>
-                  <StatusChip label={formatEnum(user.role)} />
+                  <StatusChip label={roleLabel(user.role)} />
                 </div>
               ))}
             </div>

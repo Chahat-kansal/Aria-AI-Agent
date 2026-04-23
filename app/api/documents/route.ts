@@ -3,6 +3,8 @@ import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { persistDocumentStorageObject, prepareMatterDocumentUpload } from "@/lib/services/storage";
 import { extractReadableText } from "@/lib/services/document-extraction";
+import { canAccessMatter, hasPermission } from "@/lib/services/roles";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const contentType = req.headers.get("content-type") ?? "";
@@ -18,11 +20,18 @@ export async function POST(req: Request) {
   const fileName = file.name;
   const mimeType = file.type || "application/octet-stream";
   const bytes = Buffer.from(await file.arrayBuffer());
-  const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes });
   const extractedText = extractReadableText(bytes, mimeType);
 
   const context = await getCurrentWorkspaceContext();
   if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+  if (!hasPermission(context.user, "can_edit_matters")) return NextResponse.json({ error: "You do not have permission to upload documents for matters." }, { status: 403 });
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, workspaceId: context.workspace.id },
+    include: { assignedToUser: true }
+  });
+  if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
+
+  const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes });
 
   const document = await uploadDocumentToMatter({
     matterId,
