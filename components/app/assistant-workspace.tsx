@@ -9,8 +9,11 @@ type MatterOption = {
 
 type AssistantReply = {
   content: string;
+  groundedFacts?: string[];
+  reasoning?: string[];
   citations?: { label: string; href: string }[];
   recommendedActions?: string[];
+  error?: string;
 };
 
 export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
@@ -30,7 +33,8 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
       body: JSON.stringify({ prompt, matterId: matterId || null })
     });
 
-    setReply(await response.json());
+    const payload = await response.json();
+    setReply(response.ok ? payload : { content: payload.error ?? "Aria could not complete the request.", error: payload.error });
     setIsLoading(false);
   }
 
@@ -59,7 +63,20 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
       <div className="panel min-h-80 p-4 text-sm text-muted xl:col-span-2">
         {reply ? (
           <div className="space-y-4">
+            {reply.error ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reply.error}</p> : null}
             <p className="leading-7">{reply.content}</p>
+            {reply.groundedFacts?.length ? (
+              <div>
+                <p className="font-medium text-[#182033]">Grounded facts</p>
+                <ul className="mt-2 grid gap-2 md:grid-cols-2">{reply.groundedFacts.map((fact) => <li key={fact} className="rounded-lg border border-border bg-white/70 p-3">{fact}</li>)}</ul>
+              </div>
+            ) : null}
+            {reply.reasoning?.length ? (
+              <div>
+                <p className="font-medium text-[#182033]">AI-assisted reasoning</p>
+                <ul className="mt-2 space-y-2">{reply.reasoning.map((item) => <li key={item} className="rounded-lg border border-border bg-white/60 p-3">{item}</li>)}</ul>
+              </div>
+            ) : null}
             {reply.recommendedActions?.length ? (
               <div>
                 <p className="font-medium text-[#182033]">Recommended next actions</p>

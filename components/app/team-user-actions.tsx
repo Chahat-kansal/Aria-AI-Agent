@@ -31,6 +31,7 @@ export function TeamUserActions({
   const [pending, setPending] = useState(false);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   const nextStatus = currentStatus === "DISABLED" ? "ACTIVE" : "DISABLED";
 
   async function updateStatus() {
@@ -47,6 +48,28 @@ export function TeamUserActions({
       return;
     }
     router.refresh();
+  }
+
+  async function resendInvite() {
+    setPending(true);
+    setMessage(null);
+    setInviteLink(null);
+    const response = await fetch(`/api/team/${userId}/invite`, { method: "POST" });
+    const result = (await response.json().catch(() => null)) as { error?: string; inviteLink?: string; emailDelivery?: { delivered?: boolean; reason?: string } } | null;
+    setPending(false);
+    if (!response.ok) {
+      setMessage(result?.error ?? "Unable to create a fresh invite link.");
+      return;
+    }
+    setInviteLink(result?.inviteLink ?? null);
+    setMessage(result?.emailDelivery?.delivered ? "Invite sent." : (result?.emailDelivery?.reason ?? "Invite link ready to share."));
+    router.refresh();
+  }
+
+  async function copyInviteLink() {
+    if (!inviteLink) return;
+    await navigator.clipboard?.writeText(inviteLink);
+    setMessage("Invite link copied.");
   }
 
   async function updatePermissions(event: FormEvent<HTMLFormElement>) {
@@ -87,8 +110,19 @@ export function TeamUserActions({
         <button disabled={pending || isCompanyOwner} onClick={updateStatus} className="rounded-lg border border-border bg-white/50 px-3 py-2 text-xs text-muted hover:bg-white disabled:opacity-60">
           {currentStatus === "DISABLED" ? "Activate" : "Deactivate"}
         </button>
+        {currentStatus === "INVITED" ? (
+          <button disabled={pending} onClick={resendInvite} className="rounded-lg border border-border bg-white/50 px-3 py-2 text-xs text-muted hover:bg-white disabled:opacity-60">
+            Resend invite
+          </button>
+        ) : null}
       </div>
       {message ? <p className="text-xs text-red-700">{message}</p> : null}
+      {inviteLink ? (
+        <div className="max-w-xs rounded-lg border border-border bg-white/70 p-2 text-xs">
+          <a href={inviteLink} className="break-all text-accent">{inviteLink}</a>
+          <button onClick={copyInviteLink} className="mt-2 rounded border border-border px-2 py-1 text-muted" type="button">Copy invite link</button>
+        </div>
+      ) : null}
       {editing ? (
         <form className="min-w-[260px] rounded-xl border border-border bg-white/70 p-3" onSubmit={updatePermissions}>
           <p className="mb-2 text-xs text-muted">{isCompanyOwner ? "Company Owner permissions are always on." : "Edit staff profile and feature permissions."}</p>

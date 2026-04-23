@@ -48,6 +48,12 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
     router.refresh();
   }
 
+  async function copyInviteLink() {
+    if (!inviteLink) return;
+    await navigator.clipboard?.writeText(inviteLink);
+    setMessage("Invite link copied.");
+  }
+
   if (!isOpen) {
     return (
       <div className="flex flex-wrap items-center gap-3">
@@ -59,7 +65,13 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
           + Add Team Member
         </button>
         {message ? <p className="text-sm text-muted">{message}</p> : null}
-        {inviteLink ? <a href={inviteLink} className="break-all text-sm text-accent">{inviteLink}</a> : null}
+        {inviteLink ? (
+          <div className="rounded-lg border border-border bg-white/60 p-3 text-sm">
+            <p className="text-muted">Share this invite link:</p>
+            <a href={inviteLink} className="break-all text-accent">{inviteLink}</a>
+            <button className="ml-0 mt-2 rounded border border-border px-2 py-1 text-xs text-muted sm:ml-2 sm:mt-0" onClick={copyInviteLink} type="button">Copy invite link</button>
+          </div>
+        ) : null}
       </div>
     );
   }

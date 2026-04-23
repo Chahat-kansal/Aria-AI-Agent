@@ -16,7 +16,7 @@ export default async function TeamPage() {
         <PageHeader title="Team Management" subtitle="Company staff access is controlled by owner and administrator permissions." />
         <Card>
           <h3 className="font-semibold">You do not have permission to manage team members</h3>
-          <p className="mt-2 text-sm text-muted">Ask a Company Owner or Access Administrator to enable the “Manage team” permission for your account.</p>
+          <p className="mt-2 text-sm text-muted">Ask a Company Owner or Access Administrator to enable the Manage team permission for your account.</p>
         </Card>
       </AppShell>
     );
@@ -76,6 +76,7 @@ export default async function TeamPage() {
                 </div>
                 <div className="text-sm text-muted">
                   <p>Status: {user.status.toLowerCase()}</p>
+                  {user.status === "INVITED" ? <p>Invite expires: {user.inviteExpiresAt ? user.inviteExpiresAt.toLocaleDateString("en-AU") : "Not set"}</p> : null}
                   <p>Scope: {user.visibilityScope.replaceAll("_", " ").toLowerCase()}</p>
                   <p>Supervisor: {user.supervisor?.name ?? "Not set"}</p>
                   <p>{user._count.mattersAssigned} matters - {user._count.clientsAssigned} clients - {user._count.tasksAssigned} tasks - {user._count.uploadedDocuments} uploads</p>

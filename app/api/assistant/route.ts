@@ -21,6 +21,10 @@ function summarizeResearch(results: Awaited<ReturnType<typeof researchMigrationQ
     .join(" | ");
 }
 
+function sentenceList(items: string[]) {
+  return items.filter(Boolean).slice(0, 6);
+}
+
 export async function POST(req: Request) {
   const context = await getCurrentWorkspaceContext();
   if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
@@ -60,7 +64,20 @@ export async function POST(req: Request) {
     return NextResponse.json({
       mode: "matter-specific",
       reviewRequired: true,
-      content: `AI-assisted answer for: ${prompt}. Current draft readiness is ${data.draft.readinessScore}%. Open review items: ${openIssueTitles.join(", ") || "none recorded"}. Official update impacts flagged for review: ${impactTitles.join(" | ") || "none recorded"}. Pathway analysis context: ${pathwaySummary || "no linked pathway analysis recorded"}. Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}. Live research: ${researchSummary}. Registered migration agent review is required before client advice or submission preparation.`,
+      content: `Aria reviewed this matter using stored draft, document, validation, pathway, visa knowledge, and update records. This is AI-assisted operational guidance only; final review remains with the registered migration agent.`,
+      groundedFacts: sentenceList([
+        `Draft readiness: ${data.draft.readinessScore}%.`,
+        `Open validation items: ${openIssueTitles.length ? openIssueTitles.join("; ") : "none recorded"}.`,
+        `Official update impacts: ${impactTitles.length ? impactTitles.join(" | ") : "none recorded"}.`,
+        `Pathway context: ${pathwaySummary || "no linked pathway analysis recorded"}.`,
+        `Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}.`,
+        `Live research: ${researchSummary}.`
+      ]),
+      reasoning: sentenceList([
+        data.openIssues.length ? "Prioritise unresolved validation issues before sending anything to the client." : "No stored validation blockers were found, but source-linked field verification is still required.",
+        impacts.length ? "Review the flagged official update impacts before relying on current readiness." : "No stored official update impact currently changes this matter queue.",
+        pathways.length ? "Use pathway analysis as scenario planning, not final legal advice." : "No linked pathway analysis is available for this matter."
+      ]),
       citations: [
         { label: "Draft fields", href: `/app/matters/${matterId}/draft` },
         { label: "Validation issues", href: `/app/matters/${matterId}/draft` },
@@ -116,7 +133,18 @@ export async function POST(req: Request) {
   return NextResponse.json({
     mode: "workspace",
     reviewRequired: true,
-    content: `AI-assisted workspace answer for: ${prompt}. ${impacts.length} matter update impact alerts are currently flagged for review. Recent pathway context: ${pathwayLines.join(" | ") || "no pathway analyses recorded"}. Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}. Live research: ${researchSummary}. No official guidance is fabricated; use linked source records and practitioner review before action.`,
+    content: `Aria reviewed the workspace records available to your role and assignment scope. This answer is AI-assisted and review required; it does not make final legal decisions.`,
+    groundedFacts: sentenceList([
+      `${impacts.length} matter update impact alert(s) are flagged for review.`,
+      `Recent pathway context: ${pathwayLines.join(" | ") || "no pathway analyses recorded"}.`,
+      `Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}.`,
+      `Live research: ${researchSummary}.`
+    ]),
+    reasoning: sentenceList([
+      impacts.length ? "Start with update impact alerts because they may affect active matter assumptions." : "No update-impact queue is visible for your scope.",
+      pathways.length ? "Review pathway analyses before giving client-facing pathway options." : "Create a pathway analysis only from real intake facts and evidence.",
+      "Use linked sources and stored matter records before acting on any recommendation."
+    ]),
     citations: [
       { label: "Official updates", href: "/app/updates" },
       { label: "Validation", href: "/app/validation" },
