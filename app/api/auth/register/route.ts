@@ -4,6 +4,7 @@ import { z } from "zod";
 import { UserRole, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
+import { getAuthConfigStatus, getDatabaseConfigStatus, serverLog } from "@/lib/services/runtime-config";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
@@ -44,64 +45,76 @@ async function uniqueWorkspaceSlug(name: string) {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  const parsed = registerSchema.safeParse(body);
+  try {
+    const dbStatus = getDatabaseConfigStatus();
+    const authStatus = getAuthConfigStatus();
+    if (!dbStatus.configured || !authStatus.configured) {
+      serverLog("auth.register_misconfigured", { missing: [...dbStatus.missing, ...authStatus.missing] });
+      return NextResponse.json({ error: `Authentication is not fully configured. Missing ${[...dbStatus.missing, ...authStatus.missing].join(", ")}.` }, { status: 503 });
+    }
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid registration details" },
-      { status: 400 }
-    );
-  }
+    const body = await request.json().catch(() => null);
+    const parsed = registerSchema.safeParse(body);
 
-  const email = parsed.data.email.toLowerCase();
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true }
-  });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "Invalid registration details" },
+        { status: 400 }
+      );
+    }
 
-  if (existingUser) {
-    return NextResponse.json({ error: "An account already exists for this email." }, { status: 409 });
-  }
-
-  const workspaceName = parsed.data.workspaceName?.trim() || `${parsed.data.name}'s practice`;
-  const workspaceSlug = await uniqueWorkspaceSlug(workspaceName);
-  const hashedPassword = await hash(parsed.data.password, 12);
-
-  const user = await prisma.$transaction(async (tx) => {
-    const workspace = await tx.workspace.create({
-      data: {
-        name: workspaceName,
-        legalName: workspaceName,
-        slug: workspaceSlug,
-        plan: WorkspacePlan.STARTER,
-        contactEmail: parsed.data.contactEmail || email,
-        contactPhone: parsed.data.contactPhone || null,
-        timezone: parsed.data.timezone || "Australia/Sydney",
-        businessType: parsed.data.businessType || "Migration firm",
-        addressLine1: parsed.data.addressLine1 || null
-      }
+    const email = parsed.data.email.toLowerCase();
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true }
     });
 
-    return tx.user.create({
-      data: {
-        name: parsed.data.name,
-        email,
-        hashedPassword,
-        role: UserRole.COMPANY_OWNER,
-        visibilityScope: UserVisibilityScope.FIRM_WIDE,
-        permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER),
-        workspaceId: workspace.id
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        workspaceId: true
-      }
-    });
-  });
+    if (existingUser) {
+      return NextResponse.json({ error: "An account already exists for this email." }, { status: 409 });
+    }
 
-  return NextResponse.json({ user }, { status: 201 });
+    const workspaceName = parsed.data.workspaceName?.trim() || `${parsed.data.name}'s practice`;
+    const workspaceSlug = await uniqueWorkspaceSlug(workspaceName);
+    const hashedPassword = await hash(parsed.data.password, 12);
+
+    const user = await prisma.$transaction(async (tx) => {
+      const workspace = await tx.workspace.create({
+        data: {
+          name: workspaceName,
+          legalName: workspaceName,
+          slug: workspaceSlug,
+          plan: WorkspacePlan.STARTER,
+          contactEmail: parsed.data.contactEmail || email,
+          contactPhone: parsed.data.contactPhone || null,
+          timezone: parsed.data.timezone || "Australia/Sydney",
+          businessType: parsed.data.businessType || "Migration firm",
+          addressLine1: parsed.data.addressLine1 || null
+        }
+      });
+
+      return tx.user.create({
+        data: {
+          name: parsed.data.name,
+          email,
+          hashedPassword,
+          role: UserRole.COMPANY_OWNER,
+          visibilityScope: UserVisibilityScope.FIRM_WIDE,
+          permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER),
+          workspaceId: workspace.id
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          workspaceId: true
+        }
+      });
+    });
+
+    return NextResponse.json({ user }, { status: 201 });
+  } catch (error) {
+    serverLog("auth.register_error", { error: error instanceof Error ? error.message : String(error) });
+    return NextResponse.json({ error: "Registration failed. Please check configuration and try again." }, { status: 500 });
+  }
 }

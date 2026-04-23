@@ -5,6 +5,7 @@ import { createPathwayAnalysis } from "@/lib/services/pathway-analysis";
 import { prisma } from "@/lib/prisma";
 import { canAccessMatter, hasPermission, scopedClientWhere } from "@/lib/services/roles";
 import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
+import { serverLog } from "@/lib/services/runtime-config";
 
 const schema = z.object({
   title: z.string().optional(),
@@ -26,38 +27,43 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const context = await requireCurrentWorkspaceContext();
-  if (!hasPermission(context.user, "can_run_pathway_analysis")) return NextResponse.json({ error: "You do not have permission to create AI-assisted pathway analyses." }, { status: 403 });
-  if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
-  const parsed = schema.safeParse(await req.json());
+  try {
+    const context = await requireCurrentWorkspaceContext();
+    if (!hasPermission(context.user, "can_run_pathway_analysis")) return NextResponse.json({ error: "You do not have permission to create AI-assisted pathway analyses." }, { status: 403 });
+    if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
+    const parsed = schema.safeParse(await req.json().catch(() => null));
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid pathway analysis input." }, { status: 400 });
-  }
-
-  const input = parsed.data;
-  let clientId = input.clientId;
-
-  if (input.matterId) {
-    const matter = await prisma.matter.findFirst({
-      where: { id: input.matterId, workspaceId: context.workspace.id },
-      include: { assignedToUser: true }
-    });
-    if (!matter || !canAccessMatter(context.user, matter)) {
-      return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid pathway analysis input." }, { status: 400 });
     }
-    clientId = matter.clientId;
-  } else if (clientId) {
-    const client = await prisma.client.findFirst({ where: { id: clientId, ...scopedClientWhere(context.user) }, select: { id: true } });
-    if (!client) return NextResponse.json({ error: "Client is not available for this user scope." }, { status: 403 });
+
+    const input = parsed.data;
+    let clientId = input.clientId;
+
+    if (input.matterId) {
+      const matter = await prisma.matter.findFirst({
+        where: { id: input.matterId, workspaceId: context.workspace.id },
+        include: { assignedToUser: true }
+      });
+      if (!matter || !canAccessMatter(context.user, matter)) {
+        return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+      }
+      clientId = matter.clientId;
+    } else if (clientId) {
+      const client = await prisma.client.findFirst({ where: { id: clientId, ...scopedClientWhere(context.user) }, select: { id: true } });
+      if (!client) return NextResponse.json({ error: "Client is not available for this user scope." }, { status: 403 });
+    }
+
+    const analysis = await createPathwayAnalysis({
+      ...input,
+      clientId,
+      workspaceId: context.workspace.id,
+      createdByUserId: context.user.id
+    });
+
+    return NextResponse.json({ analysis });
+  } catch (error) {
+    serverLog("pathway.create_error", { error: error instanceof Error ? error.message : String(error) });
+    return NextResponse.json({ error: "Pathway analysis failed. Review input facts and try again." }, { status: 500 });
   }
-
-  const analysis = await createPathwayAnalysis({
-    ...input,
-    clientId,
-    workspaceId: context.workspace.id,
-    createdByUserId: context.user.id
-  });
-
-  return NextResponse.json({ analysis });
 }

@@ -7,6 +7,7 @@ import { researchMigrationQuestion } from "@/lib/services/web-research";
 import { prisma } from "@/lib/prisma";
 import { canAccessMatter, hasPermission, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
 import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
+import { serverLog } from "@/lib/services/runtime-config";
 
 function wantsLiveResearch(prompt: string) {
   return /\b(current|latest|today|recent|changed|official|web|internet|source|policy|news|update|visa rule|home affairs)\b/i.test(prompt);
@@ -26,16 +27,17 @@ function sentenceList(items: string[]) {
 }
 
 export async function POST(req: Request) {
-  const context = await getCurrentWorkspaceContext();
-  if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
-  if (!hasPermission(context.user, "can_access_ai")) return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
-  if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
+  try {
+    const context = await getCurrentWorkspaceContext();
+    if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+    if (!hasPermission(context.user, "can_access_ai")) return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
+    if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
 
-  const body = await req.json();
-  const prompt = typeof body.prompt === "string" ? body.prompt : "Summarize current matter";
-  const matterId = typeof body.matterId === "string" ? body.matterId : null;
+    const body = await req.json().catch(() => ({}));
+    const prompt = typeof body.prompt === "string" ? body.prompt.slice(0, 2000) : "Summarize current matter";
+    const matterId = typeof body.matterId === "string" ? body.matterId : null;
 
-  if (matterId) {
+    if (matterId) {
     const matter = await prisma.matter.findFirst({ where: { id: matterId, workspaceId: context.workspace.id }, include: { assignedToUser: true } });
     if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
     const data = await getDraftReviewData(matterId);
@@ -130,7 +132,7 @@ export async function POST(req: Request) {
   })) : null;
   const researchSummary = research ? summarizeResearch(research) : "Live web research was not requested for this answer.";
 
-  return NextResponse.json({
+    return NextResponse.json({
     mode: "workspace",
     reviewRequired: true,
     content: `Aria reviewed the workspace records available to your role and assignment scope. This answer is AI-assisted and review required; it does not make final legal decisions.`,
@@ -157,5 +159,13 @@ export async function POST(req: Request) {
       : pathways.length
         ? pathways.slice(0, 3).map((analysis) => `Review ${analysis.title} before presenting pathway options to the client.`)
       : ["Run official source check when ingestion is enabled", "Review any newly flagged affected matters", "Confirm source-linked changes before updating submission readiness"]
-  });
+    });
+  } catch (error) {
+    serverLog("assistant.error", { error: error instanceof Error ? error.message : String(error) });
+    return NextResponse.json({
+      error: "Aria could not complete that request right now.",
+      reviewRequired: true,
+      configured: isAiConfigured()
+    }, { status: 500 });
+  }
 }

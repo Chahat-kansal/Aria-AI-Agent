@@ -21,6 +21,16 @@ type SearchInput = {
   officialOnly?: boolean;
 };
 
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 interface WebResearchProvider {
   name: string;
   isConfigured(): boolean;
@@ -70,7 +80,7 @@ class TavilyResearchProvider implements WebResearchProvider {
   async search(input: SearchInput): Promise<WebResearchResponse> {
     if (!this.isConfigured()) return new DisabledResearchProvider().search(input);
 
-    const response = await fetch("https://api.tavily.com/search", {
+    const response = await fetchWithTimeout("https://api.tavily.com/search", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.TAVILY_API_KEY}`,
@@ -116,7 +126,7 @@ class FirecrawlResearchProvider implements WebResearchProvider {
   async search(input: SearchInput): Promise<WebResearchResponse> {
     if (!this.isConfigured()) return new DisabledResearchProvider().search(input);
 
-    const response = await fetch("https://api.firecrawl.dev/v2/search", {
+    const response = await fetchWithTimeout("https://api.firecrawl.dev/v2/search", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}`,

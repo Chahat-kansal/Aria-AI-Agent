@@ -2,6 +2,12 @@ import type { NextAuthOptions } from "next-auth";
 import { compare } from "bcryptjs";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { getAuthConfigStatus, serverLog } from "@/lib/services/runtime-config";
+
+const authConfig = getAuthConfigStatus();
+if (!authConfig.configured) {
+  serverLog("auth.misconfigured", { missing: authConfig.missing });
+}
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -14,7 +20,10 @@ export const authOptions: NextAuthOptions = {
         workspaceSlug: { label: "Workspace", type: "text" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          serverLog("auth.credentials_missing");
+          return null;
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase() },
@@ -31,11 +40,20 @@ export const authOptions: NextAuthOptions = {
           }
         });
 
-        if (!user?.hashedPassword || user.status !== "ACTIVE") return null;
-        if (credentials.workspaceSlug && user.workspace.slug !== credentials.workspaceSlug) return null;
+        if (!user?.hashedPassword || user.status !== "ACTIVE") {
+          serverLog("auth.login_rejected", { email: credentials.email.toLowerCase(), reason: "inactive_or_missing_password" });
+          return null;
+        }
+        if (credentials.workspaceSlug && user.workspace.slug !== credentials.workspaceSlug) {
+          serverLog("auth.workspace_mismatch", { email: user.email, requestedWorkspace: credentials.workspaceSlug });
+          return null;
+        }
 
         const isValidPassword = await compare(credentials.password, user.hashedPassword);
-        if (!isValidPassword) return null;
+        if (!isValidPassword) {
+          serverLog("auth.bad_password", { email: user.email });
+          return null;
+        }
 
         return {
           id: user.id,

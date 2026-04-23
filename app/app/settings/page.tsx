@@ -7,6 +7,7 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getSettingsData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
 import { canManageTeam, hasPermission, roleLabel } from "@/lib/services/roles";
+import { getAiConfigStatus, getAuthConfigStatus, getDatabaseConfigStatus, getEmailConfigStatus, getStorageConfigStatus } from "@/lib/services/runtime-config";
 
 function ConfigStatus({ configured }: { configured: boolean }) {
   return <StatusChip label={configured ? "Configured" : "Not configured"} />;
@@ -17,6 +18,11 @@ export default async function SettingsPage() {
   const workspace = context ? await getSettingsData(context.workspace.id) : null;
   const visaKnowledgeCount = await prisma.visaKnowledgeRecord.count();
   const canManageCompany = context ? canManageTeam(context.user) : false;
+  const authStatus = getAuthConfigStatus();
+  const dbStatus = getDatabaseConfigStatus();
+  const aiStatus = getAiConfigStatus();
+  const emailStatus = getEmailConfigStatus();
+  const storageStatus = getStorageConfigStatus();
 
   return (
     <AppShell title="Settings">
@@ -56,11 +62,27 @@ export default async function SettingsPage() {
           <Card>
             <h3 className="font-semibold">AI settings</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
-              <span>Provider adapter</span>
-              <ConfigStatus configured={Boolean(process.env.AI_PROVIDER)} />
+              <span>{aiStatus.provider}</span>
+              <ConfigStatus configured={aiStatus.configured} />
             </div>
-            <p className="mt-3 text-xs text-muted">AI output remains AI-assisted, source-linked where available, and review required.</p>
+            <p className="mt-3 text-xs text-muted">{aiStatus.configured ? "AI output remains AI-assisted, source-linked where available, and review required." : `Missing ${aiStatus.missing.join(", ")}.`}</p>
           </Card>
+          {canManageCompany ? <Card>
+            <h3 className="font-semibold">Authentication</h3>
+            <div className="mt-3 flex items-center justify-between text-sm text-muted">
+              <span>Session configuration</span>
+              <ConfigStatus configured={authStatus.configured && dbStatus.configured} />
+            </div>
+            <p className="mt-3 text-xs text-muted">{authStatus.configured && dbStatus.configured ? "Database and NextAuth runtime configuration are present." : `Missing ${[...authStatus.missing, ...dbStatus.missing].join(", ")}.`}</p>
+          </Card> : null}
+          {canManageCompany ? <Card>
+            <h3 className="font-semibold">Email delivery</h3>
+            <div className="mt-3 flex items-center justify-between text-sm text-muted">
+              <span>{emailStatus.provider}</span>
+              <ConfigStatus configured={emailStatus.configured} />
+            </div>
+            <p className="mt-3 text-xs text-muted">{emailStatus.configured ? "Invite emails are sent by the configured provider." : "Invite links remain available in the team UI when email delivery is not configured."}</p>
+          </Card> : null}
           {canManageCompany ? <Card>
             <h3 className="font-semibold">Live web research</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
@@ -73,9 +95,9 @@ export default async function SettingsPage() {
             <h3 className="font-semibold">Storage settings</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
               <span>Persistent storage provider</span>
-              <ConfigStatus configured={Boolean(process.env.STORAGE_PROVIDER && process.env.STORAGE_PROVIDER !== "local")} />
+              <ConfigStatus configured={storageStatus.configured} />
             </div>
-            <p className="mt-3 text-xs text-muted">{workspace._count.documents} document metadata records are stored in Postgres.</p>
+            <p className="mt-3 text-xs text-muted">{workspace._count.documents} document metadata records are stored in Postgres. Provider: {storageStatus.provider}. {storageStatus.configured ? "" : `Missing ${storageStatus.missing.join(", ")}.`}</p>
           </Card> : null}
           {hasPermission(context!.user, "can_access_update_monitor") ? <Card>
             <h3 className="font-semibold">Update source settings</h3>

@@ -1,10 +1,14 @@
+import { getAiConfigStatus } from "@/lib/services/runtime-config";
+
 export function isAiConfigured() {
-  return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.AI_PROVIDER);
+  return getAiConfigStatus().configured;
 }
 
 export function aiNotConfiguredResponse() {
+  const status = getAiConfigStatus();
   return {
     error: "AI is not configured. Add API key in environment variables.",
-    configured: false
+    configured: false,
+    setup: `Missing ${status.missing.join(", ")}. Set OPENAI_API_KEY or ANTHROPIC_API_KEY, then restart the deployment. Aria will not show fake AI output while the provider is missing.`
   };
 }

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { getStorageConfigStatus, getUploadLimits } from "@/lib/services/runtime-config";
 
 export type StoredUpload = {
   storageKey: string;
@@ -18,8 +19,17 @@ export async function prepareMatterDocumentUpload(input: {
   fileName: string;
   bytes: Buffer;
 }) {
+  const status = getStorageConfigStatus();
+  if (!status.configured) {
+    throw new Error(`Storage is not configured for provider ${status.provider}. Missing ${status.missing.join(", ")}.`);
+  }
+  const limits = getUploadLimits();
+  if (input.bytes.length > limits.maxBytes) {
+    throw new Error(`File is too large. Maximum upload size is ${limits.maxMb} MB.`);
+  }
+
   const contentHash = crypto.createHash("sha256").update(input.bytes).digest("hex");
-  const provider = process.env.STORAGE_PROVIDER || "database";
+  const provider = status.provider;
   const storageKey = `matters/${input.matterId}/${contentHash.slice(0, 16)}-${safeFileName(input.fileName)}`;
 
   return {
