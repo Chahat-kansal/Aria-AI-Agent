@@ -40,7 +40,7 @@ export default async function VisaKnowledgeDetailPage({ params }: { params: { re
             <span className="rounded-full border border-border bg-white/50 px-3 py-1">Updated: {record.lastRefreshedAt.toLocaleString("en-AU")}</span>
           </div>
           <a href={record.sourceUrl} className="mt-5 inline-flex rounded-lg bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white">
-            Open official source
+            Open official source search
           </a>
         </Card>
         <Card>

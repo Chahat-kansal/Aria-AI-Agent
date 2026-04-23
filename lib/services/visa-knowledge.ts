@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { AUSTRALIAN_VISA_CATALOG } from "@/lib/data/australian-visa-catalog";
 import { getWebResearchProvider } from "@/lib/services/web-research";
 
 type VisaKnowledgePayload = {
@@ -66,6 +67,30 @@ function inferRequirements(title: string, summary: string) {
   return Array.from(new Set(requirements));
 }
 
+function officialListingSearchUrl(record: { subclassCode?: string; title: string }) {
+  const query = record.subclassCode ? `Subclass ${record.subclassCode}` : record.title;
+  return `${VISA_LIST_URL}?search=${encodeURIComponent(query)}`;
+}
+
+function baselineVisaKnowledgeRecords(): VisaKnowledgePayload[] {
+  return AUSTRALIAN_VISA_CATALOG.map((record) => {
+    const title = record.subclassCode ? `${record.title} (subclass ${record.subclassCode})` : record.title;
+    const searchableTerms = [record.category, ...record.keywords].join(", ");
+    const summary = `${record.title} is included in Aria's Australian visa and citizenship knowledge baseline for ${record.category.toLowerCase()} work. Search terms: ${searchableTerms}. This is AI-assisted operational knowledge only; migration agent review of the official source is required before client advice.`;
+    return {
+      subclassCode: record.subclassCode,
+      stream: record.stream,
+      title,
+      summary,
+      keyRequirements: Array.from(new Set(record.requirements)),
+      evidence: Array.from(new Set(record.evidence)),
+      sourceUrl: officialListingSearchUrl(record),
+      sourceType: "official-home-affairs-baseline",
+      rawContent: `${title}\n${summary}\n${record.requirements.join("\n")}\n${record.evidence.join("\n")}\n${officialListingSearchUrl(record)}`
+    };
+  });
+}
+
 async function fetchOfficialVisaListing() {
   const response = await fetch(VISA_LIST_URL, {
     headers: {
@@ -127,7 +152,8 @@ async function fetchProviderVisaKnowledge() {
 export async function ingestVisaKnowledge() {
   const directRecords = await fetchOfficialVisaListing().catch(() => []);
   const providerRecords = await fetchProviderVisaKnowledge().catch(() => []);
-  const records = [...directRecords, ...providerRecords];
+  const baselineRecords = baselineVisaKnowledgeRecords();
+  const records = [...baselineRecords, ...directRecords, ...providerRecords];
   const persisted = [];
   const seen = new Set<string>();
 
@@ -168,7 +194,49 @@ export async function ingestVisaKnowledge() {
   return { fetched: records.length, stored: persisted.length };
 }
 
+export async function ensureVisaKnowledgeBaseline() {
+  const records = baselineVisaKnowledgeRecords();
+  const existingCount = await prisma.visaKnowledgeRecord.count({
+    where: { sourceType: "official-home-affairs-baseline" }
+  });
+  if (existingCount >= records.length) return { fetched: 0, stored: 0, alreadyPresent: true };
+
+  const persisted = [];
+  for (const record of records) {
+    const contentHash = hashContent(record.rawContent);
+    persisted.push(
+      await prisma.visaKnowledgeRecord.upsert({
+        where: { sourceUrl_contentHash: { sourceUrl: record.sourceUrl, contentHash } },
+        update: {
+          title: record.title,
+          summary: record.summary,
+          subclassCode: record.subclassCode,
+          stream: record.stream,
+          keyRequirementsJson: record.keyRequirements,
+          evidenceJson: record.evidence,
+          sourceType: record.sourceType,
+          lastRefreshedAt: new Date()
+        },
+        create: {
+          title: record.title,
+          summary: record.summary,
+          subclassCode: record.subclassCode,
+          stream: record.stream,
+          keyRequirementsJson: record.keyRequirements,
+          evidenceJson: record.evidence,
+          sourceUrl: record.sourceUrl,
+          sourceType: record.sourceType,
+          contentHash
+        }
+      })
+    );
+  }
+
+  return { fetched: records.length, stored: persisted.length, alreadyPresent: false };
+}
+
 export async function getVisaKnowledgeRecords(query?: string) {
+  await ensureVisaKnowledgeBaseline();
   const trimmed = query?.trim();
   return prisma.visaKnowledgeRecord.findMany({
     where: trimmed
@@ -187,10 +255,12 @@ export async function getVisaKnowledgeRecords(query?: string) {
 }
 
 export async function getVisaKnowledgeRecord(recordId: string) {
+  await ensureVisaKnowledgeBaseline();
   return prisma.visaKnowledgeRecord.findUnique({ where: { id: recordId } });
 }
 
 export async function getVisaSubclassOptions() {
+  await ensureVisaKnowledgeBaseline();
   const records = await prisma.visaKnowledgeRecord.findMany({
     where: { subclassCode: { not: null } },
     select: { subclassCode: true, title: true, stream: true, sourceUrl: true, lastRefreshedAt: true },
@@ -206,7 +276,31 @@ export async function getVisaSubclassOptions() {
 }
 
 export async function getVisaKnowledgeForAssistant(query: string) {
+  await ensureVisaKnowledgeBaseline();
   const subclass = query.match(/\b(?:subclass\s*)?(\d{3,4})\b/i)?.[1];
+  const terms = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((term) => term.length > 3 && !["visa", "which", "what", "with", "from", "this", "that", "client", "matter", "australia", "australian"].includes(term))
+    .slice(0, 8);
+
+  if (!subclass && terms.length) {
+    const records = await prisma.visaKnowledgeRecord.findMany({
+      where: {
+        OR: terms.flatMap((term) => [
+          { title: { contains: term, mode: "insensitive" as const } },
+          { summary: { contains: term, mode: "insensitive" as const } },
+          { stream: { contains: term, mode: "insensitive" as const } },
+          { sourceType: { contains: term, mode: "insensitive" as const } }
+        ])
+      },
+      orderBy: [{ subclassCode: "asc" }, { title: "asc" }],
+      take: 5
+    });
+    if (records.length) return records;
+  }
+
   return prisma.visaKnowledgeRecord.findMany({
     where: subclass
       ? { subclassCode: subclass }

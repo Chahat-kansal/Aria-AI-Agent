@@ -18,7 +18,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
     return (
       <AppShell title="Visa Knowledge">
         <PageHeader title="Visa knowledge unavailable" subtitle="Your company administrator controls visa knowledge access for each staff user." />
-        <Card><p className="text-sm text-muted">You do not currently have permission to search visa knowledge records. Ask a Company Owner or Access Administrator to enable “Access visa knowledge” for your account.</p></Card>
+        <Card><p className="text-sm text-muted">You do not currently have permission to search visa knowledge records. Ask a Company Owner or Access Administrator to enable the Access visa knowledge permission for your account.</p></Card>
       </AppShell>
     );
   }
@@ -29,14 +29,14 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
     <AppShell title="Visa Knowledge">
       <PageHeader
         title="Official Visa Knowledge"
-        subtitle="Search source-linked visa and citizenship knowledge by subclass, visa name, evidence, or pathway terms."
+        subtitle="Search source-linked Australian visa and citizenship knowledge by subclass, visa name, evidence, or pathway terms."
       />
       <Card className="mb-4">
         <div className="space-y-4">
           <VisaKnowledgeSearch defaultValue={query} />
           <div className="flex flex-col gap-3 border-t border-border pt-4 lg:flex-row lg:items-center lg:justify-between">
             <p className="text-sm text-muted">
-              {query ? `${records.length} result${records.length === 1 ? "" : "s"} for "${query}"` : `${records.length} stored knowledge record${records.length === 1 ? "" : "s"}`}
+              {query ? `${records.length} result${records.length === 1 ? "" : "s"} for "${query}"` : `${records.length} stored visa and citizenship knowledge record${records.length === 1 ? "" : "s"}`}
             </p>
             <VisaKnowledgeIngestAction />
           </div>
@@ -52,7 +52,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
                   <p className="text-xs uppercase tracking-[0.18em] text-muted">{record.subclassCode ? `Subclass ${record.subclassCode}` : "Visa / citizenship knowledge"}</p>
                   <Link href={`/app/knowledge/${record.id}`} className="mt-1 block font-semibold text-[#182033] hover:text-accent">{record.title}</Link>
                   <p className="mt-2 line-clamp-3 text-sm text-muted">{record.summary}</p>
-                  <a href={record.sourceUrl} className="mt-2 inline-flex text-xs text-accent">Official source</a>
+                  <a href={record.sourceUrl} className="mt-2 inline-flex text-xs text-accent">Official source search</a>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Key requirements</p>
@@ -72,7 +72,7 @@ export default async function KnowledgePage({ searchParams }: { searchParams?: {
             <p className="mt-2 text-sm text-muted">
               {query
                 ? "Try searching by subclass number, visa name, stream, evidence type, or pathway term. If records are empty, refresh official visa knowledge first."
-                : "Run a refresh to ingest official public visa knowledge. Until then, Aria will not pretend broader visa knowledge is configured."}
+                : "Aria automatically loads the built-in official-source baseline, then live refresh can add or update Home Affairs records when network access is configured."}
             </p>
           </div>
         )}
