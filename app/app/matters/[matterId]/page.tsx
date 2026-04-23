@@ -6,8 +6,6 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getMatterDetailData } from "@/lib/data/workspace-repository";
 
-const tabs = ["Overview", "Documents", "Field Review", "Validation", "Tasks", "Updates", "AI Assistant"];
-
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
   if (!context) return <AppShell title="Matters"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review matter records." /></AppShell>;
@@ -17,19 +15,34 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
 
   const openTasks = matter.tasks.filter((task) => task.status !== "DONE").length;
   const openIssues = matter.validationIssues.filter((issue) => issue.resolutionStatus !== "RESOLVED" && issue.resolutionStatus !== "DISMISSED");
+  const workflowLinks = [
+    ["Overview", `/app/matters/${matter.id}`],
+    ["Upload documents", "/app/documents"],
+    ["Field review", matter.visaSubclass === "500" ? `/app/matters/${matter.id}/draft` : "/app/forms"],
+    ["Validation", "/app/validation"],
+    ["Tasks", "/app/tasks"],
+    ["Updates", "/app/updates"],
+    ["Ask Aria", "/app/assistant"]
+  ] as const;
 
   return (
     <AppShell title="Matters">
-      <PageHeader title={`${matter.client.firstName} ${matter.client.lastName} · ${matter.title}`} subtitle="AI-assisted matter workspace with source-linked review controls." />
+      <PageHeader title={`${matter.client.firstName} ${matter.client.lastName} - ${matter.title}`} subtitle="AI-assisted matter workspace with source-linked review controls." />
       <Card>
-        <div className="flex flex-wrap gap-2 text-sm">{tabs.map((tab, idx) => <span key={tab} className={`rounded-full px-3 py-1 ${idx === 0 ? "bg-accent/20 text-accent" : "bg-white/60 text-muted"}`}>{tab}</span>)}</div>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {workflowLinks.map(([label, href], idx) => (
+            <Link key={label} href={href as any} className={`rounded-full px-3 py-1 ${idx === 0 ? "bg-accent/20 text-accent" : "bg-white/60 text-muted hover:bg-white"}`}>
+              {label}
+            </Link>
+          ))}
+        </div>
         <div className="mt-4 grid gap-3 text-sm md:grid-cols-4">
-          <div className="rounded-xl border border-border p-3"><p className="text-muted">Status</p><p className="font-medium">{formatEnum(matter.status)}</p></div>
-          <div className="rounded-xl border border-border p-3"><p className="text-muted">Stage</p><p className="font-medium">{formatEnum(matter.stage)}</p></div>
-          <div className="rounded-xl border border-border p-3"><p className="text-muted">Readiness</p><p className="font-medium">{matter.readinessScore}%</p></div>
-          <div className="rounded-xl border border-border p-3"><p className="text-muted">Lodgement target</p><p className="font-medium">{formatDate(matter.lodgementTargetDate)}</p></div>
-          <div className="rounded-xl border border-border p-3"><p className="text-muted">Matter ref</p><p className="font-medium">{matter.matterReference ?? matter.id.slice(0, 8)}</p></div>
-          <div className="rounded-xl border border-border p-3"><p className="text-muted">Client ref</p><p className="font-medium">{matter.client.clientReference ?? matter.client.id.slice(0, 8)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Status</p><p className="font-medium">{formatEnum(matter.status)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Stage</p><p className="font-medium">{formatEnum(matter.stage)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Readiness</p><p className="font-medium">{matter.readinessScore}%</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Lodgement target</p><p className="font-medium">{formatDate(matter.lodgementTargetDate)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Matter ref</p><p className="font-medium">{matter.matterReference ?? matter.id.slice(0, 8)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Client ref</p><p className="font-medium">{matter.client.clientReference ?? matter.client.id.slice(0, 8)}</p></div>
         </div>
       </Card>
 
@@ -55,7 +68,11 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
       </section>
 
       <section className="mt-4 grid gap-4 md:grid-cols-3">
-        <Card><h3 className="font-semibold">Documents</h3><p className="mt-2 text-sm text-muted">{matter.documents.length} linked files</p></Card>
+        <Card>
+          <h3 className="font-semibold">Documents</h3>
+          <p className="mt-2 text-sm text-muted">{matter.documents.length} linked files</p>
+          <Link href="/app/documents" className="mt-3 inline-flex text-sm text-accent">Upload or review documents</Link>
+        </Card>
         <Card>
           <h3 className="font-semibold">Potential impacts</h3>
           <p className="mt-2 text-sm text-muted">{matter.impacts.length} update matches</p>
@@ -63,15 +80,19 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
             <p className="mt-2 text-xs text-muted">{matter.impacts[0].officialUpdate.title}: {matter.impacts[0].actionRequired ?? "Review required."}</p>
           ) : null}
         </Card>
-        <Card><h3 className="font-semibold">Open tasks</h3><p className="mt-2 text-sm text-muted">{openTasks} active tasks</p></Card>
+        <Card>
+          <h3 className="font-semibold">Open tasks</h3>
+          <p className="mt-2 text-sm text-muted">{openTasks} active tasks</p>
+          <Link href="/app/tasks" className="mt-3 inline-flex text-sm text-accent">Open tasks</Link>
+        </Card>
       </section>
 
       <Card className="mt-4">
         {matter.visaSubclass === "500" ? (
           <>
             <h3 className="font-semibold">Subclass 500 draft workflow</h3>
-            <p className="mt-2 text-sm text-muted">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, and client review preparation.</p>
-            <Link href={`/app/matters/${matter.id}/draft`} className="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-sm text-white">Open draft workflow</Link>
+            <p className="mt-2 text-sm text-muted">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, final cross-check, and client review preparation.</p>
+            <Link href={`/app/matters/${matter.id}/draft`} className="mt-3 inline-flex rounded-lg bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white">Open draft workflow</Link>
           </>
         ) : (
           <>

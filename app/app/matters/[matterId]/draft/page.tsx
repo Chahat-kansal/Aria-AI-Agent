@@ -16,7 +16,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
     <AppShell title="Forms & Field Review">
       <PageHeader
         title={`${template.name} draft`}
-        subtitle={`${matter.client.firstName} ${matter.client.lastName} · ${matter.title}. AI-assisted, source-linked, client review required before final submission preparation.`}
+        subtitle={`${matter.client.firstName} ${matter.client.lastName} - ${matter.title}. AI-assisted, source-linked, client review required before final submission preparation.`}
       />
 
       <section className="grid gap-4 md:grid-cols-[2fr_1fr]">
@@ -50,17 +50,17 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                   {fields.map((field: any) => {
                     const source = field.evidenceLinks[0];
                     return (
-                      <div key={field.id} className="rounded-xl border border-border bg-[#0b1424] p-3">
+                      <div key={field.id} className="rounded-xl border border-border bg-white/55 p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-xs text-muted">{field.templateField.fieldKey}</p>
                             <p className="font-medium">{field.templateField.label}</p>
                             <p className="mt-1 text-sm">{field.manualOverride || field.value || "Missing"}</p>
-                            <p className="mt-2 text-xs text-muted">Source: {source?.document.fileName ?? "No linked source yet"} · {field.sourcePageRef ?? "No location"}</p>
-                            <p className="mt-1 text-xs text-muted">Snippet: {field.sourceSnippet ? `“${field.sourceSnippet}”` : "No source snippet yet"}</p>
+                            <p className="mt-2 text-xs text-muted">Source: {source?.document.fileName ?? "No linked source yet"} - {field.sourcePageRef ?? "No location"}</p>
+                            <p className="mt-1 text-xs text-muted">Snippet: {field.sourceSnippet ? `"${field.sourceSnippet}"` : "No source snippet yet"}</p>
                           </div>
                           <div className="min-w-36 text-right text-xs">
-                            <p className="mb-2">Confidence: {field.confidence == null ? "—" : `${Math.round(field.confidence * 100)}%`}</p>
+                            <p className="mb-2">Confidence: {field.confidence == null ? "-" : `${Math.round(field.confidence * 100)}%`}</p>
                             <StatusChip label={field.status.replaceAll("_", " ").toLowerCase()} />
                             <DraftFieldReviewControls draftFieldId={field.id} />
                           </div>
@@ -81,7 +81,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
               <ul className="mt-3 space-y-2 text-sm text-muted">
                 {openIssues.slice(0, 8).map((issue: any) => (
                   <li key={issue.id} className="rounded-lg border border-border p-2">
-                    <span className="font-medium text-white">{issue.title}</span>
+                    <span className="font-medium text-[#182033]">{issue.title}</span>
                     <p className="mt-1 text-xs">{issue.description}</p>
                   </li>
                 ))}
@@ -115,7 +115,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
               <div className="mt-3 space-y-2 text-sm text-muted">
                 {draft.reviewRequests.map((request: any) => (
                   <Link key={request.id} href={`/client-review/${request.id}`} className="block rounded-lg border border-border p-2">
-                    {request.status.replaceAll("_", " ").toLowerCase()} · {request.recipientEmail ?? "client"}
+                    {request.status.replaceAll("_", " ").toLowerCase()} - {request.recipientEmail ?? "client"}
                   </Link>
                 ))}
               </div>

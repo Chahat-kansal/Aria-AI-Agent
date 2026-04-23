@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Bell, Building2, Search } from "lucide-react";
+import { Bell, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { SignOutButton } from "@/components/app/sign-out-button";
+import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
 
 const nav = [
   ["Overview", "/app/overview"],
@@ -15,6 +16,8 @@ const nav = [
   ["Updates Monitor", "/app/updates"],
   ["AI Assistant", "/app/assistant"],
   ["Tasks", "/app/tasks"],
+  ["Profile", "/app/profile"],
+  ["Company", "/app/company"],
   ["Settings", "/app/settings"]
 ] as const;
 
@@ -77,12 +80,9 @@ export async function AppShell({ title, children }: { title: string; children: R
               <p className="text-sm text-muted">AI-assisted workflow. Review required before submission.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex min-w-full items-center gap-2 rounded-lg border border-border bg-white/60 px-3 py-2 text-sm text-muted sm:min-w-[300px]">
-                <Search className="h-4 w-4" />
-                Command/search: matters, fields, updates, tasks...
-              </div>
-              <button className="rounded-lg border border-border p-2"><Bell className="h-4 w-4" /></button>
-              <div className="rounded-lg border border-border px-3 py-2 text-sm">{user.name} ({user.role})</div>
+              <VisaKnowledgeSearch compact />
+              <Link href="/app/updates" className="rounded-lg border border-border bg-white/50 p-2 text-muted hover:bg-white"><Bell className="h-4 w-4" /></Link>
+              <Link href="/app/profile" className="rounded-lg border border-border bg-white/50 px-3 py-2 text-sm hover:bg-white">{user.name} ({user.role})</Link>
               <SignOutButton />
             </div>
           </header>

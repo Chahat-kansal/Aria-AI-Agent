@@ -48,7 +48,7 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
         <p className="text-xs text-muted">Ask for latest or official information to use the configured live web research provider. If no provider is configured, Aria will say so rather than inventing current policy.</p>
       </form>
       <aside className="panel p-4 text-sm text-muted">
-        <p className="font-medium text-white">Grounding hierarchy</p>
+        <p className="font-medium text-[#182033]">Grounding hierarchy</p>
         <div className="mt-3 space-y-2">
           <p>1. Stored matter, document, draft, validation, update, and pathway records</p>
           <p>2. Stored official visa knowledge records</p>
@@ -62,13 +62,13 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
             <p className="leading-7">{reply.content}</p>
             {reply.recommendedActions?.length ? (
               <div>
-                <p className="font-medium text-white">Recommended next actions</p>
+                <p className="font-medium text-[#182033]">Recommended next actions</p>
                 <ul className="mt-2 grid gap-2 md:grid-cols-3">{reply.recommendedActions.map((action) => <li key={action} className="rounded-lg border border-border bg-white/70 p-3">{action}</li>)}</ul>
               </div>
             ) : null}
             {reply.citations?.length ? (
               <div>
-                <p className="font-medium text-white">Grounding</p>
+                <p className="font-medium text-[#182033]">Grounding</p>
                 <div className="mt-2 flex flex-wrap gap-2">{reply.citations.map((citation) => <a key={citation.href} href={citation.href} className="rounded-lg border border-border bg-white/60 px-3 py-2 text-accent">{citation.label}</a>)}</div>
               </div>
             ) : null}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/blocks/page-header";
@@ -23,10 +24,11 @@ export default async function SettingsPage() {
           <Card>
             <h3 className="font-semibold">Workspace profile</h3>
             <div className="mt-3 space-y-2 text-sm text-muted">
-              <p>Name: <span className="text-white">{workspace.name}</span></p>
-              <p>Slug: <span className="text-white">{workspace.slug}</span></p>
-              <p>Plan: <span className="text-white">{formatEnum(workspace.plan)}</span></p>
-              <p>Created: <span className="text-white">{formatDate(workspace.createdAt)}</span></p>
+              <p>Name: <span className="text-[#182033]">{workspace.name}</span></p>
+              <p>Slug: <span className="text-[#182033]">{workspace.slug}</span></p>
+              <p>Plan: <span className="text-[#182033]">{formatEnum(workspace.plan)}</span></p>
+              <p>Created: <span className="text-[#182033]">{formatDate(workspace.createdAt)}</span></p>
+              <Link href="/app/company" className="inline-flex text-accent">Edit company profile</Link>
             </div>
           </Card>
           <Card>
@@ -73,8 +75,8 @@ export default async function SettingsPage() {
             <div className="mt-3 space-y-2">
               {workspace.officialSources.length ? workspace.officialSources.map((source) => (
                 <div key={source.id} className="rounded-lg border border-border p-2 text-xs text-muted">
-                  <p className="text-white">{source.name}</p>
-                  <p>{source.sourceType} · {source.active ? "Active" : "Disabled"} · Last fetched {formatDate(source.lastFetchedAt)}</p>
+                  <p className="text-[#182033]">{source.name}</p>
+                  <p>{source.sourceType} - {source.active ? "Active" : "Disabled"} - Last fetched {formatDate(source.lastFetchedAt)}</p>
                 </div>
               )) : (
                 <p className="text-xs text-muted">Global official sources are created when ingestion runs. Workspace-specific sources are not configured.</p>
@@ -86,7 +88,7 @@ export default async function SettingsPage() {
             <h3 className="font-semibold">Visa knowledge</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
               <span>Stored official knowledge records</span>
-              <span className="text-white">{visaKnowledgeCount}</span>
+              <span className="text-[#182033]">{visaKnowledgeCount}</span>
             </div>
             <p className="mt-3 text-xs text-muted">Records are refreshed from official/public source-linked retrieval and used for broader subclass selection and Aria grounding.</p>
           </Card>

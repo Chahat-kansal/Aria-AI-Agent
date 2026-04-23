@@ -15,7 +15,7 @@ export default function LandingPage() {
           </div>
           <div className="flex gap-2">
             <Link href="/auth/sign-in"><Button className="border border-border bg-transparent">Sign in</Button></Link>
-            <Link href="/app/overview"><Button>Start trial</Button></Link>
+            <Link href="/auth/sign-up"><Button>Start trial</Button></Link>
           </div>
         </header>
 
@@ -23,7 +23,10 @@ export default function LandingPage() {
           <Badge className="border-accent/40 bg-accent/10 text-accent">AI-assisted · Source-linked · Review required</Badge>
           <h2 className="mt-4 max-w-3xl text-5xl font-semibold leading-tight">Reduce manual administration while improving submission readiness.</h2>
           <p className="mt-4 max-w-2xl text-muted">Aria helps migration teams manage matters, organize evidence, review extracted draft fields, validate inconsistencies, monitor official changes, and identify potentially affected client files.</p>
-          <div className="mt-6 flex gap-3"><Button>Request walkthrough</Button><Button className="border border-border bg-transparent">See pricing</Button></div>
+          <div className="mt-6 flex gap-3">
+            <Link href="/auth/sign-up"><Button>Request walkthrough</Button></Link>
+            <Link href="#pricing"><Button className="border border-border bg-white/40 text-[#182033]">See pricing</Button></Link>
+          </div>
         </section>
 
         <section className="grid gap-4 md:grid-cols-3">
@@ -51,7 +54,7 @@ export default function LandingPage() {
           </Card>
         </section>
 
-        <section className="panel p-8">
+        <section id="pricing" className="panel p-8">
           <h3 className="text-xl font-semibold">Pricing</h3>
           <p className="mt-1 text-sm text-muted">Designed for solo agents through multi-user firms.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-3">

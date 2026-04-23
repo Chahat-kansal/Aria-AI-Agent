@@ -168,10 +168,26 @@ export async function ingestVisaKnowledge() {
   return { fetched: records.length, stored: persisted.length };
 }
 
-export async function getVisaKnowledgeRecords() {
+export async function getVisaKnowledgeRecords(query?: string) {
+  const trimmed = query?.trim();
   return prisma.visaKnowledgeRecord.findMany({
+    where: trimmed
+      ? {
+          OR: [
+            { subclassCode: { contains: trimmed, mode: "insensitive" } },
+            { stream: { contains: trimmed, mode: "insensitive" } },
+            { title: { contains: trimmed, mode: "insensitive" } },
+            { summary: { contains: trimmed, mode: "insensitive" } },
+            { sourceType: { contains: trimmed, mode: "insensitive" } }
+          ]
+        }
+      : undefined,
     orderBy: [{ subclassCode: "asc" }, { title: "asc" }]
   });
+}
+
+export async function getVisaKnowledgeRecord(recordId: string) {
+  return prisma.visaKnowledgeRecord.findUnique({ where: { id: recordId } });
 }
 
 export async function getVisaSubclassOptions() {

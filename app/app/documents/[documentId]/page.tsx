@@ -17,17 +17,17 @@ export default async function DocumentDetailPage({ params }: { params: { documen
 
   return (
     <AppShell title="Documents">
-      <PageHeader title={document.fileName} subtitle={`${document.matter.client.firstName} ${document.matter.client.lastName} · ${document.matter.title}`} />
+      <PageHeader title={document.fileName} subtitle={`${document.matter.client.firstName} ${document.matter.client.lastName} - ${document.matter.title}`} />
       <section className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
         <Card>
           <h3 className="font-semibold">Stored file metadata</h3>
           <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
-            <p className="rounded-lg border border-border p-3 text-muted">Category<br /><span className="text-white">{document.category}</span></p>
-            <p className="rounded-lg border border-border p-3 text-muted">MIME type<br /><span className="text-white">{document.mimeType}</span></p>
-            <p className="rounded-lg border border-border p-3 text-muted">Size<br /><span className="text-white">{document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : "Not recorded"}</span></p>
-            <p className="rounded-lg border border-border p-3 text-muted">Uploaded<br /><span className="text-white">{formatDate(document.createdAt)}</span></p>
-            <p className="rounded-lg border border-border p-3 text-muted">Storage provider<br /><span className="text-white">{document.storageObject?.provider ?? "metadata only"}</span></p>
-            <p className="rounded-lg border border-border p-3 text-muted">Content hash<br /><span className="break-all text-white">{document.contentHash ?? "Not recorded"}</span></p>
+            <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Category<br /><span className="text-[#182033]">{document.category}</span></p>
+            <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">MIME type<br /><span className="text-[#182033]">{document.mimeType}</span></p>
+            <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Size<br /><span className="text-[#182033]">{document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : "Not recorded"}</span></p>
+            <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Uploaded<br /><span className="text-[#182033]">{formatDate(document.createdAt)}</span></p>
+            <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Storage provider<br /><span className="text-[#182033]">{document.storageObject?.provider ?? "metadata only"}</span></p>
+            <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Content hash<br /><span className="break-all text-[#182033]">{document.contentHash ?? "Not recorded"}</span></p>
           </div>
           <p className="mt-3 text-xs text-muted">Document preview is metadata and extracted-text based. Original file delivery can be plugged into the storage provider without changing matter workflows.</p>
         </Card>
@@ -43,17 +43,17 @@ export default async function DocumentDetailPage({ params }: { params: { documen
           <h3 className="font-semibold">Extracted fields</h3>
           <div className="mt-3 space-y-2">
             {document.extractedFields.length ? document.extractedFields.map((field) => (
-              <div key={field.id} className="rounded-lg border border-border p-3 text-sm">
+              <div key={field.id} className="rounded-lg border border-border bg-white/45 p-3 text-sm">
                 <div className="flex items-center justify-between"><p className="font-medium">{field.fieldLabel}</p><StatusChip label={formatEnum(field.status)} /></div>
                 <p className="mt-1 text-muted">{field.fieldValue}</p>
-                <p className="mt-1 text-xs text-muted">Confidence {Math.round(field.confidence * 100)}% · {field.sourceSnippet}</p>
+                <p className="mt-1 text-xs text-muted">Confidence {Math.round(field.confidence * 100)}% - {field.sourceSnippet}</p>
               </div>
             )) : <p className="text-sm text-muted">No extracted fields recorded for this document.</p>}
           </div>
         </Card>
         <Card>
           <h3 className="font-semibold">Text preview</h3>
-          <p className="mt-3 rounded-lg border border-border bg-[#0b1424] p-3 text-sm text-muted">
+          <p className="mt-3 rounded-lg border border-border bg-white/55 p-3 text-sm text-muted">
             {extraction?.extractedTextPreview || "No readable text preview was available from this file. Review the original document manually."}
           </p>
         </Card>

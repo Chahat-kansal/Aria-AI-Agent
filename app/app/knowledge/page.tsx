@@ -1,31 +1,34 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { VisaKnowledgeIngestAction } from "@/components/app/visa-knowledge-ingest-action";
+import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
 import { getVisaKnowledgeRecords } from "@/lib/services/visa-knowledge";
 
 function asList(value: unknown) {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
-export default async function KnowledgePage() {
-  const records = await getVisaKnowledgeRecords();
+export default async function KnowledgePage({ searchParams }: { searchParams?: { q?: string } }) {
+  const query = searchParams?.q ?? "";
+  const records = await getVisaKnowledgeRecords(query);
 
   return (
     <AppShell title="Visa Knowledge">
       <PageHeader
         title="Official Visa Knowledge"
-        subtitle="Stored source-linked visa and citizenship knowledge used by Aria for broader subclass selection and review-required research."
+        subtitle="Search source-linked visa and citizenship knowledge by subclass, visa name, evidence, or pathway terms."
       />
       <Card className="mb-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h3 className="font-semibold">Knowledge ingestion</h3>
-            <p className="mt-1 text-sm text-muted">
-              Refresh official public visa pages. If a search provider is configured, Aria also enriches records from source-linked official web retrieval.
+        <div className="space-y-4">
+          <VisaKnowledgeSearch defaultValue={query} />
+          <div className="flex flex-col gap-3 border-t border-border pt-4 lg:flex-row lg:items-center lg:justify-between">
+            <p className="text-sm text-muted">
+              {query ? `${records.length} result${records.length === 1 ? "" : "s"} for "${query}"` : `${records.length} stored knowledge record${records.length === 1 ? "" : "s"}`}
             </p>
+            <VisaKnowledgeIngestAction />
           </div>
-          <VisaKnowledgeIngestAction />
         </div>
       </Card>
 
@@ -36,7 +39,7 @@ export default async function KnowledgePage() {
               <div key={record.id} className="grid gap-4 p-4 lg:grid-cols-[1.3fr_1fr_1fr]">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-muted">{record.subclassCode ? `Subclass ${record.subclassCode}` : "Visa / citizenship knowledge"}</p>
-                  <h3 className="mt-1 font-semibold">{record.title}</h3>
+                  <Link href={`/app/knowledge/${record.id}`} className="mt-1 block font-semibold text-[#182033] hover:text-accent">{record.title}</Link>
                   <p className="mt-2 line-clamp-3 text-sm text-muted">{record.summary}</p>
                   <a href={record.sourceUrl} className="mt-2 inline-flex text-xs text-accent">Official source</a>
                 </div>
@@ -54,9 +57,11 @@ export default async function KnowledgePage() {
           </div>
         ) : (
           <div className="p-6">
-            <h3 className="font-semibold">No visa knowledge records stored yet</h3>
+            <h3 className="font-semibold">{query ? "No matching visa knowledge records" : "No visa knowledge records stored yet"}</h3>
             <p className="mt-2 text-sm text-muted">
-              Run a refresh to ingest official public visa knowledge. Until then, Aria will not pretend broader visa knowledge is configured.
+              {query
+                ? "Try searching by subclass number, visa name, stream, evidence type, or pathway term. If records are empty, refresh official visa knowledge first."
+                : "Run a refresh to ingest official public visa knowledge. Until then, Aria will not pretend broader visa knowledge is configured."}
             </p>
           </div>
         )}

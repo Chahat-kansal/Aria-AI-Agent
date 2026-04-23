@@ -178,6 +178,16 @@ export async function getSettingsData(workspaceId: string) {
   });
 }
 
+export async function getCompanyProfileData(workspaceId: string) {
+  return prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    include: {
+      users: { orderBy: { name: "asc" } },
+      _count: { select: { matters: true, documents: true, tasks: true, clients: true } }
+    }
+  });
+}
+
 export async function getAssistantData(workspaceId: string) {
   return prisma.aiChatThread.findMany({
     where: { workspaceId },
