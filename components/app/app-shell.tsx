@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Bell, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { SignOutButton } from "@/components/app/sign-out-button";
 import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
 import { canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
 import { UserRole } from "@prisma/client";
@@ -97,7 +96,7 @@ export async function AppShell({ title, children }: { title: string; children: R
               {hasPermission(user, "can_access_visa_knowledge") ? <VisaKnowledgeSearch compact /> : null}
               <Link href="/app/updates" className="rounded-lg border border-border bg-white/50 p-2 text-muted hover:bg-white"><Bell className="h-4 w-4" /></Link>
               <Link href="/app/profile" className="rounded-lg border border-border bg-white/50 px-3 py-2 text-sm hover:bg-white">{user.name} ({roleLabel(user.role)})</Link>
-              <SignOutButton />
+              <Link href="/auth/sign-out" className="rounded-lg border border-border bg-white/50 px-3 py-2 text-sm text-muted transition hover:bg-white hover:text-[#182033]">Sign out</Link>
             </div>
           </header>
           {children}
