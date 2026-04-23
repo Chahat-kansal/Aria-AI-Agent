@@ -5,6 +5,7 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
 import { canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
+import { UserRole } from "@prisma/client";
 
 const nav: Array<{ label: string; href: string; permission?: PermissionKey }> = [
   { label: "Overview", href: "/app/overview" },
@@ -44,9 +45,9 @@ export async function AppShell({ title, children }: { title: string; children: R
   }
 
   const { user, workspace } = context;
+  const canOpenTeam = user.role === UserRole.COMPANY_OWNER || canManageTeam(user);
   const shellNav = [
     ...nav.filter((item) => !item.permission || hasPermission(user, item.permission)),
-    ...(canManageTeam(user) ? [{ label: "Team", href: "/app/team" }] : []),
     { label: "Profile", href: "/app/profile" },
     { label: "Company", href: "/app/company" },
     { label: "Settings", href: "/app/settings" }
@@ -73,6 +74,14 @@ export async function AppShell({ title, children }: { title: string; children: R
               </Link>
             ))}
           </nav>
+          {canOpenTeam ? (
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="mb-2 px-3 text-xs uppercase tracking-[0.18em] text-muted">Company</p>
+              <Link href="/app/team" className={cn("block rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/70 hover:text-[#182033]", title === "Team" && "bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] text-white shadow-premium")}>
+                Team
+              </Link>
+            </div>
+          ) : null}
           <div className="mt-6 rounded-lg border border-border bg-white/55 p-3 text-xs text-muted">
             Workspace plan: {workspace.plan}. Active scope: {canManageTeam(user) ? "Company workspace" : "Assigned work"}.
           </div>

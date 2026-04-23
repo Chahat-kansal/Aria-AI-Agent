@@ -11,6 +11,7 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,11 +41,34 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
 
     setMessage(`Staff user created. Temporary password: ${result?.temporaryPassword ?? "set by admin"}`);
     (event.currentTarget as HTMLFormElement).reset();
+    setIsOpen(false);
     router.refresh();
   }
 
+  if (!isOpen) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          className="rounded-xl bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white shadow-premium transition hover:opacity-90"
+          onClick={() => setIsOpen(true)}
+          type="button"
+        >
+          + Add Team Member
+        </button>
+        {message ? <p className="text-sm text-muted">{message}</p> : null}
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={createUser} className="grid gap-3 md:grid-cols-2">
+    <form onSubmit={createUser} className="grid gap-3 rounded-2xl border border-border bg-white/45 p-4 md:grid-cols-2">
+      <div className="md:col-span-2 flex items-start justify-between gap-3">
+        <div>
+          <h4 className="font-semibold">Add Team Member</h4>
+          <p className="mt-1 text-xs text-muted">Create a real staff login and choose the permissions this user should have.</p>
+        </div>
+        <button className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs text-muted hover:bg-white" onClick={() => setIsOpen(false)} type="button">Cancel</button>
+      </div>
       <input name="name" required placeholder="Full name" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
       <input name="email" required type="email" placeholder="Work email" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
       <select name="role" required className="rounded-lg border border-border bg-white/70 p-2 text-sm">

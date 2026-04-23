@@ -126,6 +126,7 @@ export function getUserPermissions(user: Pick<User, "role" | "status" | "permiss
 }
 
 export function hasPermission(user: Pick<User, "role" | "status" | "permissionsJson">, permission: PermissionKey) {
+  if (user.status !== UserStatus.DISABLED && user.role === UserRole.COMPANY_OWNER) return true;
   return getUserPermissions(user)[permission] === true;
 }
 
@@ -141,6 +142,7 @@ export function serializePermissions(input: Partial<Record<string, unknown>>, ro
 
 export function canManageTeam(user: Pick<User, "role" | "status" | "permissionsJson">) {
   if (user.status === UserStatus.DISABLED) return false;
+  if (user.role === UserRole.COMPANY_OWNER) return true;
   return hasPermission(user, "can_manage_team");
 }
 

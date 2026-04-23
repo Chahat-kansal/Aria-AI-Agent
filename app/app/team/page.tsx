@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
@@ -11,7 +10,17 @@ import { prisma } from "@/lib/prisma";
 
 export default async function TeamPage() {
   const context = await requireCurrentWorkspaceContext();
-  if (!canManageTeam(context.user)) notFound();
+  if (!canManageTeam(context.user)) {
+    return (
+      <AppShell title="Team">
+        <PageHeader title="Team Management" subtitle="Company staff access is controlled by owner and administrator permissions." />
+        <Card>
+          <h3 className="font-semibold">You do not have permission to manage team members</h3>
+          <p className="mt-2 text-sm text-muted">Ask a Company Owner or Access Administrator to enable the “Manage team” permission for your account.</p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   const users = await prisma.user.findMany({
     where: { workspaceId: context.workspace.id },
@@ -24,11 +33,15 @@ export default async function TeamPage() {
 
   return (
     <AppShell title="Team">
-      <PageHeader title="Team & Access" subtitle="Create staff accounts, assign roles, enforce visibility scope, and manage activation for this migration company." />
+      <PageHeader title="Team Members" subtitle="Create staff accounts, assign roles, enforce visibility scope, and manage activation for this migration company." />
       <section className="grid gap-4 xl:grid-cols-[1fr_0.8fr]">
         <Card>
-          <h3 className="font-semibold">Add Team Member</h3>
-          <p className="mb-4 mt-1 text-sm text-muted">Staff accounts are real login users inside this company workspace. Access is limited by role and visibility scope.</p>
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">Team Members</h3>
+              <p className="mt-1 text-sm text-muted">Staff accounts are real login users inside this company workspace. Access is limited by role, visibility scope, and per-user feature permissions.</p>
+            </div>
+          </div>
           <TeamUserForm roles={roleDefinitions} supervisors={users.map((user) => ({ id: user.id, name: user.name, email: user.email }))} permissions={permissionDefinitions} />
         </Card>
         <Card>
