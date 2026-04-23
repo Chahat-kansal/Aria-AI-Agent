@@ -35,7 +35,7 @@ export default async function PathwaysPage() {
       <div className="panel overflow-hidden">
         {analyses.length ? (
           <table className="w-full text-sm">
-            <thead className="bg-[#101a2e] text-muted">
+            <thead className="bg-white/70 text-muted">
               <tr>
                 <th className="p-3 text-left">Analysis</th>
                 <th className="p-3 text-left">Client / matter</th>
@@ -46,7 +46,7 @@ export default async function PathwaysPage() {
             </thead>
             <tbody>
               {analyses.map((analysis) => (
-                <tr key={analysis.id} className="border-t border-border hover:bg-[#0f1727]">
+                <tr key={analysis.id} className="border-t border-border hover:bg-white/65">
                   <td className="p-3">
                     <Link href={`/app/pathways/${analysis.id}`} className="font-medium text-accent">{analysis.title}</Link>
                     <p className="mt-1 max-w-xl text-xs text-muted">{analysis.summary}</p>

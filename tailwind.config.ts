@@ -6,17 +6,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#060A14",
-        surface: "#0B1220",
-        border: "#1F2A3D",
-        muted: "#96A0B5",
-        accent: "#7C9DFF",
-        success: "#35C58A",
-        warning: "#FFBD59",
-        danger: "#FF6E74"
+        background: "#F6F7FF",
+        surface: "rgba(255,255,255,0.74)",
+        border: "rgba(117,121,164,0.22)",
+        muted: "#667085",
+        accent: "#6D5EF6",
+        success: "#16A37B",
+        warning: "#C78100",
+        danger: "#D9485F"
       },
       boxShadow: {
-        premium: "0 12px 40px rgba(2,8,24,0.35)"
+        premium: "0 18px 55px rgba(70,80,140,0.16)"
       }
     }
   },

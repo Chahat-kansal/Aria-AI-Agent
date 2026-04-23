@@ -57,10 +57,10 @@ export default function SignUpPage() {
         <h1 className="text-2xl font-semibold">Create account</h1>
         <p className="mt-2 text-sm text-muted">Set up your migration practice workspace.</p>
         <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
-          <input name="name" required className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Full name" />
-          <input name="email" required className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Work email" type="email" />
-          <input name="workspaceName" className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Workspace name" />
-          <input name="password" required minLength={8} className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Password" type="password" />
+          <input name="name" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Full name" />
+          <input name="email" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Work email" type="email" />
+          <input name="workspaceName" className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Workspace name" />
+          <input name="password" required minLength={8} className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Password" type="password" />
           {error ? <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p> : null}
           <button
             className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"

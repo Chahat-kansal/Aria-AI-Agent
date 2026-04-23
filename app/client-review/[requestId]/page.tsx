@@ -13,7 +13,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
   });
 
   if (!request) {
-    return <main className="min-h-screen bg-[#040912] p-8 text-white">Review request not found.</main>;
+    return <main className="min-h-screen p-8 text-[#182033]">Review request not found.</main>;
   }
 
   if (request.status === "SENT_TO_CLIENT") {
@@ -25,7 +25,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
   }
 
   return (
-    <main className="min-h-screen bg-[#040912] p-6 text-white">
+    <main className="min-h-screen p-6 text-[#182033]">
       <div className="mx-auto max-w-4xl space-y-4">
         <Card>
           <Badge className="border-accent/40 bg-accent/10 text-accent">Client review required</Badge>
@@ -33,7 +33,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
           <p className="mt-2 text-sm text-muted">
             This is a client confirmation workflow foundation. The draft remains AI-assisted and requires registered migration agent review before final submission preparation.
           </p>
-          <p className="mt-3 text-sm">{request.matter.client.firstName} {request.matter.client.lastName} · {request.matter.title}</p>
+          <p className="mt-3 text-sm">{request.matter.client.firstName} {request.matter.client.lastName} - {request.matter.title}</p>
           <p className="mt-2 text-sm text-muted">Current status: {request.status.replaceAll("_", " ").toLowerCase()}</p>
         </Card>
 
@@ -41,7 +41,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
           <h2 className="font-semibold">Draft fields for confirmation</h2>
           <div className="mt-3 space-y-2">
             {request.draft.fields.slice(0, 12).map((field) => (
-              <div key={field.id} className="rounded-lg border border-border p-3 text-sm">
+              <div key={field.id} className="rounded-lg border border-border bg-white/50 p-3 text-sm">
                 <p className="font-medium">{field.templateField.label}</p>
                 <p className="text-muted">{field.manualOverride || field.value || "Missing / requires agent follow-up"}</p>
               </div>

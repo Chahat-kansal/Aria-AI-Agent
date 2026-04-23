@@ -65,7 +65,7 @@ export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; 
         <p className="mt-1 text-xs text-muted">Stores the file, records metadata in Postgres, classifies evidence, and maps supported values to the draft.</p>
         <form onSubmit={uploadDocument} className="mt-3 flex gap-2">
           <input type="hidden" name="matterId" value={matterId} />
-          <input name="file" required type="file" className="w-full rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
+          <input name="file" required type="file" className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
           <button disabled={pending} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Upload</button>
         </form>
       </div>
@@ -73,7 +73,7 @@ export function DraftWorkflowActions({ matterId, draftId }: { matterId: string; 
       <button onClick={runFinalCrossCheck} disabled={pending} className="w-full rounded-xl border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60">Final submission-readiness cross-check</button>
       <div className="rounded-xl border border-border bg-[#0e182a] p-3">
         <p className="text-sm font-semibold">Client review/signature foundation</p>
-        <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-2 w-full rounded-lg border border-border bg-[#0d1728] p-2 text-sm" />
+        <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-2 w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
         <button onClick={sendReview} disabled={pending} className="mt-2 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Send to client review</button>
       </div>
       {message ? <p className="rounded-lg border border-border bg-[#0e182a] p-2 text-xs text-muted">{message}</p> : null}

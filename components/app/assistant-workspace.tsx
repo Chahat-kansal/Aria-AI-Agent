@@ -37,12 +37,12 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <form onSubmit={ask} className="panel space-y-3 p-4">
-        <select name="matterId" className="w-full rounded-lg border border-border bg-[#0d1728] p-2 text-sm">
+        <select name="matterId" className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm">
           <option value="">Workspace mode</option>
           {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
         </select>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input name="prompt" required className="w-full rounded-lg border border-border bg-[#0d1728] p-2" placeholder="Ask about missing evidence, conflicts, readiness, or update impacts..." />
+          <input name="prompt" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Ask about missing evidence, conflicts, readiness, or update impacts..." />
           <button disabled={isLoading} className="rounded-lg bg-accent px-5 py-2 text-sm font-semibold text-white disabled:opacity-60">{isLoading ? "Reviewing..." : "Ask"}</button>
         </div>
         <p className="text-xs text-muted">Ask for latest or official information to use the configured live web research provider. If no provider is configured, Aria will say so rather than inventing current policy.</p>
@@ -63,13 +63,13 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
             {reply.recommendedActions?.length ? (
               <div>
                 <p className="font-medium text-white">Recommended next actions</p>
-                <ul className="mt-2 grid gap-2 md:grid-cols-3">{reply.recommendedActions.map((action) => <li key={action} className="rounded-lg border border-border bg-[#0d1728] p-3">{action}</li>)}</ul>
+                <ul className="mt-2 grid gap-2 md:grid-cols-3">{reply.recommendedActions.map((action) => <li key={action} className="rounded-lg border border-border bg-white/70 p-3">{action}</li>)}</ul>
               </div>
             ) : null}
             {reply.citations?.length ? (
               <div>
                 <p className="font-medium text-white">Grounding</p>
-                <div className="mt-2 flex flex-wrap gap-2">{reply.citations.map((citation) => <a key={citation.href} href={citation.href} className="rounded-lg border border-border bg-[#111a2b] px-3 py-2 text-accent">{citation.label}</a>)}</div>
+                <div className="mt-2 flex flex-wrap gap-2">{reply.citations.map((citation) => <a key={citation.href} href={citation.href} className="rounded-lg border border-border bg-white/60 px-3 py-2 text-accent">{citation.label}</a>)}</div>
               </div>
             ) : null}
           </div>

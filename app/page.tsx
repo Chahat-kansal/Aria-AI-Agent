@@ -55,7 +55,7 @@ export default function LandingPage() {
           <h3 className="text-xl font-semibold">Pricing</h3>
           <p className="mt-1 text-sm text-muted">Designed for solo agents through multi-user firms.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
-            {[{tier:"Starter",price:"A$99",desc:"For solo agents and lean operations."},{tier:"Growth",price:"A$299",desc:"For active firms with larger matter volume."},{tier:"Pro",price:"A$699",desc:"For teams needing advanced workflow depth."}].map((p)=><Card key={p.tier} className="bg-[#0a1221]"><h4 className="font-semibold">{p.tier}</h4><p className="mt-1 text-sm text-muted">{p.desc}</p><p className="mt-4 text-2xl font-semibold">{p.price}<span className="text-sm text-muted">/mo</span></p><button className="mt-3 inline-flex items-center gap-1 text-sm text-accent">Start trial <ArrowRight className="h-4 w-4"/></button></Card>)}
+            {[{tier:"Starter",price:"A$99",desc:"For solo agents and lean operations."},{tier:"Growth",price:"A$299",desc:"For active firms with larger matter volume."},{tier:"Pro",price:"A$699",desc:"For teams needing advanced workflow depth."}].map((p)=><Card key={p.tier} className="bg-white/70"><h4 className="font-semibold">{p.tier}</h4><p className="mt-1 text-sm text-muted">{p.desc}</p><p className="mt-4 text-2xl font-semibold">{p.price}<span className="text-sm text-muted">/mo</span></p><button className="mt-3 inline-flex items-center gap-1 text-sm text-accent">Start trial <ArrowRight className="h-4 w-4"/></button></Card>)}
           </div>
         </section>
       </div>

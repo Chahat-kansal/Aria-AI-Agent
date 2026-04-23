@@ -5,7 +5,7 @@ export function StatCard({ label, value, hint }: { label: string; value: string;
     <Card className="p-4">
       <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
       <p className="mt-2 text-3xl font-semibold">{value}</p>
-      <p className="mt-1 text-xs text-accent">{hint}</p>
+      <p className="mt-1 text-xs text-[#5B52DB]">{hint}</p>
     </Card>
   );
 }

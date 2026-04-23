@@ -22,7 +22,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     <AppShell title="Matters">
       <PageHeader title={`${matter.client.firstName} ${matter.client.lastName} · ${matter.title}`} subtitle="AI-assisted matter workspace with source-linked review controls." />
       <Card>
-        <div className="flex flex-wrap gap-2 text-sm">{tabs.map((tab, idx) => <span key={tab} className={`rounded-full px-3 py-1 ${idx === 0 ? "bg-accent/20 text-accent" : "bg-[#111a2b] text-muted"}`}>{tab}</span>)}</div>
+        <div className="flex flex-wrap gap-2 text-sm">{tabs.map((tab, idx) => <span key={tab} className={`rounded-full px-3 py-1 ${idx === 0 ? "bg-accent/20 text-accent" : "bg-white/60 text-muted"}`}>{tab}</span>)}</div>
         <div className="mt-4 grid gap-3 text-sm md:grid-cols-4">
           <div className="rounded-xl border border-border p-3"><p className="text-muted">Status</p><p className="font-medium">{formatEnum(matter.status)}</p></div>
           <div className="rounded-xl border border-border p-3"><p className="text-muted">Stage</p><p className="font-medium">{formatEnum(matter.stage)}</p></div>

@@ -23,12 +23,12 @@ export default async function MattersPage() {
       <div className="panel overflow-hidden">
         {matters.length ? (
           <table className="w-full text-sm">
-            <thead className="bg-[#101a2e] text-muted">
+            <thead className="bg-white/70 text-muted">
               <tr><th className="p-3 text-left">Client</th><th className="p-3 text-left">Reference</th><th className="p-3 text-left">Matter</th><th className="p-3">Subclass</th><th className="p-3">Stream</th><th className="p-3">Owner</th><th className="p-3">Stage</th><th className="p-3">Readiness</th></tr>
             </thead>
             <tbody>
               {matters.map((matter) => (
-                <tr key={matter.id} className="border-t border-border hover:bg-[#0f1727]">
+                <tr key={matter.id} className="border-t border-border hover:bg-white/65">
                   <td className="p-3"><Link href={`/app/matters/${matter.id}`} className="text-accent">{matter.client.firstName} {matter.client.lastName}</Link></td>
                   <td className="p-3 text-muted">{matter.matterReference ?? matter.id.slice(0, 8)}</td>
                   <td className="p-3">{matter.title}</td>

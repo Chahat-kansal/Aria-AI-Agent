@@ -50,7 +50,7 @@ export default async function FormsPage() {
             {matters.map((matter) => {
               const configured = configuredSubclassCodes.has(matter.visaSubclass);
               return (
-                <Link key={matter.id} href={configured ? `/app/matters/${matter.id}/draft` : `/app/matters/${matter.id}`} className="block rounded-xl border border-border p-3 transition hover:bg-[#0f1727]">
+                <Link key={matter.id} href={configured ? `/app/matters/${matter.id}/draft` : `/app/matters/${matter.id}`} className="block rounded-xl border border-border p-3 transition hover:bg-white/65">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{matter.client.firstName} {matter.client.lastName}</p>

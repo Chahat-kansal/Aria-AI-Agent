@@ -13,7 +13,7 @@ export default async function TasksPage() {
     <AppShell title="Tasks">
       <PageHeader title="Task Board" subtitle="Matter-linked operational tasks with owner, priority, due date, and completion status." />
       <Card>
-        <div className="mb-3 flex gap-2 text-xs"><span className="rounded bg-[#111a2b] px-2 py-1">Open tasks</span><span className="rounded bg-[#111a2b] px-2 py-1">Due date order</span><span className="rounded bg-[#111a2b] px-2 py-1">Database-backed</span></div>
+        <div className="mb-3 flex gap-2 text-xs"><span className="rounded bg-white/60 px-2 py-1">Open tasks</span><span className="rounded bg-white/60 px-2 py-1">Due date order</span><span className="rounded bg-white/60 px-2 py-1">Database-backed</span></div>
         <div className="space-y-2">
           {tasks.length ? tasks.map((task) => (
             <div key={task.id} className="flex items-center justify-between rounded-lg border border-border p-3">

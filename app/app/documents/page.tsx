@@ -28,7 +28,7 @@ export default async function DocumentsPage() {
           <div className="mt-4 overflow-hidden rounded-xl border border-border">
             {documents.length ? (
               <table className="w-full text-sm">
-                <thead className="bg-[#101a2e] text-muted"><tr><th className="p-2 text-left">File</th><th className="p-2">Matter</th><th className="p-2">Category</th><th className="p-2">Size</th><th className="p-2">Extraction</th><th className="p-2">Review</th><th className="p-2">Uploaded</th></tr></thead>
+                <thead className="bg-white/70 text-muted"><tr><th className="p-2 text-left">File</th><th className="p-2">Matter</th><th className="p-2">Category</th><th className="p-2">Size</th><th className="p-2">Extraction</th><th className="p-2">Review</th><th className="p-2">Uploaded</th></tr></thead>
                 <tbody>
                   {documents.map((document) => (
                     <tr key={document.id} className="border-t border-border">
