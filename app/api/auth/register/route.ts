@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
-    serverLog("auth.register_error", { error: error instanceof Error ? error.message : String(error) });
+    serverLog("REGISTER_ERROR", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Registration failed. Please check configuration and try again." }, { status: 500 });
   }
 }
