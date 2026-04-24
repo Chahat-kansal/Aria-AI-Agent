@@ -59,6 +59,29 @@ Aria is an AI-assisted migration operations platform for Australian migration pr
    npm run dev
    ```
 
+## Deployment note for Prisma on Vercel
+Use Vercel only for:
+
+```bash
+prisma generate && next build
+```
+
+Do not rely on Vercel build to run `prisma migrate deploy` when your production database direct host is not reachable from the build environment.
+
+Before deploying, run migrations manually from a machine or CI job that can reach the database direct connection:
+
+```bash
+npx prisma migrate deploy
+```
+
+Recommended production env vars:
+- `DATABASE_URL`: pooled/runtime connection
+- `DIRECT_URL`: direct database connection for migrations
+
+In short:
+- Vercel build: `prisma generate && next build`
+- Migrations: run `npx prisma migrate deploy` manually, locally, or in CI before deploy
+
 ## Docker local run
 ```bash
 docker compose up --build
