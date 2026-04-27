@@ -64,6 +64,49 @@ export async function POST(req: Request) {
     })) : null;
     const researchSummary = research ? summarizeResearch(research) : "Live web research was not requested for this answer.";
 
+      const ai = await generateAriaAiResponse({
+  system: `
+You are Aria, an AI migration workbench for registered migration agents.
+
+You assist with matter review, document evidence, validation, pathway analysis, and official update impacts.
+
+Rules:
+- Do not claim to be a registered migration agent.
+- Do not give guaranteed approval language.
+- Always say review is required.
+- Separate grounded facts from AI reasoning.
+- Return strict JSON with:
+{
+  "content": string,
+  "groundedFacts": string[],
+  "reasoning": string[],
+  "recommendedActions": string[],
+  "citations": [{"label": string, "href": string}],
+  "riskWarnings": string[],
+  "reviewRequired": true
+}
+`,
+  user: prompt,
+  context: {
+    matterId,
+    draftReadiness: data.draft.readinessScore,
+    openIssues: data.openIssues,
+    updateImpacts: impactTitles,
+    pathways: pathwaySummary,
+    visaKnowledge: visaKnowledge.map((item) => ({
+      title: item.title,
+      subclassCode: item.subclassCode,
+      sourceUrl: item.sourceUrl
+    })),
+    liveResearch: researchSummary
+  }
+});
+
+return NextResponse.json({
+  mode: "matter-specific",
+  reviewRequired: true,
+  ...ai
+});
     return NextResponse.json({
       mode: "matter-specific",
       reviewRequired: true,
