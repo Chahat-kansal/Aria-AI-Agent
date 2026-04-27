@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
+import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import type { User } from "@prisma/client";
 
 type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
@@ -24,7 +25,7 @@ export type PathwayProfileInput = {
 };
 
 type PathwayOptionInput = {
-  pathwayType: "Immediate visa option" | "PR pathway" | "Citizenship consideration";
+  pathwayType: "Immediate visa option" | "PR pathway" | "Citizenship consideration" | string;
   title: string;
   relevance: string;
   confidence: number;
@@ -32,6 +33,7 @@ type PathwayOptionInput = {
   missing: string[];
   risks: string[];
   nextActions: string[];
+  rank?: number;
 };
 
 function includesAny(value: string | undefined, terms: string[]) {
@@ -172,16 +174,95 @@ function pathwayRules(profile: ReturnType<typeof normalizeProfile>) {
 
 export async function createPathwayAnalysis(input: PathwayProfileInput & { workspaceId: string; createdByUserId: string }) {
   const profile = normalizeProfile(input);
-  const options = pathwayRules(profile);
-  const blockers = buildBlockers(profile);
-  const evidenceGaps = buildEvidenceGaps(profile);
-  const assumptions = [
-    "This is AI-assisted scenario analysis for a registered migration agent to review.",
-    "The analysis uses supplied intake facts and stored matter context only; it is not an eligibility decision or outcome prediction.",
-    "Official criteria and policy settings should be checked before client-facing advice."
-  ];
+
+  let options = pathwayRules(profile);
+  let aiSummary: string | null = null;
+  let aiBlockers: string[] | null = null;
+  let aiEvidenceGaps: string[] | null = null;
+  let aiAssumptions: string[] | null = null;
+
+  const aiPathways = await generateAriaAiResponse({
+    system: `
+You are Aria, an AI migration workbench assisting registered migration agents.
+
+Generate AI-assisted Australian visa pathway analysis.
+
+Rules:
+- Do not provide final legal advice.
+- Do not guarantee eligibility or approval.
+- Use review-required language.
+- Use supplied facts only.
+- If facts are missing, list them as evidence gaps.
+- Return strict JSON:
+{
+  "summary": string,
+  "options": [
+    {
+      "pathwayType": string,
+      "title": string,
+      "relevance": string,
+      "confidence": number,
+      "conditions": string[],
+      "missing": string[],
+      "risks": string[],
+      "nextActions": string[]
+    }
+  ],
+  "blockers": string[],
+  "evidenceGaps": string[],
+  "assumptions": string[]
+}
+`,
+    user: "Generate pathway analysis from this client profile.",
+    context: profile
+  }).catch(() => null);
+
+  if (aiPathways?.options && Array.isArray(aiPathways.options)) {
+    options = aiPathways.options.map((option: any, index: number) => ({
+      rank: index + 1,
+      pathwayType: String(option.pathwayType || "PR pathway"),
+      title: String(option.title || "Migration pathway for review"),
+      relevance: String(option.relevance || "Requires registered migration agent review."),
+      confidence: Number(option.confidence || 0.5),
+      conditions: Array.isArray(option.conditions) ? option.conditions.map(String) : [],
+      missing: Array.isArray(option.missing) ? option.missing.map(String) : [],
+      risks: Array.isArray(option.risks) ? option.risks.map(String) : [],
+      nextActions: Array.isArray(option.nextActions) ? option.nextActions.map(String) : []
+    }));
+  }
+
+  if (typeof aiPathways?.summary === "string") {
+    aiSummary = aiPathways.summary;
+  }
+
+  if (Array.isArray(aiPathways?.blockers)) {
+    aiBlockers = aiPathways.blockers.map(String);
+  }
+
+  if (Array.isArray(aiPathways?.evidenceGaps)) {
+    aiEvidenceGaps = aiPathways.evidenceGaps.map(String);
+  }
+
+  if (Array.isArray(aiPathways?.assumptions)) {
+    aiAssumptions = aiPathways.assumptions.map(String);
+  }
+
+  const blockers = aiBlockers?.length ? aiBlockers : buildBlockers(profile);
+  const evidenceGaps = aiEvidenceGaps?.length ? aiEvidenceGaps : buildEvidenceGaps(profile);
+
+  const assumptions = aiAssumptions?.length
+    ? aiAssumptions
+    : [
+        "This is AI-assisted scenario analysis for a registered migration agent to review.",
+        "The analysis uses supplied intake facts and stored matter context only; it is not an eligibility decision or outcome prediction.",
+        "Official criteria and policy settings should be checked before client-facing advice."
+      ];
+
   const title = input.title?.trim() || `${profile.occupation !== "Not provided" ? profile.occupation : "Client"} pathway analysis`;
-  const summary = `${options.length} potential pathway group${options.length === 1 ? "" : "s"} identified for review. Strongest current option: ${options[0]?.title ?? "Evidence intake required"}. Review required before any recommendation.`;
+
+  const summary =
+    aiSummary ||
+    `${options.length} potential pathway group${options.length === 1 ? "" : "s"} identified for review. Strongest current option: ${options[0]?.title ?? "Evidence intake required"}. Review required before any recommendation.`;
 
   return prisma.pathwayAnalysis.create({
     data: {
@@ -197,7 +278,7 @@ export async function createPathwayAnalysis(input: PathwayProfileInput & { works
       evidenceGapsJson: evidenceGaps,
       options: {
         create: options.map((option) => ({
-          rank: option.rank,
+          rank: option.rank ?? 1,
           pathwayType: option.pathwayType,
           title: option.title,
           relevance: option.relevance,
@@ -221,13 +302,13 @@ export async function getPathwayAnalyses(workspaceId: string, user?: ScopedUser)
   return prisma.pathwayAnalysis.findMany({
     where: user
       ? {
-        workspaceId,
-        OR: [
-          { createdByUserId: user.id },
-          { matter: scopedMatterWhere(user) },
-          { client: scopedClientWhere(user) }
-        ]
-      }
+          workspaceId,
+          OR: [
+            { createdByUserId: user.id },
+            { matter: scopedMatterWhere(user) },
+            { client: scopedClientWhere(user) }
+          ]
+        }
       : { workspaceId },
     include: {
       client: true,
@@ -243,14 +324,14 @@ export async function getPathwayAnalysisDetail(workspaceId: string, analysisId: 
   return prisma.pathwayAnalysis.findFirst({
     where: user
       ? {
-        id: analysisId,
-        workspaceId,
-        OR: [
-          { createdByUserId: user.id },
-          { matter: scopedMatterWhere(user) },
-          { client: scopedClientWhere(user) }
-        ]
-      }
+          id: analysisId,
+          workspaceId,
+          OR: [
+            { createdByUserId: user.id },
+            { matter: scopedMatterWhere(user) },
+            { client: scopedClientWhere(user) }
+          ]
+        }
       : { id: analysisId, workspaceId },
     include: {
       client: true,

@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const limits = getUploadLimits();
     if (file.size > limits.maxBytes) return NextResponse.json({ error: `File is too large. Maximum upload size is ${limits.maxMb} MB.` }, { status: 413 });
     const bytes = Buffer.from(await file.arrayBuffer());
-    const extractedText = extractReadableText(bytes, mimeType);
+    const extractedText = await extractReadableText(bytes, mimeType);
 
     const context = await getCurrentWorkspaceContext();
     if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });

@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSubclass500Template } from "@/lib/services/subclass-templates";
+import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 
 const packageFolders = [
   "Identity",
@@ -47,6 +48,7 @@ function findSnippet(text: string, pattern: RegExp, fallback: string) {
 function inferredFields(fileName: string, category: string, extractedText = "") {
   const lower = `${fileName} ${extractedText}`.toLowerCase();
   const fields: Array<{ key: string; value: string; confidence: number; snippet: string }> = [];
+
   const fullName = extractedText.match(/\b(?:name|full name)\s*[:\-]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i)?.[1];
   const dateOfBirth = extractedText.match(/\b(?:date of birth|dob|birth date)\s*[:\-]?\s*(\d{1,2}[\/\-\s][A-Za-z0-9]{2,9}[\/\-\s]\d{2,4})/i)?.[1];
   const nationality = extractedText.match(/\b(?:nationality|citizenship)\s*[:\-]\s*([A-Za-z ]{3,40})/i)?.[1];
@@ -66,6 +68,7 @@ function inferredFields(fileName: string, category: string, extractedText = "") 
       { key: "applicant.passport_number", value: passportNumber ?? "Needs manual passport review", confidence: passportNumber ? 0.9 : 0.55, snippet: findSnippet(extractedText, /passport/i, `Passport reference detected in ${fileName}`) }
     );
   }
+
   if (category === "Education") {
     fields.push(
       { key: "study.provider", value: provider ?? "Education provider requires review", confidence: provider ? 0.82 : 0.6, snippet: findSnippet(extractedText, /provider|institution|university|college/i, `Provider evidence from ${fileName}`) },
@@ -74,14 +77,32 @@ function inferredFields(fileName: string, category: string, extractedText = "") 
       { key: "study.course_start_date", value: courseStart ?? "Course start requires review", confidence: courseStart ? 0.78 : 0.56, snippet: findSnippet(extractedText, /course start|start date|commencement/i, `Course start evidence from ${fileName}`) }
     );
   }
+
   if (category === "Financial") {
-    fields.push({ key: "financial.available_funds", value: funds ? `AUD ${funds}` : "Financial evidence uploaded", confidence: funds ? 0.8 : 0.62, snippet: findSnippet(extractedText, /funds|balance|available funds/i, `Financial evidence from ${fileName}`) });
+    fields.push({
+      key: "financial.available_funds",
+      value: funds ? `AUD ${funds}` : "Financial evidence uploaded",
+      confidence: funds ? 0.8 : 0.62,
+      snippet: findSnippet(extractedText, /funds|balance|available funds/i, `Financial evidence from ${fileName}`)
+    });
   }
+
   if (category === "Health / Insurance") {
-    fields.push({ key: "health.oshc_provider", value: oshc ?? "OSHC evidence uploaded", confidence: oshc ? 0.79 : 0.66, snippet: findSnippet(extractedText, /oshc|health insurance/i, `Health insurance evidence from ${fileName}`) });
+    fields.push({
+      key: "health.oshc_provider",
+      value: oshc ?? "OSHC evidence uploaded",
+      confidence: oshc ? 0.79 : 0.66,
+      snippet: findSnippet(extractedText, /oshc|health insurance/i, `Health insurance evidence from ${fileName}`)
+    });
   }
+
   if (category === "Statements / Declarations") {
-    fields.push({ key: "statement.genuine_student", value: "true", confidence: 0.7, snippet: findSnippet(extractedText, /genuine|statement|declaration/i, `Statement/declaration evidence from ${fileName}`) });
+    fields.push({
+      key: "statement.genuine_student",
+      value: "true",
+      confidence: 0.7,
+      snippet: findSnippet(extractedText, /genuine|statement|declaration/i, `Statement/declaration evidence from ${fileName}`)
+    });
   }
 
   return fields;
@@ -161,7 +182,12 @@ export async function uploadDocumentToMatter(input: {
       documentId: document.id,
       provider: "aria-ai-assisted-extraction",
       model: "configured-provider",
-      extractedJson: { category, fields: extractedFields, extractedTextPreview: input.extractedText?.slice(0, 1000) ?? "", reviewRequired: true }
+      extractedJson: {
+        category,
+        fields: extractedFields,
+        extractedTextPreview: input.extractedText?.slice(0, 1000) ?? "",
+        reviewRequired: true
+      }
     }
   });
 
@@ -194,6 +220,7 @@ export async function uploadDocumentToMatter(input: {
 export async function mapDocumentsToDraft(matterId: string) {
   const reviewData = await createOrGetSubclass500Draft(matterId);
   const draft = reviewData.draft;
+
   const extractedFields = await prisma.extractedField.findMany({
     where: { matterId },
     include: { document: true },
@@ -204,6 +231,7 @@ export async function mapDocumentsToDraft(matterId: string) {
     const templateField = draftField.templateField;
     const supporting = extractedFields.find((field) => field.fieldKey === templateField.fieldKey);
     if (!supporting) continue;
+    if (draftField.status === DraftFieldStatus.VERIFIED) continue;
 
     const updated = await prisma.matterDraftField.update({
       where: { id: draftField.id },
@@ -227,6 +255,91 @@ export async function mapDocumentsToDraft(matterId: string) {
     }).catch(() => null);
   }
 
+  const aiSuggestions = await generateAriaAiResponse({
+    system: `
+You are Aria, an AI migration workbench assisting a registered migration agent.
+
+Map extracted evidence into visa draft fields.
+
+Rules:
+- Do not invent values.
+- Use only supplied extracted fields and snippets.
+- If unsure, mark needs review.
+- Never overwrite verified fields.
+- Return strict JSON:
+{
+  "fieldSuggestions": [
+    {
+      "fieldKey": string,
+      "value": string,
+      "confidence": number,
+      "sourceSnippet": string,
+      "sourceDocumentId": string,
+      "reasoning": string
+    }
+  ]
+}
+`,
+    user: "Suggest draft field mappings for this visa application.",
+    context: {
+      matterId,
+      draftFields: draft.fields.map((field: any) => ({
+        id: field.id,
+        fieldKey: field.templateField.fieldKey,
+        label: field.templateField.label,
+        currentValue: field.value,
+        currentStatus: field.status
+      })),
+      extractedFields: extractedFields.map((field) => ({
+        documentId: field.documentId,
+        documentName: field.document.fileName,
+        fieldKey: field.fieldKey,
+        fieldLabel: field.fieldLabel,
+        fieldValue: field.fieldValue,
+        confidence: field.confidence,
+        sourceSnippet: field.sourceSnippet
+      }))
+    }
+  }).catch(() => null);
+
+  if (aiSuggestions?.fieldSuggestions && Array.isArray(aiSuggestions.fieldSuggestions)) {
+    for (const suggestion of aiSuggestions.fieldSuggestions) {
+      if (!suggestion.fieldKey || !suggestion.value) continue;
+
+      const draftField = draft.fields.find(
+        (field: any) => field.templateField.fieldKey === suggestion.fieldKey
+      );
+
+      if (!draftField) continue;
+      if (draftField.status === DraftFieldStatus.VERIFIED) continue;
+
+      const confidence = Number(suggestion.confidence || 0.65);
+
+      const updated = await prisma.matterDraftField.update({
+        where: { id: draftField.id },
+        data: {
+          value: String(suggestion.value),
+          confidence,
+          sourceSnippet: String(suggestion.sourceSnippet || ""),
+          sourcePageRef: "AI-assisted evidence mapping",
+          status: draftStatusForConfidence(confidence)
+        }
+      });
+
+      if (suggestion.sourceDocumentId) {
+        await prisma.matterDraftFieldEvidenceLink.create({
+          data: {
+            draftFieldId: updated.id,
+            documentId: String(suggestion.sourceDocumentId),
+            sourceSnippet: String(suggestion.sourceSnippet || ""),
+            sourcePageRef: "AI-assisted evidence mapping",
+            confidence
+          }
+        }).catch(() => null);
+      }
+    }
+  }
+
   return validateSubclass500Draft(matterId);
 }
 
@@ -235,7 +348,11 @@ export async function validateSubclass500Draft(matterId: string) {
   const { matter, template, draft } = reviewData;
 
   await prisma.validationIssue.deleteMany({
-    where: { matterId, type: { startsWith: "Subclass 500" }, resolutionStatus: { in: [ResolutionStatus.OPEN, ResolutionStatus.IN_PROGRESS] } }
+    where: {
+      matterId,
+      type: { startsWith: "Subclass 500" },
+      resolutionStatus: { in: [ResolutionStatus.OPEN, ResolutionStatus.IN_PROGRESS] }
+    }
   });
 
   const requiredFields = template.sections.flatMap((section: any) => section.fields).filter((field: any) => field.required);
@@ -263,6 +380,7 @@ export async function validateSubclass500Draft(matterId: string) {
   }
 
   const documentCategories = new Set(matter.documents.map((document: any) => document.category));
+
   for (const requirement of template.requirements.filter((item: any) => item.required)) {
     if (!documentCategories.has(requirement.category)) {
       openIssues.push({
@@ -275,8 +393,10 @@ export async function validateSubclass500Draft(matterId: string) {
 
   const extractedFields = await prisma.extractedField.findMany({ where: { matterId } });
   const byKey = new Map<string, typeof extractedFields>();
+
   for (const field of extractedFields) {
     byKey.set(field.fieldKey, [...(byKey.get(field.fieldKey) ?? []), field]);
+
     if (!templateFieldKeys.has(field.fieldKey)) {
       openIssues.push({
         title: `Unsupported extracted field: ${field.fieldLabel}`,
@@ -289,6 +409,7 @@ export async function validateSubclass500Draft(matterId: string) {
 
   for (const [fieldKey, fields] of byKey.entries()) {
     const values = new Set(fields.map((field) => field.fieldValue.trim().toLowerCase()).filter(Boolean));
+
     if (values.size > 1) {
       openIssues.push({
         title: `Conflicting values for ${fieldKey}`,
@@ -296,9 +417,13 @@ export async function validateSubclass500Draft(matterId: string) {
         severity: IssueSeverity.HIGH,
         relatedFieldKey: fieldKey
       });
+
       const draftField = draft.fields.find((field: any) => field.templateField.fieldKey === fieldKey);
       if (draftField) {
-        await prisma.matterDraftField.update({ where: { id: draftField.id }, data: { status: DraftFieldStatus.CONFLICTING } });
+        await prisma.matterDraftField.update({
+          where: { id: draftField.id },
+          data: { status: DraftFieldStatus.CONFLICTING }
+        });
       }
     }
   }
@@ -327,7 +452,11 @@ export async function validateSubclass500Draft(matterId: string) {
     where: { id: draft.id },
     data: { readinessScore, status }
   });
-  await prisma.matter.update({ where: { id: matterId }, data: { readinessScore } });
+
+  await prisma.matter.update({
+    where: { id: matterId },
+    data: { readinessScore }
+  });
 
   return getDraftReviewData(matterId);
 }
@@ -391,7 +520,9 @@ export async function getDraftReviewData(matterId: string): Promise<any> {
       validationIssues: { orderBy: [{ severity: "desc" }, { createdAt: "desc" }] }
     }
   });
+
   const template = await getSubclass500Template(matter.workspaceId);
+
   const draft = await prisma.matterApplicationDraft.findUnique({
     where: { matterId_templateId: { matterId, templateId: template.id } },
     include: {
