@@ -224,7 +224,6 @@ export async function POST(req: Request) {
             id: matter.id,
             clientName: `${matter.client.firstName} ${matter.client.lastName}`,
             visaSubclass: matter.visaSubclass,
-            stream: matter.stream,
             status: matter.status,
             stage: matter.stage
           },
