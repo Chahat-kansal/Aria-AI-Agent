@@ -74,13 +74,38 @@ Before deploying, run migrations manually from a machine or CI job that can reac
 npx prisma migrate deploy
 ```
 
+Or use the package script:
+
+```bash
+npm run prisma:deploy
+```
+
 Recommended production env vars:
 - `DATABASE_URL`: pooled/runtime connection
 - `DIRECT_URL`: direct database connection for migrations
 
 In short:
 - Vercel build: `prisma generate && next build`
-- Migrations: run `npx prisma migrate deploy` manually, locally, or in CI before deploy
+- Migrations: run `npx prisma migrate deploy` or `npm run prisma:deploy` manually, locally, or in CI before deploy
+
+### Production migration troubleshooting
+If production runtime errors mention missing Prisma tables such as `User`, `ClientIntakeRequest`, `DocumentRequest`, `Appointment`, `GeneratedDocument`, or `MatterTimelineEvent`, the usual cause is that migrations were committed but not applied to the production database.
+
+Use this order:
+
+1. Confirm Vercel and your migration environment point to the same Supabase project:
+   - `DATABASE_URL`
+   - `DIRECT_URL`
+   - `NEXTAUTH_URL`
+   - `NEXTAUTH_SECRET`
+2. Run:
+   ```bash
+   npm run prisma:deploy
+   ```
+3. Re-check the production app.
+
+Do not use `prisma migrate dev` against production.
+Do not reset the production database.
 
 ## Docker local run
 ```bash
@@ -154,6 +179,11 @@ I cannot fully validate a cloud deployment from this environment when package in
    npm run prisma:seed
    ```
 
+   For production schema rollout:
+   ```bash
+   npm run prisma:deploy
+   ```
+
 3. **Critical route checks**
    - `/` (landing)
    - `/auth/sign-in`
@@ -173,7 +203,7 @@ I cannot fully validate a cloud deployment from this environment when package in
    - `POST /api/updates/ingest`
 
 5. **Operational checks**
-   - Verify env vars are set (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`).
+   - Verify env vars are set (`DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`).
    - Confirm auth session creation works.
    - Confirm seeded records render in overview/matters/updates/tasks.
 
