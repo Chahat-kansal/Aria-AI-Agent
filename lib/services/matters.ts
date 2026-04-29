@@ -103,6 +103,17 @@ export async function createMatter(input: {
     }
   });
 
+  await prisma.matterTimelineEvent.create({
+    data: {
+      workspaceId: input.workspaceId,
+      matterId: matter.id,
+      actorUserId: input.assignedToUserId,
+      eventType: "matter.created",
+      title: "Matter created",
+      description: `Matter opened for ${client.firstName} ${client.lastName} under Subclass ${input.visaSubclass}.`
+    }
+  }).catch(() => null);
+
   if (input.visaSubclass === "500") {
     await ensureSubclass500Template(input.workspaceId);
   }

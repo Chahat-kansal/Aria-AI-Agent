@@ -16,7 +16,12 @@ export type PermissionKey =
   | "can_edit_matters"
   | "can_run_cross_check"
   | "can_view_financial_data"
-  | "can_access_update_monitor";
+  | "can_access_update_monitor"
+  | "can_manage_clients"
+  | "can_send_client_requests"
+  | "can_manage_appointments"
+  | "can_export_data"
+  | "can_generate_documents";
 
 export type PermissionMap = Record<PermissionKey, boolean>;
 
@@ -29,7 +34,12 @@ export const permissionDefinitions: Array<{ key: PermissionKey; label: string; d
   { key: "can_edit_matters", label: "Edit matters", description: "Create matters, upload documents, and update assigned matter workflows." },
   { key: "can_run_cross_check", label: "Run cross-checks", description: "Run final submission-readiness checks on accessible matters." },
   { key: "can_view_financial_data", label: "View financial data", description: "Access financial evidence and future financial/billing views." },
-  { key: "can_access_update_monitor", label: "Access update monitor", description: "View official update monitoring and affected-matter alerts." }
+  { key: "can_access_update_monitor", label: "Access update monitor", description: "View official update monitoring and affected-matter alerts." },
+  { key: "can_manage_clients", label: "Manage clients", description: "Create and update client records, intake requests, and client portals." },
+  { key: "can_send_client_requests", label: "Send client requests", description: "Send client intake, document request, and follow-up workflows." },
+  { key: "can_manage_appointments", label: "Manage appointments", description: "Create, confirm, and manage consultation bookings." },
+  { key: "can_export_data", label: "Export data", description: "Export workspace, matter, and client data packages." },
+  { key: "can_generate_documents", label: "Generate documents", description: "Create AI-assisted generated migration documents and templates." }
 ];
 
 const allPermissions: PermissionMap = permissionDefinitions.reduce((acc, item) => ({ ...acc, [item.key]: true }), {} as PermissionMap);
@@ -85,7 +95,11 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
       can_run_pathway_analysis: true,
       can_edit_matters: true,
       can_run_cross_check: true,
-      can_access_update_monitor: true
+      can_access_update_monitor: true,
+      can_manage_clients: true,
+      can_send_client_requests: true,
+      can_manage_appointments: true,
+      can_generate_documents: true
     };
   }
 
@@ -96,20 +110,24 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
       can_run_pathway_analysis: true,
       can_edit_matters: true,
       can_run_cross_check: true,
-      can_access_update_monitor: true
+      can_access_update_monitor: true,
+      can_manage_clients: true,
+      can_send_client_requests: true,
+      can_manage_appointments: true,
+      can_generate_documents: true
     };
   }
 
   if (role === UserRole.CASE_MANAGER) {
-    return { ...base, can_edit_matters: true, can_access_update_monitor: true };
+    return { ...base, can_edit_matters: true, can_access_update_monitor: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true };
   }
 
   if (role === UserRole.CLIENT_REVIEW_COORDINATOR) {
-    return { ...base, can_edit_matters: true };
+    return { ...base, can_edit_matters: true, can_send_client_requests: true, can_manage_appointments: true };
   }
 
   if (role === UserRole.ADMIN_ASSISTANT) {
-    return { ...base, can_edit_matters: true };
+    return { ...base, can_edit_matters: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true };
   }
 
   return base;

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { StatusChip } from "@/components/app/blocks/status-chip";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getDocumentDetailData } from "@/lib/data/workspace-repository";
+import Link from "next/link";
 
 export default async function DocumentDetailPage({ params }: { params: { documentId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -29,7 +30,11 @@ export default async function DocumentDetailPage({ params }: { params: { documen
             <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Storage provider<br /><span className="text-[#182033]">{document.storageObject?.provider ?? "metadata only"}</span></p>
             <p className="rounded-lg border border-border bg-white/45 p-3 text-muted">Content hash<br /><span className="break-all text-[#182033]">{document.contentHash ?? "Not recorded"}</span></p>
           </div>
-          <p className="mt-3 text-xs text-muted">Document preview is metadata and extracted-text based. Original file delivery can be plugged into the storage provider without changing matter workflows.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href={`/api/documents/${document.id}/download` as any} className="rounded-lg border border-border bg-white/70 px-3 py-2 text-sm text-accent">Secure download</Link>
+            {document.checklistItems[0] ? <span className="rounded-lg border border-border bg-white/70 px-3 py-2 text-sm text-muted">Checklist: {document.checklistItems[0].label}</span> : null}
+          </div>
+          <p className="mt-3 text-xs text-muted">Secure download is served through the application. No public file URL is exposed.</p>
         </Card>
         <Card>
           <h3 className="font-semibold">Processing state</h3>

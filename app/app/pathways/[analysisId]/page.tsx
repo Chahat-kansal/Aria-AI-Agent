@@ -59,7 +59,7 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
             {analysis.client ? <span className="rounded-full border border-border px-3 py-1">Client: {analysis.client.firstName} {analysis.client.lastName}</span> : null}
-            {analysis.matter ? <Link href={`/app/matters/${analysis.matter.id}`} className="rounded-full border border-border px-3 py-1 text-accent">Matter: {analysis.matter.title}</Link> : null}
+            {analysis.matter ? <Link href={`/app/matters/${analysis.matter.id}` as any} className="rounded-full border border-border px-3 py-1 text-accent">Matter: {analysis.matter.title}</Link> : null}
             <span className="rounded-full border border-border px-3 py-1">Review required</span>
           </div>
         </Card>

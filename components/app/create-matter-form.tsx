@@ -43,7 +43,7 @@ export function CreateMatterForm({ visaOptions = [] }: { visaOptions?: VisaOptio
       return;
     }
 
-    router.push(`/app/matters/${payload.matter.id}`);
+    router.push(`/app/matters/${payload.matter.id}` as any);
     router.refresh();
   }
 

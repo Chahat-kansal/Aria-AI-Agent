@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
+import { ClientPortalLinkButton } from "@/components/app/client-portal-link-button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getMatterDetailData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
-import { canManageTeam, hasFirmWideAccess, hasTeamOversight, roleLabel } from "@/lib/services/roles";
+import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -28,7 +29,9 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   const workflowLinks = [
     ["Overview", `/app/matters/${matter.id}`],
     ["Upload documents", "/app/documents"],
+    ["Checklist", `/app/matters/${matter.id}/checklist`],
     ["Field review", matter.visaSubclass === "500" ? `/app/matters/${matter.id}/draft` : "/app/forms"],
+    ["Generated docs", `/app/matters/${matter.id}/generated-documents`],
     ["Validation", "/app/validation"],
     ["Tasks", "/app/tasks"],
     ["Updates", "/app/updates"],
@@ -51,6 +54,10 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Stage</p><p className="font-medium">{formatEnum(matter.stage)}</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Readiness</p><p className="font-medium">{matter.readinessScore}%</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Lodgement target</p><p className="font-medium">{formatDate(matter.lodgementTargetDate)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Current visa</p><p className="font-medium">{matter.currentVisaStatus || "Not set"}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Visa expiry</p><p className="font-medium">{formatDate(matter.currentVisaExpiry)}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Application status</p><p className="font-medium">{matter.applicationStatus || "Not set"}</p></div>
+          <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Critical deadline</p><p className="font-medium">{formatDate(matter.criticalDeadline)}</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Matter ref</p><p className="font-medium">{matter.matterReference ?? matter.id.slice(0, 8)}</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3"><p className="text-muted">Client ref</p><p className="font-medium">{matter.client.clientReference ?? matter.client.id.slice(0, 8)}</p></div>
           <div className="rounded-lg border border-border bg-white/45 p-3 md:col-span-2"><p className="text-muted">Assigned staff</p><p className="font-medium">{matter.assignedToUser.name ?? matter.assignedToUser.email} - {roleLabel(matter.assignedToUser.role)}</p></div>
@@ -110,12 +117,43 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
         </Card>
       </section>
 
+      <section className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card>
+          <h3 className="font-semibold">Case timeline</h3>
+          <div className="mt-3 space-y-2">
+            {matter.timelineEvents.length ? matter.timelineEvents.map((event) => (
+              <div key={event.id} className="rounded-lg border border-border bg-white/55 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{event.title}</p>
+                  <p className="text-xs text-muted">{event.createdAt.toLocaleString("en-AU")}</p>
+                </div>
+                {event.description ? <p className="mt-2 text-sm text-muted">{event.description}</p> : null}
+              </div>
+            )) : <p className="text-sm text-muted">No timeline events are recorded yet.</p>}
+          </div>
+        </Card>
+        <Card>
+          <h3 className="font-semibold">Client-facing workflows</h3>
+          <p className="mt-2 text-sm text-muted">Create secure links for the client portal, checklist uploads, and review stages. Links are token-based and scoped to this matter.</p>
+          {hasPermission(context.user, "can_manage_clients") ? (
+            <div className="mt-4">
+              <ClientPortalLinkButton clientId={matter.clientId} matterId={matter.id} />
+            </div>
+          ) : null}
+          <div className="mt-4 space-y-2 text-sm">
+            <Link href={"/app/intake" as any} className="block rounded-lg border border-border bg-white/55 px-3 py-2 text-accent">Send or review intake request</Link>
+            <Link href={`/app/matters/${matter.id}/checklist` as any} className="block rounded-lg border border-border bg-white/55 px-3 py-2 text-accent">Open visa checklist</Link>
+            <Link href={`/app/matters/${matter.id}/generated-documents` as any} className="block rounded-lg border border-border bg-white/55 px-3 py-2 text-accent">Generate migration documents</Link>
+          </div>
+        </Card>
+      </section>
+
       <Card className="mt-4">
         {matter.visaSubclass === "500" ? (
           <>
             <h3 className="font-semibold">Subclass 500 draft workflow</h3>
             <p className="mt-2 text-sm text-muted">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, final cross-check, and client review preparation.</p>
-            <Link href={`/app/matters/${matter.id}/draft`} className="mt-3 inline-flex rounded-lg bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white">Open draft workflow</Link>
+            <Link href={`/app/matters/${matter.id}/draft` as any} className="mt-3 inline-flex rounded-lg bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white">Open draft workflow</Link>
           </>
         ) : (
           <>

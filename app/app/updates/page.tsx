@@ -33,7 +33,7 @@ export default async function UpdatesPage() {
           <div className="mb-3 flex gap-2 text-xs"><span className="rounded bg-white/60 px-2 py-1">Source-linked records</span><span className="rounded bg-white/60 px-2 py-1">Review required</span><span className="rounded bg-white/60 px-2 py-1">Hash deduped</span></div>
           <div className="space-y-3">
             {updates.length ? updates.map((update) => (
-              <Link href={`/app/updates/${update.id}`} key={update.id} className="block rounded-lg border border-border p-3 hover:bg-white/65">
+              <Link href={`/app/updates/${update.id}` as any} key={update.id} className="block rounded-lg border border-border p-3 hover:bg-white/65">
                 <p className="font-medium">{update.title}</p>
                 <p className="text-sm text-muted">{update.source} · Published {formatDate(update.publishedAt)} · {update.updateType}</p>
                 <p className="text-sm text-muted">{update.summary}</p>

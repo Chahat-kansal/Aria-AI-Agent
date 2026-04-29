@@ -118,6 +118,46 @@ enum TaskPriority {
   URGENT
 }
 
+enum IntakeRequestStatus {
+  DRAFT
+  SENT
+  VIEWED
+  SUBMITTED
+  REVIEWED
+}
+
+enum DocumentRequestStatus {
+  DRAFT
+  SENT
+  VIEWED
+  COMPLETED
+  OVERDUE
+}
+
+enum DocumentRequestItemStatus {
+  MISSING
+  REQUESTED
+  RECEIVED
+  REVIEWED
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum GeneratedDocumentType {
+  COVER_LETTER
+  STATUTORY_DECLARATION_TEMPLATE
+  DOCUMENT_REQUEST_CHECKLIST
+  SKILLS_ASSESSMENT_CHECKLIST
+  SPONSORSHIP_CHECKLIST
+  CHARACTER_REFERENCE_TEMPLATE
+  GENUINE_STUDENT_STATEMENT_OUTLINE
+}
+
 enum ChatRole {
   SYSTEM
   USER
@@ -195,6 +235,12 @@ model Workspace {
   visaKnowledgeRecords  VisaKnowledgeRecord[]
   officialSources       OfficialSource[]
   pathwayAnalyses       PathwayAnalysis[]
+  intakeRequests        ClientIntakeRequest[]
+  documentRequests      DocumentRequest[]
+  appointments          Appointment[]
+  generatedDocuments    GeneratedDocument[]
+  portalAccessTokens    ClientPortalAccessToken[]
+  timelineEvents        MatterTimelineEvent[]
 }
 
 model User {
@@ -226,6 +272,11 @@ model User {
   createdThreads    AiChatThread[]      @relation("ThreadCreator")
   auditEvents       AuditEvent[]
   pathwayAnalyses   PathwayAnalysis[]
+  intakeRequests    ClientIntakeRequest[] @relation("IntakeRequestCreator")
+  documentRequests  DocumentRequest[]     @relation("DocumentRequestCreator")
+  appointments      Appointment[]         @relation("AppointmentAssignee")
+  generatedDocuments GeneratedDocument[]
+  timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -246,9 +297,16 @@ model Client {
   assignedToUserId String?
   assignedToUser   User?             @relation("ClientAssignee", fields: [assignedToUserId], references: [id])
   createdAt        DateTime          @default(now())
+  currentVisaStatus String?
+  currentVisaExpiry DateTime?
+  archivedAt       DateTime?
   matters          Matter[]
   documents        Document[]
   pathwayAnalyses  PathwayAnalysis[]
+  intakeRequests   ClientIntakeRequest[]
+  documentRequests DocumentRequest[]
+  appointments     Appointment[]
+  portalAccessTokens ClientPortalAccessToken[]
 }
 
 model Matter {
@@ -263,6 +321,13 @@ model Matter {
   visaStream          String
   status              MatterStatus
   stage               MatterStage
+  currentVisaStatus   String?
+  currentVisaExpiry   DateTime?
+  applicationStatus   String?
+  lodgementDate       DateTime?
+  expectedNextMilestone String?
+  criticalDeadline    DateTime?
+  archivedAt          DateTime?
   lodgementTargetDate DateTime?
   assignedToUserId    String
   assignedToUser      User                     @relation("MatterAssignee", fields: [assignedToUserId], references: [id])
@@ -280,6 +345,12 @@ model Matter {
   applicationDrafts   MatterApplicationDraft[]
   reviewRequests      MatterReviewRequest[]
   pathwayAnalyses     PathwayAnalysis[]
+  intakeRequests      ClientIntakeRequest[]
+  documentRequests    DocumentRequest[]
+  appointments        Appointment[]
+  generatedDocuments  GeneratedDocument[]
+  portalAccessTokens  ClientPortalAccessToken[]
+  timelineEvents      MatterTimelineEvent[]
 }
 
 model PathwayAnalysis {
@@ -347,6 +418,7 @@ model Document {
   draftEvidenceLinks MatterDraftFieldEvidenceLink[]
   extractionResults  DocumentExtractionResult[]
   storageObject      DocumentStorageObject?
+  checklistItems     ChecklistItem[]
 }
 
 model DocumentStorageObject {
@@ -393,11 +465,19 @@ model ChecklistItem {
   id       String  @id @default(cuid())
   matterId String
   matter   Matter  @relation(fields: [matterId], references: [id])
+  documentId String?
+  document  Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  itemKey   String?
   category String
   label    String
+  description String?
   status   String
   required Boolean
   notes    String?
+  dueDate  DateTime?
+  requestedAt DateTime?
+  reviewedAt DateTime?
+  requestItems DocumentRequestItem[]
 }
 
 model VisaSubclassTemplate {
@@ -578,6 +658,138 @@ model MatterReviewRequest {
   returnedAt     DateTime?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
+}
+
+model ClientIntakeRequest {
+  id              String              @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId        String?
+  client          Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId        String?
+  matter          Matter?             @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  createdByUserId String
+  createdByUser   User                @relation("IntakeRequestCreator", fields: [createdByUserId], references: [id])
+  title           String
+  recipientName   String?
+  recipientEmail  String?
+  message         String?
+  status          IntakeRequestStatus @default(DRAFT)
+  tokenHash       String              @unique
+  expiresAt       DateTime
+  viewedAt        DateTime?
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  questionnaireJson Json?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model ClientPortalAccessToken {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterId        String?
+  matter          Matter?  @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  tokenHash       String   @unique
+  label           String
+  expiresAt       DateTime
+  lastViewedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DocumentRequest {
+  id              String                @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterId        String
+  matter          Matter                @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdByUser   User                  @relation("DocumentRequestCreator", fields: [createdByUserId], references: [id])
+  recipientName   String?
+  recipientEmail  String?
+  message         String?
+  dueDate         DateTime?
+  status          DocumentRequestStatus @default(DRAFT)
+  tokenHash       String                @unique
+  expiresAt       DateTime
+  viewedAt        DateTime?
+  completedAt     DateTime?
+  reminderSentAt  DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  items           DocumentRequestItem[]
+}
+
+model DocumentRequestItem {
+  id             String                    @id @default(cuid())
+  requestId      String
+  request        DocumentRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  checklistItemId String
+  checklistItem  ChecklistItem             @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  status         DocumentRequestItemStatus @default(MISSING)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([requestId, checklistItemId])
+}
+
+model Appointment {
+  id               String            @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId         String?
+  client           Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId         String?
+  matter           Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  assignedToUserId String?
+  assignedToUser   User?             @relation("AppointmentAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  requestedByName  String?
+  requestedByEmail String?
+  status           AppointmentStatus @default(REQUESTED)
+  meetingType      String
+  startsAt         DateTime
+  notes            String?
+  tokenHash        String?           @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model GeneratedDocument {
+  id              String                @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId        String
+  matter          Matter                @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdByUser   User                  @relation(fields: [createdByUserId], references: [id])
+  type            GeneratedDocumentType
+  title           String
+  content         String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+}
+
+model MatterTimelineEvent {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId    String
+  matter      Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  actorUser   User?     @relation("TimelineActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  eventType   String
+  title       String
+  description String?
+  metadataJson Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([matterId, createdAt])
 }
 
 model OfficialUpdate {

@@ -57,7 +57,7 @@ export default async function PathwaysPage() {
               {analyses.map((analysis) => (
                 <tr key={analysis.id} className="border-t border-border hover:bg-white/65">
                   <td className="p-3">
-                    <Link href={`/app/pathways/${analysis.id}`} className="font-medium text-accent">{analysis.title}</Link>
+                    <Link href={`/app/pathways/${analysis.id}` as any} className="font-medium text-accent">{analysis.title}</Link>
                     <p className="mt-1 max-w-xl text-xs text-muted">{analysis.summary}</p>
                   </td>
                   <td className="p-3 text-muted">

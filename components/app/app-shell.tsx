@@ -9,6 +9,9 @@ import { UserRole } from "@prisma/client";
 const nav: Array<{ label: string; href: string; permission?: PermissionKey }> = [
   { label: "Overview", href: "/app/overview" },
   { label: "Matters", href: "/app/matters" },
+  { label: "Client Intake", href: "/app/intake", permission: "can_send_client_requests" },
+  { label: "Document Requests", href: "/app/document-requests", permission: "can_send_client_requests" },
+  { label: "Appointments", href: "/app/appointments", permission: "can_manage_appointments" },
   { label: "Pathway Analysis", href: "/app/pathways", permission: "can_run_pathway_analysis" },
   { label: "Visa Knowledge", href: "/app/knowledge", permission: "can_access_visa_knowledge" },
   { label: "Documents", href: "/app/documents" },

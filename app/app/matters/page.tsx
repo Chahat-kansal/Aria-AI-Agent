@@ -31,7 +31,7 @@ export default async function MattersPage() {
             <tbody>
               {matters.map((matter) => (
                 <tr key={matter.id} className="border-t border-border hover:bg-white/65">
-                  <td className="p-3"><Link href={`/app/matters/${matter.id}`} className="text-accent">{matter.client.firstName} {matter.client.lastName}</Link></td>
+                  <td className="p-3"><Link href={`/app/matters/${matter.id}` as any} className="text-accent">{matter.client.firstName} {matter.client.lastName}</Link></td>
                   <td className="p-3 text-muted">{matter.matterReference ?? matter.id.slice(0, 8)}</td>
                   <td className="p-3">{matter.title}</td>
                   <td className="p-3 text-center">{matter.visaSubclass}</td>

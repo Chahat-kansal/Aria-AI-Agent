@@ -14,7 +14,7 @@ export default async function OverviewPage() {
     return <AppShell title="Overview"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to see live operational data." /></AppShell>;
   }
 
-  const { matters, activeMatterCount, averageReadiness, openIssueCount, updates, tasks } = await getOverviewData(context.workspace.id, context.user);
+  const { matters, activeMatterCount, averageReadiness, openIssueCount, updates, tasks, pendingIntakes, pendingDocumentRequests, upcomingAppointments } = await getOverviewData(context.workspace.id, context.user);
 
   return (
     <AppShell title="Overview">
@@ -24,6 +24,13 @@ export default async function OverviewPage() {
         <StatCard label="Avg readiness" value={`${averageReadiness}%`} hint="Review-required score" />
         <StatCard label="Open validation issues" value={`${openIssueCount}`} hint="Prioritize critical first" />
         <StatCard label="Official updates" value={`${updates.length}`} hint="Stored source-linked records" />
+      </section>
+
+      <section className="mt-4 grid gap-4 md:grid-cols-4">
+        <StatCard label="Pending intakes" value={`${pendingIntakes}`} hint="Sent, viewed, or submitted" />
+        <StatCard label="Pending uploads" value={`${pendingDocumentRequests}`} hint="Outstanding document requests" />
+        <StatCard label="Upcoming appointments" value={`${upcomingAppointments.length}`} hint="Booked consultations" />
+        <StatCard label="Open tasks" value={`${tasks.length}`} hint="Assigned follow-up work" />
       </section>
 
       <section className="mt-4 grid gap-4 md:grid-cols-2">
@@ -75,6 +82,25 @@ export default async function OverviewPage() {
               </div>
             )) : (
               <p className="rounded-lg border border-border p-4 text-sm text-muted">No open tasks are recorded for this workspace.</p>
+            )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="mt-4">
+        <Card>
+          <h3 className="font-semibold">Upcoming appointments</h3>
+          <div className="mt-3 space-y-2">
+            {upcomingAppointments.length ? upcomingAppointments.map((appointment) => (
+              <div key={appointment.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="font-medium">{appointment.meetingType}</p>
+                  <p className="text-xs text-muted">{appointment.matter?.client.firstName} {appointment.matter?.client.lastName} - {appointment.startsAt.toLocaleString("en-AU")}</p>
+                </div>
+                <StatusChip label={appointment.status.toLowerCase()} />
+              </div>
+            )) : (
+              <p className="rounded-lg border border-border p-4 text-sm text-muted">No upcoming appointments are scheduled yet.</p>
             )}
           </div>
         </Card>

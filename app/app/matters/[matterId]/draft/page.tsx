@@ -125,7 +125,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
             {draft.reviewRequests.length ? (
               <div className="mt-3 space-y-2 text-sm text-muted">
                 {draft.reviewRequests.map((request: any) => (
-                  <Link key={request.id} href={`/client-review/${request.id}`} className="block rounded-lg border border-border p-2">
+                  <Link key={request.id} href={`/client-review/${request.id}` as any} className="block rounded-lg border border-border p-2">
                     {request.status.replaceAll("_", " ").toLowerCase()} - {request.recipientEmail ?? "client"}
                   </Link>
                 ))}

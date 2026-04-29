@@ -38,7 +38,7 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
           {update.impacts.length ? update.impacts.map((impact) => (
             <div key={impact.id} className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between">
-                <Link href={`/app/matters/${impact.matterId}`} className="font-medium text-accent">{impact.matter.client.firstName} {impact.matter.client.lastName}</Link>
+                <Link href={`/app/matters/${impact.matterId}` as any} className="font-medium text-accent">{impact.matter.client.firstName} {impact.matter.client.lastName}</Link>
                 <StatusChip label={formatEnum(impact.impactLevel)} />
               </div>
               <p className="text-sm text-muted">Why matched: {impact.reason}</p>

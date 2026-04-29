@@ -23,12 +23,32 @@ export default async function SettingsPage() {
   const aiStatus = getAiConfigStatus();
   const emailStatus = getEmailConfigStatus();
   const storageStatus = getStorageConfigStatus();
+  const onboardingSteps = workspace ? [
+    { label: "Company profile completed", done: Boolean(workspace.name && workspace.slug) },
+    { label: "Invite team", done: workspace.users.length > 1 },
+    { label: "Create first matter", done: workspace._count.matters > 0 },
+    { label: "Configure AI", done: aiStatus.configured },
+    { label: "Configure email", done: emailStatus.configured },
+    { label: "Configure storage", done: storageStatus.configured },
+    { label: "Configure visa knowledge research", done: Boolean((process.env.WEB_RESEARCH_PROVIDER === "tavily" && process.env.TAVILY_API_KEY) || (process.env.WEB_RESEARCH_PROVIDER === "firecrawl" && process.env.FIRECRAWL_API_KEY) || (!process.env.WEB_RESEARCH_PROVIDER && (process.env.TAVILY_API_KEY || process.env.FIRECRAWL_API_KEY))) }
+  ] : [];
 
   return (
     <AppShell title="Settings">
       <PageHeader title="Workspace Settings" subtitle="Review real workspace, team, and production configuration state. Unconfigured integrations show their setup state honestly." />
       {workspace ? (
         <section className="grid gap-4 md:grid-cols-2">
+          {canManageCompany ? <Card>
+            <h3 className="font-semibold">Onboarding progress</h3>
+            <div className="mt-3 space-y-2 text-sm">
+              {onboardingSteps.map((step) => (
+                <div key={step.label} className="flex items-center justify-between rounded-lg border border-border p-2">
+                  <span>{step.label}</span>
+                  <StatusChip label={step.done ? "Completed" : "Pending"} />
+                </div>
+              ))}
+            </div>
+          </Card> : null}
           <Card>
             <h3 className="font-semibold">{canManageCompany ? "Workspace profile" : "Personal settings"}</h3>
             <div className="mt-3 space-y-2 text-sm text-muted">
@@ -41,6 +61,7 @@ export default async function SettingsPage() {
                   <p>Plan: <span className="text-[#182033]">{formatEnum(workspace.plan)}</span></p>
                   <p>Created: <span className="text-[#182033]">{formatDate(workspace.createdAt)}</span></p>
                   <Link href="/app/company" className="inline-flex text-accent">Edit company profile</Link>
+                  <Link href={"/app/settings/data" as any} className="ml-3 inline-flex text-accent">Data export & privacy controls</Link>
                 </>
               ) : (
                 <p>Your company administrator manages billing, team access, and company-wide integrations.</p>

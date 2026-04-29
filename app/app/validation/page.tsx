@@ -25,7 +25,7 @@ export default async function ValidationPage() {
               <p className="mt-1 text-sm text-muted">{issue.description}</p>
               <div className="mt-2 flex gap-2 text-xs text-muted">
                 <span className="rounded bg-white/60 px-2 py-1">Resolution: {formatEnum(issue.resolutionStatus)}</span>
-                <Link href={`/app/matters/${issue.matterId}`} className="rounded bg-white/60 px-2 py-1 text-accent">Open affected matter</Link>
+                <Link href={`/app/matters/${issue.matterId}` as any} className="rounded bg-white/60 px-2 py-1 text-accent">Open affected matter</Link>
               </div>
             </div>
           )) : (

@@ -1,8 +1,36 @@
+import { Prisma, type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { scopedMatterWhere } from "@/lib/services/roles";
-import type { User } from "@prisma/client";
 
 type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
+
+const matterDetailInclude = Prisma.validator<Prisma.MatterInclude>()({
+  client: true,
+  assignedToUser: true,
+  documents: { orderBy: { createdAt: "desc" } },
+  validationIssues: { orderBy: { createdAt: "desc" } },
+  checklistItems: { include: { document: true }, orderBy: { label: "asc" } },
+  tasks: { orderBy: { dueDate: "asc" } },
+  impacts: {
+    include: { officialUpdate: true },
+    orderBy: { createdAt: "desc" }
+  },
+  applicationDrafts: true,
+  intakeRequests: { orderBy: { createdAt: "desc" } },
+  documentRequests: { include: { items: true }, orderBy: { createdAt: "desc" } },
+  appointments: { include: { assignedToUser: true }, orderBy: { startsAt: "asc" } },
+  generatedDocuments: { orderBy: { createdAt: "desc" } },
+  timelineEvents: { include: { actorUser: true }, orderBy: { createdAt: "desc" }, take: 25 }
+});
+
+const documentDetailInclude = Prisma.validator<Prisma.DocumentInclude>()({
+  matter: { include: { client: true } },
+  uploadedByUser: true,
+  extractionResults: { orderBy: { createdAt: "desc" } },
+  extractedFields: { orderBy: { createdAt: "desc" } },
+  storageObject: true,
+  checklistItems: true
+});
 
 export function formatEnum(value: string) {
   return value
@@ -19,7 +47,7 @@ export function formatDate(value: Date | null | undefined) {
 
 export async function getOverviewData(workspaceId: string, user?: ScopedUser) {
   const matterWhere = user ? scopedMatterWhere(user) : { workspaceId };
-  const [matters, openIssueCount, updates, tasks] = await Promise.all([
+  const [matters, openIssueCount, updates, tasks, pendingIntakes, pendingDocumentRequests, upcomingAppointments] = await Promise.all([
     prisma.matter.findMany({
       where: matterWhere,
       include: {
@@ -48,6 +76,18 @@ export async function getOverviewData(workspaceId: string, user?: ScopedUser) {
       include: { matter: { include: { client: true } }, assignedToUser: true },
       orderBy: { dueDate: "asc" },
       take: 8
+    }),
+    prisma.clientIntakeRequest.count({
+      where: { workspaceId, status: { in: ["SENT", "VIEWED", "SUBMITTED"] }, ...(user ? { matter: matterWhere } : {}) }
+    }),
+    prisma.documentRequest.count({
+      where: { workspaceId, status: { in: ["SENT", "VIEWED", "OVERDUE"] }, ...(user ? { matter: matterWhere } : {}) }
+    }),
+    prisma.appointment.findMany({
+      where: { workspaceId, startsAt: { gte: new Date() }, ...(user ? { matter: matterWhere } : {}) },
+      include: { matter: { include: { client: true } }, assignedToUser: true },
+      orderBy: { startsAt: "asc" },
+      take: 5
     })
   ]);
 
@@ -66,7 +106,10 @@ export async function getOverviewData(workspaceId: string, user?: ScopedUser) {
     averageReadiness,
     openIssueCount,
     updates,
-    tasks
+    tasks,
+    pendingIntakes,
+    pendingDocumentRequests,
+    upcomingAppointments
   };
 }
 
@@ -85,19 +128,7 @@ export async function getMattersData(workspaceId: string, user?: ScopedUser) {
 export async function getMatterDetailData(workspaceId: string, matterId: string, user?: ScopedUser) {
   return prisma.matter.findFirst({
     where: { id: matterId, ...(user ? scopedMatterWhere(user) : { workspaceId }) },
-    include: {
-      client: true,
-      assignedToUser: true,
-      documents: { orderBy: { createdAt: "desc" } },
-      validationIssues: { orderBy: { createdAt: "desc" } },
-      checklistItems: true,
-      tasks: { orderBy: { dueDate: "asc" } },
-      impacts: {
-        include: { officialUpdate: true },
-        orderBy: { createdAt: "desc" }
-      },
-      applicationDrafts: true
-    }
+    include: matterDetailInclude
   });
 }
 
@@ -115,13 +146,7 @@ export async function getDocumentsData(workspaceId: string, user?: ScopedUser) {
 export async function getDocumentDetailData(workspaceId: string, documentId: string, user?: ScopedUser) {
   return prisma.document.findFirst({
     where: { id: documentId, workspaceId, ...(user ? { matter: scopedMatterWhere(user) } : {}) },
-    include: {
-      matter: { include: { client: true } },
-      uploadedByUser: true,
-      extractionResults: { orderBy: { createdAt: "desc" } },
-      extractedFields: { orderBy: { createdAt: "desc" } },
-      storageObject: true
-    }
+    include: documentDetailInclude
   });
 }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
+import { attachDocumentToChecklistItem } from "@/lib/services/client-workflows";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { persistDocumentStorageObject, prepareMatterDocumentUpload } from "@/lib/services/storage";
 import { extractReadableText } from "@/lib/services/document-extraction";
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const matterId = typeof formData.get("matterId") === "string" ? String(formData.get("matterId")) : null;
+    const checklistItemId = typeof formData.get("checklistItemId") === "string" ? String(formData.get("checklistItemId")) : null;
     if (!matterId) return NextResponse.json({ error: "matterId is required" }, { status: 400 });
     const file = formData.get("file");
     if (!(file instanceof File)) return NextResponse.json({ error: "file is required" }, { status: 400 });
@@ -49,6 +51,9 @@ export async function POST(req: Request) {
     });
 
     await persistDocumentStorageObject({ documentId: document.id, upload });
+    if (checklistItemId) {
+      await attachDocumentToChecklistItem(checklistItemId, document.id).catch(() => null);
+    }
 
     return NextResponse.json({
       status: "accepted",

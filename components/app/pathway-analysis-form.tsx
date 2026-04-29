@@ -39,7 +39,7 @@ export function PathwayAnalysisForm({ matters }: { matters: MatterOption[] }) {
       return;
     }
 
-    router.push(`/app/pathways/${result.analysis.id}`);
+    router.push(`/app/pathways/${result.analysis.id}` as any);
     router.refresh();
   }
 

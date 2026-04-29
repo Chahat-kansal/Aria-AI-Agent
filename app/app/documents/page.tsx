@@ -34,7 +34,7 @@ export default async function DocumentsPage() {
                 <tbody>
                   {documents.map((document) => (
                     <tr key={document.id} className="border-t border-border">
-                      <td className="p-2"><Link href={`/app/documents/${document.id}`} className="text-accent">{document.fileName}</Link></td>
+                      <td className="p-2"><Link href={`/app/documents/${document.id}` as any} className="text-accent">{document.fileName}</Link></td>
                       <td className="p-2 text-center">{document.matter.client.firstName} {document.matter.client.lastName}</td>
                       <td className="p-2 text-center">{document.category}</td>
                       <td className="p-2 text-center text-muted">{document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : "n/a"}</td>
