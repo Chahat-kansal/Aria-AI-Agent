@@ -13,6 +13,10 @@ type AssistantReply = {
   reasoning?: string[];
   citations?: { label: string; href: string }[];
   recommendedActions?: string[];
+  riskWarnings?: string[];
+  reviewRequired?: boolean;
+  setup?: string;
+  configured?: boolean;
   error?: string;
 };
 
@@ -34,7 +38,7 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
     });
 
     const payload = await response.json();
-    setReply(response.ok ? payload : { content: payload.error ?? "Aria could not complete the request.", error: payload.error });
+    setReply(response.ok ? payload : { ...payload, content: payload.content ?? payload.error ?? "Aria could not complete the request.", error: payload.error });
     setIsLoading(false);
   }
 
@@ -64,6 +68,7 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
         {reply ? (
           <div className="space-y-4">
             {reply.error ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{reply.error}</p> : null}
+            {reply.setup ? <p className="rounded-lg border border-border bg-white/60 p-3 text-sm text-muted">{reply.setup}</p> : null}
             <p className="leading-7">{reply.content}</p>
             {reply.groundedFacts?.length ? (
               <div>
@@ -83,12 +88,19 @@ export function AssistantWorkspace({ matters }: { matters: MatterOption[] }) {
                 <ul className="mt-2 grid gap-2 md:grid-cols-3">{reply.recommendedActions.map((action) => <li key={action} className="rounded-lg border border-border bg-white/70 p-3">{action}</li>)}</ul>
               </div>
             ) : null}
+            {reply.riskWarnings?.length ? (
+              <div>
+                <p className="font-medium text-[#182033]">Risk warnings</p>
+                <ul className="mt-2 space-y-2">{reply.riskWarnings.map((warning) => <li key={warning} className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">{warning}</li>)}</ul>
+              </div>
+            ) : null}
             {reply.citations?.length ? (
               <div>
                 <p className="font-medium text-[#182033]">Grounding</p>
                 <div className="mt-2 flex flex-wrap gap-2">{reply.citations.map((citation) => <a key={citation.href} href={citation.href} className="rounded-lg border border-border bg-white/60 px-3 py-2 text-accent">{citation.label}</a>)}</div>
               </div>
             ) : null}
+            {reply.reviewRequired ? <p className="rounded-lg border border-border bg-white/60 p-3 text-xs text-muted">AI-assisted output only. Registered migration agent review remains required.</p> : null}
           </div>
         ) : (
           <p>Ask Aria a matter-aware or live official-source question. Responses are grounded in stored matters, documents, draft fields, validation issues, pathway analyses, visa knowledge, and official update impacts.</p>

@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma";
 import { canAccessMatter, hasPermission, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
 import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
 import { serverLog } from "@/lib/services/runtime-config";
+import { getMatterIntelligence, getOverviewIntelligence } from "@/lib/services/aria-intelligence";
+import { auditAiUsed } from "@/lib/services/audit";
 
 function wantsLiveResearch(prompt: string) {
   return /\b(current|latest|today|recent|changed|official|web|internet|source|policy|news|update|visa rule|home affairs)\b/i.test(prompt);
@@ -72,7 +74,9 @@ function normalizeAiResponse(ai: any, fallback: any) {
     citations: Array.isArray(ai?.citations) ? ai.citations : fallback.citations,
     riskWarnings: Array.isArray(ai?.riskWarnings)
       ? ai.riskWarnings
-      : ["AI-assisted output requires registered migration agent review."],
+      : Array.isArray(fallback?.riskWarnings) && fallback.riskWarnings.length
+        ? fallback.riskWarnings
+        : ["AI-assisted output requires registered migration agent review."],
     reviewRequired: true
   };
 }
@@ -96,7 +100,16 @@ export async function POST(req: Request) {
     }
 
     if (!isAiConfigured()) {
-      return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
+      return NextResponse.json({
+        content: "Aria cannot answer with the AI layer right now because no AI provider is configured.",
+        groundedFacts: [],
+        reasoning: [],
+        recommendedActions: [],
+        citations: [],
+        riskWarnings: [],
+        reviewRequired: true,
+        ...aiNotConfiguredResponse()
+      }, { status: 503 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -123,6 +136,7 @@ export async function POST(req: Request) {
       }
 
       const data = await getDraftReviewData(matterId);
+      const matterIntelligence = await getMatterIntelligence({ matterId, user: context.user });
 
       const impacts = await prisma.matterImpact.findMany({
         where: {
@@ -171,6 +185,7 @@ export async function POST(req: Request) {
           `Draft readiness: ${data.draft.readinessScore}%.`,
           `Open validation items: ${openIssueTitles.length ? openIssueTitles.join("; ") : "none recorded"}.`,
           `Official update impacts: ${impactTitles.length ? impactTitles.join(" | ") : "none recorded"}.`,
+          `Matter intelligence: ${matterIntelligence.summary}.`,
           `Pathway context: ${pathwaySummary || "no linked pathway analysis recorded"}.`,
           `Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}.`,
           `Live research: ${researchSummary}.`
@@ -182,6 +197,9 @@ export async function POST(req: Request) {
           impacts.length
             ? "Review the flagged official update impacts before relying on current readiness."
             : "No stored official update impact currently changes this matter queue.",
+          matterIntelligence.evidenceGaps.length
+            ? "Close the documented evidence gaps before treating the draft as client-ready."
+            : "No immediate evidence gap is visible from the stored checklist links.",
           pathways.length
             ? "Use pathway analysis as scenario planning, not final legal advice."
             : "No linked pathway analysis is available for this matter."
@@ -207,9 +225,10 @@ export async function POST(req: Request) {
                     ? option.nextActionsJson.map(String).slice(0, 1)
                     : []
                 )
-            : data.openIssues.length
-              ? data.openIssues.slice(0, 3).map((issue: any) => issue.description)
-              : ["Confirm all source-linked fields", "Review official update monitor", "Record final migration agent review"]
+              : data.openIssues.length
+                ? data.openIssues.slice(0, 3).map((issue: any) => issue.description)
+              : ["Confirm all source-linked fields", "Review official update monitor", "Record final migration agent review"],
+        riskWarnings: matterIntelligence.riskWarnings
       };
 
       const ai = await generateAriaAiResponse({
@@ -227,6 +246,7 @@ export async function POST(req: Request) {
             status: matter.status,
             stage: matter.stage
           },
+          matterIntelligence,
           draftReadiness: data.draft.readinessScore,
           openIssues: data.openIssues,
           updateImpacts: impactTitles,
@@ -238,6 +258,14 @@ export async function POST(req: Request) {
           })),
           liveResearch: researchSummary
         }
+      });
+
+      await auditAiUsed({
+        workspaceId: context.workspace.id,
+        userId: context.user.id,
+        feature: "assistant.matter",
+        matterId,
+        metadata: { promptLength: prompt.length }
       });
 
       return NextResponse.json({
@@ -285,6 +313,7 @@ export async function POST(req: Request) {
     );
 
     const visaKnowledge = await getVisaKnowledgeForAssistant(prompt);
+    const workspaceBriefing = await getOverviewIntelligence(context.workspace.id, context.user);
 
     const research = wantsLiveResearch(prompt)
       ? await researchMigrationQuestion(prompt).catch((error) => ({
@@ -305,6 +334,7 @@ export async function POST(req: Request) {
         "Aria reviewed the workspace records available to your role and assignment scope. This answer is AI-assisted and review required; it does not make final legal decisions.",
       groundedFacts: sentenceList([
         `${impacts.length} matter update impact alert(s) are flagged for review.`,
+        `Daily briefing: ${workspaceBriefing.summary}`,
         `Recent pathway context: ${pathwayLines.join(" | ") || "no pathway analyses recorded"}.`,
         `Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}.`,
         `Live research: ${researchSummary}.`
@@ -316,6 +346,9 @@ export async function POST(req: Request) {
         pathways.length
           ? "Review pathway analyses before giving client-facing pathway options."
           : "Create a pathway analysis only from real intake facts and evidence.",
+        workspaceBriefing.riskWarnings.length
+          ? "Review the flagged security, deadline, and update warnings before reprioritising team work."
+          : "No additional risk warnings are visible in the current workspace snapshot.",
         "Use linked sources and stored matter records before acting on any recommendation."
       ]),
       citations: [
@@ -336,7 +369,8 @@ export async function POST(req: Request) {
           ? pathways
               .slice(0, 3)
               .map((analysis) => `Review ${analysis.title} before presenting pathway options to the client.`)
-          : ["Run official source check when ingestion is enabled", "Review any newly flagged affected matters", "Confirm source-linked changes before updating submission readiness"]
+          : ["Run official source check when ingestion is enabled", "Review any newly flagged affected matters", "Confirm source-linked changes before updating submission readiness"],
+      riskWarnings: workspaceBriefing.riskWarnings.map((item) => `${item.title}: ${item.detail}`)
     };
 
     const ai = await generateAriaAiResponse({
@@ -347,6 +381,7 @@ export async function POST(req: Request) {
         workspaceId: context.workspace.id,
         userRole: context.user.role,
         permissions: context.user.permissionsJson,
+        workspaceBriefing,
         visibleUpdateImpacts: impacts.map((impact) => ({
           matter: `${impact.matter.client.firstName} ${impact.matter.client.lastName}`,
           update: impact.officialUpdate.title,
@@ -361,6 +396,13 @@ export async function POST(req: Request) {
         })),
         liveResearch: researchSummary
       }
+    });
+
+    await auditAiUsed({
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      feature: "assistant.workspace",
+      metadata: { promptLength: prompt.length }
     });
 
     return NextResponse.json({

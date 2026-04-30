@@ -28,6 +28,16 @@ const documentDetailInclude = Prisma.validator<Prisma.DocumentInclude>()({
   uploadedByUser: true,
   extractionResults: { orderBy: { createdAt: "desc" } },
   extractedFields: { orderBy: { createdAt: "desc" } },
+  draftEvidenceLinks: {
+    include: {
+      draftField: {
+        include: {
+          templateField: true
+        }
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  },
   storageObject: true,
   checklistItems: true
 });

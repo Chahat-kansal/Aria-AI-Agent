@@ -5,9 +5,11 @@ import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { ClientPortalLinkButton } from "@/components/app/client-portal-link-button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/blocks/page-header";
+import { StatusChip } from "@/components/app/blocks/status-chip";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getMatterDetailData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
+import { getMatterIntelligence } from "@/lib/services/aria-intelligence";
 import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
@@ -16,6 +18,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
 
   const matter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
   if (!matter) notFound();
+  const intelligence = await getMatterIntelligence({ matterId: matter.id, user: context.user });
 
   const openTasks = matter.tasks.filter((task) => task.status !== "DONE").length;
   const openIssues = matter.validationIssues.filter((issue) => issue.resolutionStatus !== "RESOLVED" && issue.resolutionStatus !== "DISMISSED");
@@ -94,6 +97,87 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           ) : (
             <p className="mt-3 text-sm text-muted">No unresolved validation issues are recorded.</p>
           )}
+        </Card>
+      </section>
+
+      <section className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">Aria matter intelligence</h3>
+              <p className="mt-1 text-sm text-muted">
+                {intelligence.status === "ai"
+                  ? "AI-assisted operational review grounded in current matter, draft, validation, and update data."
+                  : intelligence.status === "not_configured"
+                    ? "Grounded matter analysis is available, but the AI layer is not configured yet."
+                    : "Grounded operational analysis generated from current matter data."}
+              </p>
+            </div>
+            <StatusChip label={matter.readinessScore >= 85 && openIssues.length === 0 ? "low" : matter.readinessScore >= 65 ? "medium" : "high"} />
+          </div>
+          {intelligence.status === "not_configured" && intelligence.configMessage ? (
+            <p className="mt-3 rounded-lg border border-border bg-white/60 p-3 text-xs text-muted">{intelligence.configMessage}</p>
+          ) : null}
+          <p className="mt-4 rounded-xl border border-border bg-white/55 p-4 text-sm leading-7">{intelligence.summary}</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-border bg-white/60 p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-muted">Matter health</p>
+              <p className="mt-2 font-medium">{intelligence.matterHealth}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-white/60 p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-muted">Next best action</p>
+              <p className="mt-2 font-medium">{intelligence.nextBestAction}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <div>
+              <p className="text-sm font-medium">Evidence gaps</p>
+              <ul className="mt-2 space-y-2 text-sm text-muted">
+                {intelligence.evidenceGaps.length ? intelligence.evidenceGaps.map((item) => (
+                  <li key={item} className="rounded-lg border border-border bg-white/55 p-3">{item}</li>
+                )) : <li className="rounded-lg border border-border bg-white/55 p-3">No immediate evidence gaps are visible from the stored checklist and document links.</li>}
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Draft weaknesses</p>
+              <ul className="mt-2 space-y-2 text-sm text-muted">
+                {intelligence.draftWeaknesses.length ? intelligence.draftWeaknesses.map((item) => (
+                  <li key={item} className="rounded-lg border border-border bg-white/55 p-3">{item}</li>
+                )) : <li className="rounded-lg border border-border bg-white/55 p-3">No major draft weaknesses are currently visible from the stored review state.</li>}
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Risk warnings</p>
+              <ul className="mt-2 space-y-2 text-sm text-muted">
+                {intelligence.riskWarnings.length ? intelligence.riskWarnings.map((item) => (
+                  <li key={item} className="rounded-lg border border-border bg-white/55 p-3">{item}</li>
+                )) : <li className="rounded-lg border border-border bg-white/55 p-3">No additional risk warnings are visible for this matter right now.</li>}
+              </ul>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="font-semibold">Aria follow-up guidance</h3>
+          <div className="mt-3 space-y-3 text-sm text-muted">
+            <div className="rounded-xl border border-border bg-white/55 p-4">
+              <p className="text-xs uppercase tracking-[0.14em]">Client follow-up suggestion</p>
+              <p className="mt-2 leading-7">{intelligence.clientFollowUpSuggestion}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-white/55 p-4">
+              <p className="text-xs uppercase tracking-[0.14em]">Final review note</p>
+              <p className="mt-2 leading-7">{intelligence.finalReviewNote}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-white/55 p-4">
+              <p className="text-xs uppercase tracking-[0.14em]">Useful next links</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href={`/app/matters/${matter.id}/draft` as any} className="rounded-lg border border-border bg-white/80 px-3 py-2 text-accent">Draft review</Link>
+                <Link href={`/app/matters/${matter.id}/checklist` as any} className="rounded-lg border border-border bg-white/80 px-3 py-2 text-accent">Checklist</Link>
+                <Link href="/app/document-requests" className="rounded-lg border border-border bg-white/80 px-3 py-2 text-accent">Document requests</Link>
+                <Link href="/app/assistant" className="rounded-lg border border-border bg-white/80 px-3 py-2 text-accent">Ask Aria</Link>
+              </div>
+            </div>
+          </div>
         </Card>
       </section>
 
