@@ -158,6 +158,21 @@ enum GeneratedDocumentType {
   GENUINE_STUDENT_STATEMENT_OUTLINE
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+  OVERDUE
+}
+
+enum InvoiceAssetKind {
+  LOGO
+  SIGNATURE
+  TEMPLATE
+  ATTACHMENT
+}
+
 enum ChatRole {
   SYSTEM
   USER
@@ -242,6 +257,11 @@ model Workspace {
   portalAccessTokens    ClientPortalAccessToken[]
   timelineEvents        MatterTimelineEvent[]
   knowledgeEmbeddings   KnowledgeEmbedding[]
+  invoiceBranding       InvoiceBranding?
+  invoiceTemplates      InvoiceTemplate[]
+  invoiceServices       InvoiceService[]
+  invoices              Invoice[]
+  invoiceAssets         InvoiceAsset[]
 }
 
 model User {
@@ -278,6 +298,8 @@ model User {
   appointments      Appointment[]         @relation("AppointmentAssignee")
   generatedDocuments GeneratedDocument[]
   timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
+  invoicesCreated   Invoice[]             @relation("InvoiceCreator")
+  invoiceTemplatesCreated InvoiceTemplate[] @relation("InvoiceTemplateCreator")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -308,6 +330,7 @@ model Client {
   documentRequests DocumentRequest[]
   appointments     Appointment[]
   portalAccessTokens ClientPortalAccessToken[]
+  invoices         Invoice[]
 }
 
 model Matter {
@@ -352,6 +375,7 @@ model Matter {
   generatedDocuments  GeneratedDocument[]
   portalAccessTokens  ClientPortalAccessToken[]
   timelineEvents      MatterTimelineEvent[]
+  invoices            Invoice[]
 }
 
 model PathwayAnalysis {
@@ -913,4 +937,138 @@ model KnowledgeEmbedding {
 
   @@index([workspaceId, entityType])
   @@unique([entityType, entityId])
+}
+
+model InvoiceBranding {
+  id                     String        @id @default(cuid())
+  workspaceId            String        @unique
+  workspace              Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  businessName           String
+  legalName              String?
+  contactEmail           String?
+  contactPhone           String?
+  addressLine1           String?
+  addressLine2           String?
+  city                   String?
+  state                  String?
+  postalCode             String?
+  country                String?
+  website                String?
+  abnAcn                 String?
+  paymentInstructions    String?
+  bankDetails            String?
+  defaultCurrency        String        @default("AUD")
+  defaultGstRateBps      Int           @default(1000)
+  defaultDueDays         Int           @default(7)
+  logoAssetId            String?        @unique
+  signatureAssetId       String?        @unique
+  logoAsset              InvoiceAsset? @relation("InvoiceBrandingLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  signatureAsset         InvoiceAsset? @relation("InvoiceBrandingSignature", fields: [signatureAssetId], references: [id], onDelete: SetNull)
+  invoices               Invoice[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+}
+
+model InvoiceTemplate {
+  id                 String         @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name               String
+  notes              String?
+  extractedText      String?
+  detectedFieldsJson Json?
+  extractionWarnings Json?
+  assetId            String?         @unique
+  asset              InvoiceAsset?  @relation("InvoiceTemplateAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  createdByUserId    String?
+  createdByUser      User?          @relation("InvoiceTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  invoices           Invoice[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([workspaceId, createdAt])
+}
+
+model InvoiceService {
+  id                  String      @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  serviceName         String
+  description         String?
+  defaultPriceCents   Int
+  currency            String      @default("AUD")
+  gstRateBps          Int         @default(1000)
+  isTaxInclusive      Boolean     @default(false)
+  active              Boolean     @default(true)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([workspaceId, active])
+}
+
+model Invoice {
+  id                    String         @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId              String?
+  client                Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId              String?
+  matter                Matter?        @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  createdByUserId       String
+  createdByUser         User           @relation("InvoiceCreator", fields: [createdByUserId], references: [id])
+  templateId            String?
+  template              InvoiceTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  brandingId            String?
+  branding              InvoiceBranding? @relation(fields: [brandingId], references: [id], onDelete: SetNull)
+  clientName            String
+  clientEmail           String?
+  clientAddress         String?
+  invoiceNumber         String
+  issueDate             DateTime
+  dueDate               DateTime
+  currency              String        @default("AUD")
+  subtotalCents         Int           @default(0)
+  gstCents              Int           @default(0)
+  discountCents         Int           @default(0)
+  totalCents            Int           @default(0)
+  lineItemsJson         Json
+  notes                 String?
+  paymentInstructions   String?
+  generatedContent      String?
+  aiReasoningJson       Json?
+  reviewRequired        Boolean       @default(true)
+  status                InvoiceStatus @default(DRAFT)
+  sentAt                DateTime?
+  paidAt                DateTime?
+  cancelledAt           DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  assets                InvoiceAsset[] @relation("InvoiceAttachment")
+
+  @@unique([workspaceId, invoiceNumber])
+  @@index([workspaceId, status, issueDate])
+}
+
+model InvoiceAsset {
+  id                   String           @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brandingLogoFor      InvoiceBranding? @relation("InvoiceBrandingLogo")
+  brandingSignatureFor InvoiceBranding? @relation("InvoiceBrandingSignature")
+  templateFor          InvoiceTemplate? @relation("InvoiceTemplateAsset")
+  invoiceId            String?
+  invoice              Invoice?         @relation("InvoiceAttachment", fields: [invoiceId], references: [id], onDelete: SetNull)
+  kind                 InvoiceAssetKind
+  fileName             String
+  mimeType             String
+  storageKey           String
+  contentHash          String?
+  fileSize             Int?
+  extractedText        String?
+  detectedFieldsJson   Json?
+  data                 Bytes?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([workspaceId, kind])
 }

@@ -122,3 +122,41 @@ export async function sendClientWorkflowEmail(input: {
     actionLink: input.actionLink
   };
 }
+
+export async function sendInvoiceEmail(input: {
+  to: string;
+  recipientName: string;
+  workspaceName: string;
+  invoiceNumber: string;
+  amountLabel: string;
+  dueDateLabel: string;
+  invoiceLink: string;
+}) {
+  const text = [
+    `Hi ${input.recipientName},`,
+    "",
+    `A review-required invoice ${input.invoiceNumber} has been prepared for ${input.amountLabel}.`,
+    `Due date: ${input.dueDateLabel}`,
+    "",
+    "Open the invoice using this secure link:",
+    input.invoiceLink,
+    "",
+    "This invoice was prepared in Aria and should be reviewed by your migration team before payment questions are actioned."
+  ].join("\n");
+
+  const html = `<p>Hi ${input.recipientName},</p><p>A review-required invoice <strong>${input.invoiceNumber}</strong> has been prepared for <strong>${input.amountLabel}</strong>.</p><p>Due date: ${input.dueDateLabel}</p><p><a href="${input.invoiceLink}">Open invoice</a></p><p>This invoice was prepared in Aria and should be reviewed by your migration team before payment questions are actioned.</p><p><small>${input.workspaceName}</small></p>`;
+
+  const result = await sendWorkflowEmail({
+    to: input.to,
+    subject: `Invoice ${input.invoiceNumber} from ${input.workspaceName}`,
+    text,
+    html,
+    fallbackLink: input.invoiceLink
+  });
+
+  return {
+    delivered: result.delivered,
+    reason: result.reason,
+    actionLink: input.invoiceLink
+  };
+}

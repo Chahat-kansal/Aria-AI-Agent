@@ -21,7 +21,12 @@ export type PermissionKey =
   | "can_send_client_requests"
   | "can_manage_appointments"
   | "can_export_data"
-  | "can_generate_documents";
+  | "can_generate_documents"
+  | "can_view_invoices"
+  | "can_manage_invoices"
+  | "can_generate_invoices"
+  | "can_send_invoices"
+  | "can_manage_invoice_settings";
 
 export type PermissionMap = Record<PermissionKey, boolean>;
 
@@ -39,7 +44,12 @@ export const permissionDefinitions: Array<{ key: PermissionKey; label: string; d
   { key: "can_send_client_requests", label: "Send client requests", description: "Send client intake, document request, and follow-up workflows." },
   { key: "can_manage_appointments", label: "Manage appointments", description: "Create, confirm, and manage consultation bookings." },
   { key: "can_export_data", label: "Export data", description: "Export workspace, matter, and client data packages." },
-  { key: "can_generate_documents", label: "Generate documents", description: "Create AI-assisted generated migration documents and templates." }
+  { key: "can_generate_documents", label: "Generate documents", description: "Create AI-assisted generated migration documents and templates." },
+  { key: "can_view_invoices", label: "View invoices", description: "Open invoice lists, previews, and invoice records within the workspace." },
+  { key: "can_manage_invoices", label: "Manage invoices", description: "Create, edit, duplicate, and update invoice records." },
+  { key: "can_generate_invoices", label: "Generate invoices with Aria", description: "Use Aria to generate structured invoice drafts from real client, branding, and pricing data." },
+  { key: "can_send_invoices", label: "Send invoices", description: "Mark invoices sent and email invoices to clients when email is configured." },
+  { key: "can_manage_invoice_settings", label: "Manage invoice settings", description: "Manage invoice branding, templates, uploaded assets, and default service pricing." }
 ];
 
 const allPermissions: PermissionMap = permissionDefinitions.reduce((acc, item) => ({ ...acc, [item.key]: true }), {} as PermissionMap);
@@ -99,7 +109,11 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
       can_manage_clients: true,
       can_send_client_requests: true,
       can_manage_appointments: true,
-      can_generate_documents: true
+      can_generate_documents: true,
+      can_view_invoices: true,
+      can_manage_invoices: true,
+      can_generate_invoices: true,
+      can_send_invoices: true
     };
   }
 
@@ -114,20 +128,24 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
       can_manage_clients: true,
       can_send_client_requests: true,
       can_manage_appointments: true,
-      can_generate_documents: true
+      can_generate_documents: true,
+      can_view_invoices: true,
+      can_manage_invoices: true,
+      can_generate_invoices: true,
+      can_send_invoices: true
     };
   }
 
   if (role === UserRole.CASE_MANAGER) {
-    return { ...base, can_edit_matters: true, can_access_update_monitor: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true };
+    return { ...base, can_edit_matters: true, can_access_update_monitor: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true, can_view_invoices: true };
   }
 
   if (role === UserRole.CLIENT_REVIEW_COORDINATOR) {
-    return { ...base, can_edit_matters: true, can_send_client_requests: true, can_manage_appointments: true };
+    return { ...base, can_edit_matters: true, can_send_client_requests: true, can_manage_appointments: true, can_view_invoices: true };
   }
 
   if (role === UserRole.ADMIN_ASSISTANT) {
-    return { ...base, can_edit_matters: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true };
+    return { ...base, can_edit_matters: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true, can_view_invoices: true };
   }
 
   return base;
