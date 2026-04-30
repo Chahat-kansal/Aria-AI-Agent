@@ -7,7 +7,29 @@ type AriaAiInput = {
 const AI_TIMEOUT_MS = Math.max(5000, Number(process.env.AI_TIMEOUT_MS || 30000));
 
 async function parseJsonResponse(res: Response) {
-  const data = await res.json();
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    const fallbackText = await res.text().catch(() => "");
+    if (!fallbackText) {
+      throw new Error("AI provider returned an unreadable response body");
+    }
+
+    try {
+      return JSON.parse(fallbackText);
+    } catch {
+      return {
+        content: fallbackText,
+        groundedFacts: [],
+        reasoning: [],
+        recommendedActions: [],
+        citations: [],
+        riskWarnings: ["AI response body was not valid JSON. Agent review required."],
+        reviewRequired: true
+      };
+    }
+  }
   const content = data.choices?.[0]?.message?.content ?? data.content?.[0]?.text;
 
   if (!content) throw new Error("AI provider returned no content");

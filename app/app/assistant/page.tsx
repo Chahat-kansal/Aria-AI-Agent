@@ -22,7 +22,7 @@ export default async function AssistantPage() {
         <PageHeader title="AI access unavailable" subtitle="Your company administrator controls AI access for each staff user." />
         <Card>
           <p className="text-sm text-muted">
-            You do not currently have permission to use Aria AI. Ask a Company Owner or Access Administrator to enable "Access Aria AI" for your account.
+            You do not currently have permission to use Aria AI. Ask a Company Owner or Access Administrator to enable &quot;Access Aria AI&quot; for your account.
           </p>
         </Card>
       </AppShell>

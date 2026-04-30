@@ -11,10 +11,19 @@ export async function auditEvent(input: {
   metadata?: AuditMetadata;
 }) {
   try {
+    if (!input.userId) {
+      console.warn("[aria:audit_skipped_missing_user]", {
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId ?? null
+      });
+      return;
+    }
+
     await prisma.auditEvent.create({
       data: {
         workspaceId: input.workspaceId,
-        userId: input.userId ?? "system",
+        userId: input.userId,
         entityType: input.entityType,
         entityId: input.entityId ?? "system",
         action: input.action,
