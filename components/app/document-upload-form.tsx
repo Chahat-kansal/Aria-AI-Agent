@@ -36,15 +36,15 @@ export function DocumentUploadForm({ matters, defaultMatterId }: { matters: Matt
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <select name="matterId" defaultValue={defaultMatterId ?? matters[0]?.id} required className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <select name="matterId" defaultValue={defaultMatterId ?? matters[0]?.id} required>
         {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
       </select>
-      <input name="file" required type="file" className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <button disabled={isUploading || !matters.length} className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <input name="file" required type="file" />
+      <button disabled={isUploading || !matters.length} className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60">
         {isUploading ? "Uploading..." : "Upload document"}
       </button>
-      {message ? <p className="text-xs text-muted">{message}</p> : null}
+      {message ? <p className="text-xs text-slate-400">{message}</p> : null}
     </form>
   );
 }

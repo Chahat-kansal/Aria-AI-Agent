@@ -2,6 +2,8 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { AppointmentForm } from "@/components/app/appointment-form";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
@@ -38,39 +40,48 @@ export default async function AppointmentsPage() {
   return (
     <AppShell title="Appointments">
       <PageHeader title="Appointments & Consultations" subtitle="Track real consultation requests, confirmations, and upcoming client meetings linked to staff and matters." />
-      <Card className="mb-4">
-        <h3 className="font-semibold">Book or record appointment</h3>
-        <p className="mb-3 mt-1 text-sm text-muted">Create a consultation booking for a client matter. If email is configured, the confirmation is sent automatically.</p>
+      <Card className="mb-6">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">Consultations</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">Book or record appointment</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">Create a consultation booking for a client matter. If email is configured, the confirmation is sent automatically.</p>
+          </div>
+          <StatusPill tone="info">Client linked</StatusPill>
+        </div>
         <AppointmentForm matters={matters} assignees={users} />
       </Card>
 
-      <div className="panel overflow-hidden">
+      <div className="aria-table-wrap">
         {appointments.length ? (
           <table className="w-full text-sm">
-            <thead className="bg-white/70 text-muted">
+            <thead className="aria-table-head">
               <tr>
-                <th className="p-3 text-left">When</th>
-                <th className="p-3 text-left">Matter</th>
-                <th className="p-3 text-left">Assigned</th>
-                <th className="p-3 text-left">Status</th>
+                <th className="aria-table-th">When</th>
+                <th className="aria-table-th">Matter</th>
+                <th className="aria-table-th">Assigned</th>
+                <th className="aria-table-th">Status</th>
               </tr>
             </thead>
             <tbody>
               {appointments.map((appointment) => (
-                <tr key={appointment.id} className="border-t border-border hover:bg-white/60">
-                  <td className="p-3">
-                    <p className="font-medium">{appointment.meetingType}</p>
-                    <p className="text-xs text-muted">{appointment.startsAt.toLocaleString("en-AU")}</p>
+                <tr key={appointment.id} className="aria-table-row">
+                  <td className="aria-table-td">
+                    <p className="font-medium text-white">{appointment.meetingType}</p>
+                    <p className="text-xs text-slate-400">{appointment.startsAt.toLocaleString("en-AU")}</p>
                   </td>
-                  <td className="p-3 text-muted">{appointment.matter?.title || "Unlinked matter"}</td>
-                  <td className="p-3 text-muted">{appointment.assignedToUser?.name || "Unassigned"}</td>
-                  <td className="p-3">{appointment.status.toLowerCase()}</td>
+                  <td className="aria-table-td text-slate-300">{appointment.matter?.title || "Unlinked matter"}</td>
+                  <td className="aria-table-td text-slate-300">{appointment.assignedToUser?.name || "Unassigned"}</td>
+                  <td className="aria-table-td"><StatusPill>{appointment.status.toLowerCase()}</StatusPill></td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="p-6 text-sm text-muted">No appointments are booked yet. Create one above or let a client request one through a secure portal link.</p>
+          <EmptyState
+            title="No appointments booked"
+            description="Create one above or let a client request one through a secure portal link."
+          />
         )}
       </div>
     </AppShell>

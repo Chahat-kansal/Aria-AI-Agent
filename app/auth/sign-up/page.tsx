@@ -57,31 +57,32 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="panel w-full max-w-2xl p-8">
-        <h1 className="text-2xl font-semibold">Create account</h1>
-        <p className="mt-2 text-sm text-muted">Set up your migration company workspace. The first account becomes the Company Owner.</p>
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(6,182,212,0.16),transparent_32%),linear-gradient(135deg,#08111F,#0D1B2E_45%,#111827)] p-6">
+      <div className="w-full max-w-2xl rounded-4xl border border-white/10 bg-slate-950/65 p-8 shadow-glass backdrop-blur-xl">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">Company onboarding</p>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white">Create company workspace</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300">Set up your migration company workspace. The first account becomes the Company Owner.</p>
         <form className="mt-6 grid gap-3 sm:grid-cols-2" onSubmit={handleSubmit}>
-          <input name="name" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Owner full name" />
-          <input name="email" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Owner work email" type="email" />
-          <input name="workspaceName" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Company / business name" />
-          <input name="contactEmail" className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Company contact email" type="email" />
-          <input name="contactPhone" className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Company phone" />
-          <input name="timezone" className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Timezone, e.g. Australia/Sydney" />
-          <input name="businessType" className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Business type, e.g. Migration firm" />
-          <input name="addressLine1" className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Business address" />
-          <input name="password" required minLength={8} className="w-full rounded-lg border border-border bg-white/70 p-2 sm:col-span-2" placeholder="Password" type="password" />
+          <input name="name" required className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Owner full name" />
+          <input name="email" required className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Owner work email" type="email" />
+          <input name="workspaceName" required className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Company / business name" />
+          <input name="contactEmail" className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Company contact email" type="email" />
+          <input name="contactPhone" className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Company phone" />
+          <input name="timezone" className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Timezone, e.g. Australia/Sydney" />
+          <input name="businessType" className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Business type, e.g. Migration firm" />
+          <input name="addressLine1" className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Business address" />
+          <input name="password" required minLength={8} className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15 sm:col-span-2" placeholder="Password" type="password" />
           {error ? <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p> : null}
           <button
-            className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
+            className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
             disabled={isSubmitting}
             type="submit"
           >
             {isSubmitting ? "Creating workspace..." : "Create workspace"}
           </button>
         </form>
-        <p className="mt-4 text-sm text-muted">
-          Already have an account? <Link href="/auth/sign-in" className="text-accent">Sign in</Link>
+        <p className="mt-4 text-sm text-slate-400">
+          Already have an account? <Link href="/auth/sign-in" className="text-cyan-300 hover:text-cyan-200">Sign in</Link>
         </p>
       </div>
     </div>

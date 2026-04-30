@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PrimaryButton } from "@/components/ui/primary-button";
 
 export function ClientPortalLinkButton({ clientId, matterId }: { clientId: string; matterId?: string }) {
   const [link, setLink] = useState<string | null>(null);
@@ -29,12 +30,12 @@ export function ClientPortalLinkButton({ clientId, matterId }: { clientId: strin
 
   return (
     <div className="space-y-2">
-      <button type="button" onClick={handleClick} disabled={isSubmitting} className="rounded-lg border border-border bg-white/70 px-4 py-2 text-sm text-accent disabled:opacity-60">
+      <PrimaryButton type="button" onClick={handleClick} disabled={isSubmitting}>
         {isSubmitting ? "Creating portal link..." : "Create client portal link"}
-      </button>
-      {message ? <p className="text-xs text-muted">{message}</p> : null}
-      {link ? <p className="break-all text-xs text-muted">{link}</p> : null}
-      {error ? <p className="text-xs text-red-200">{error}</p> : null}
+      </PrimaryButton>
+      {message ? <p className="text-xs text-slate-400">{message}</p> : null}
+      {link ? <p className="break-all rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-300">{link}</p> : null}
+      {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</p> : null}
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { DocumentRequestForm } from "@/components/app/document-request-form";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
@@ -34,9 +36,15 @@ export default async function DocumentRequestsPage() {
   return (
     <AppShell title="Document Requests">
       <PageHeader title="Document Requests & Reminders" subtitle="Request evidence against real matter checklists, send secure upload links, and track overdue client follow-up without fake reminder states." />
-      <Card className="mb-4">
-        <h3 className="font-semibold">Send document request</h3>
-        <p className="mb-3 mt-1 text-sm text-muted">Choose a matter, select the real checklist items to request, and send a secure client upload link.</p>
+      <Card className="mb-6">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">Evidence collection</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">Send document request</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">Choose a matter, select the real checklist items to request, and send a secure client upload link.</p>
+          </div>
+          <StatusPill tone="warning">Follow-up ready</StatusPill>
+        </div>
         <DocumentRequestForm matters={matters.map((matter) => ({
           id: matter.id,
           title: matter.title,
@@ -46,33 +54,33 @@ export default async function DocumentRequestsPage() {
         }))} />
       </Card>
 
-      <div className="panel overflow-hidden">
+      <div className="aria-table-wrap">
         {requests.length ? (
           <table className="w-full text-sm">
-            <thead className="bg-white/70 text-muted">
+            <thead className="aria-table-head">
               <tr>
-                <th className="p-3 text-left">Request</th>
-                <th className="p-3 text-left">Matter</th>
-                <th className="p-3 text-left">Status</th>
-                <th className="p-3 text-left">Due</th>
+                <th className="aria-table-th">Request</th>
+                <th className="aria-table-th">Matter</th>
+                <th className="aria-table-th">Status</th>
+                <th className="aria-table-th">Due</th>
               </tr>
             </thead>
             <tbody>
               {requests.map((request) => (
-                <tr key={request.id} className="border-t border-border hover:bg-white/60">
-                  <td className="p-3">
-                    <Link href={`/app/document-requests/${request.id}` as any} className="font-medium text-accent">{request.recipientName || request.client.firstName}</Link>
-                    <p className="mt-1 text-xs text-muted">{request.items.length} checklist item{request.items.length === 1 ? "" : "s"}</p>
+                <tr key={request.id} className="aria-table-row">
+                  <td className="aria-table-td">
+                    <Link href={`/app/document-requests/${request.id}` as any} className="font-medium text-cyan-300 transition hover:text-white">{request.recipientName || request.client.firstName}</Link>
+                    <p className="mt-1 text-xs text-slate-400">{request.items.length} checklist item{request.items.length === 1 ? "" : "s"}</p>
                   </td>
-                  <td className="p-3 text-muted">{request.matter.title}</td>
-                  <td className="p-3">{request.status.toLowerCase()}</td>
-                  <td className="p-3 text-muted">{request.dueDate ? request.dueDate.toLocaleDateString("en-AU") : "Not set"}</td>
+                  <td className="aria-table-td text-slate-300">{request.matter.title}</td>
+                  <td className="aria-table-td"><StatusPill>{request.status.toLowerCase()}</StatusPill></td>
+                  <td className="aria-table-td text-slate-300">{request.dueDate ? request.dueDate.toLocaleDateString("en-AU") : "Not set"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="p-6 text-sm text-muted">No document requests have been sent yet. Generate a matter checklist first, then request the missing evidence from the client.</p>
+          <EmptyState title="No document requests yet" description="Generate a matter checklist first, then request the missing evidence from the client." />
         )}
       </div>
     </AppShell>

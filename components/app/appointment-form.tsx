@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PrimaryButton } from "@/components/ui/primary-button";
 
 type MatterOption = {
   id: string;
@@ -48,8 +49,8 @@ export function AppointmentForm({ matters, assignees }: { matters: MatterOption[
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2">
-      <select name="matterId" className="rounded-lg border border-border bg-white/70 p-2 text-sm" defaultValue="">
+    <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+      <select name="matterId" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" defaultValue="">
         <option value="">Unlinked appointment</option>
         {matters.map((matter) => (
           <option key={matter.id} value={matter.id}>
@@ -57,7 +58,7 @@ export function AppointmentForm({ matters, assignees }: { matters: MatterOption[
           </option>
         ))}
       </select>
-      <select name="assignedToUserId" className="rounded-lg border border-border bg-white/70 p-2 text-sm" defaultValue="">
+      <select name="assignedToUserId" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" defaultValue="">
         <option value="">Assigned staff member</option>
         {assignees.map((user) => (
           <option key={user.id} value={user.id}>
@@ -65,16 +66,16 @@ export function AppointmentForm({ matters, assignees }: { matters: MatterOption[
           </option>
         ))}
       </select>
-      <input name="meetingType" required placeholder="Consultation type" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="startsAt" required type="datetime-local" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="requestedByName" placeholder="Client / attendee name" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="requestedByEmail" type="email" placeholder="Client email for confirmation" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <textarea name="notes" placeholder="Notes or agenda" className="min-h-28 rounded-lg border border-border bg-white/70 p-2 text-sm md:col-span-2" />
+      <input name="meetingType" required placeholder="Consultation type" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+      <input name="startsAt" required type="datetime-local" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+      <input name="requestedByName" placeholder="Client / attendee name" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+      <input name="requestedByEmail" type="email" placeholder="Client email for confirmation" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+      <textarea name="notes" placeholder="Notes or agenda" className="min-h-28 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15 md:col-span-2" />
       {error ? <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200 md:col-span-2">{error}</p> : null}
       {message ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 text-sm text-emerald-100 md:col-span-2">{message}</p> : null}
-      <button disabled={isSubmitting} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 md:col-span-2">
+      <PrimaryButton disabled={isSubmitting} className="md:col-span-2">
         {isSubmitting ? "Saving appointment..." : "Save appointment"}
-      </button>
+      </PrimaryButton>
     </form>
   );
 }

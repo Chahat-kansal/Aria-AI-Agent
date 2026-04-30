@@ -3,14 +3,12 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
-  @apply bg-background text-[#182033] antialiased;
-  background:
-    linear-gradient(135deg, rgba(238, 242, 255, 0.96), rgba(239, 253, 250, 0.86) 42%, rgba(247, 238, 255, 0.9)),
-    #f6f7ff;
+  @apply bg-aria-bg text-slate-50 antialiased;
+  background: linear-gradient(135deg, #08111f, #0d1b2e 45%, #111827);
 }
 
 * {
@@ -18,13 +16,26 @@ body {
 }
 
 .panel {
-  @apply rounded-lg border border-border bg-surface shadow-premium backdrop-blur-xl;
+  @apply rounded-3xl border border-white/10 bg-slate-950/55 shadow-glass backdrop-blur-xl;
 }
 
 input,
 select,
 textarea {
-  @apply text-[#182033] outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-accent/20;
+  @apply text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select {
+  @apply h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
+}
+
+textarea {
+  @apply min-h-28 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
+}
+
+input[type="file"] {
+  @apply h-auto rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15;
 }
 
 button,
@@ -33,5 +44,47 @@ a {
 }
 
 .text-muted {
-  color: #667085;
+  color: #94a3b8;
+}
+
+@layer components {
+  .aria-surface {
+    @apply rounded-3xl border border-white/10 bg-white/[0.04] p-4;
+  }
+
+  .aria-surface-strong {
+    @apply rounded-3xl border border-white/10 bg-slate-950/65 p-5 shadow-glass backdrop-blur-xl;
+  }
+
+  .aria-note {
+    @apply rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300;
+  }
+
+  .aria-chip-link {
+    @apply inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-cyan-300 hover:bg-white/10 hover:text-cyan-200;
+  }
+
+  .aria-chip {
+    @apply inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300;
+  }
+
+  .aria-table-wrap {
+    @apply overflow-hidden rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl;
+  }
+
+  .aria-table-head {
+    @apply bg-white/[0.03];
+  }
+
+  .aria-table-th {
+    @apply px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-slate-500;
+  }
+
+  .aria-table-row {
+    @apply border-t border-white/5 transition hover:bg-white/[0.04];
+  }
+
+  .aria-table-td {
+    @apply px-4 py-3 text-sm text-slate-300;
+  }
 }

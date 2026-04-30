@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { DocumentRequestReminderButton } from "@/components/app/document-request-reminder-button";
+import { StatusPill } from "@/components/ui/status-pill";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
@@ -33,18 +34,21 @@ export default async function DocumentRequestDetailPage({ params }: { params: { 
       <PageHeader title={`Document request for ${request.client.firstName} ${request.client.lastName}`} subtitle="Track requested checklist items, due dates, reminder status, and secure client upload follow-up." />
       <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <Card>
-          <h3 className="font-semibold">Request details</h3>
-          <div className="mt-3 grid gap-3 md:grid-cols-2 text-sm">
-            <div className="rounded-lg border border-border bg-white/55 p-3"><p className="text-muted">Status</p><p className="font-medium">{request.status.toLowerCase()}</p></div>
-            <div className="rounded-lg border border-border bg-white/55 p-3"><p className="text-muted">Due date</p><p className="font-medium">{request.dueDate ? request.dueDate.toLocaleDateString("en-AU") : "Not set"}</p></div>
-            <div className="rounded-lg border border-border bg-white/55 p-3"><p className="text-muted">Viewed</p><p className="font-medium">{request.viewedAt ? request.viewedAt.toLocaleString("en-AU") : "Not yet"}</p></div>
-            <div className="rounded-lg border border-border bg-white/55 p-3"><p className="text-muted">Reminder sent</p><p className="font-medium">{request.reminderSentAt ? request.reminderSentAt.toLocaleString("en-AU") : "Not yet"}</p></div>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-xl font-semibold tracking-tight text-white">Request details</h3>
+            <StatusPill>{request.status.toLowerCase()}</StatusPill>
           </div>
-          {request.message ? <p className="mt-4 rounded-lg border border-border bg-white/55 p-3 text-sm text-muted">{request.message}</p> : null}
+          <div className="mt-3 grid gap-3 md:grid-cols-2 text-sm">
+            <div className="aria-note">Status<br /><span className="text-white">{request.status.toLowerCase()}</span></div>
+            <div className="aria-note">Due date<br /><span className="text-white">{request.dueDate ? request.dueDate.toLocaleDateString("en-AU") : "Not set"}</span></div>
+            <div className="aria-note">Viewed<br /><span className="text-white">{request.viewedAt ? request.viewedAt.toLocaleString("en-AU") : "Not yet"}</span></div>
+            <div className="aria-note">Reminder sent<br /><span className="text-white">{request.reminderSentAt ? request.reminderSentAt.toLocaleString("en-AU") : "Not yet"}</span></div>
+          </div>
+          {request.message ? <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">{request.message}</p> : null}
         </Card>
         <Card>
-          <h3 className="font-semibold">Client follow-up</h3>
-          <p className="mt-2 text-sm text-muted">Send a fresh reminder and secure upload link. If email is not configured, the new link is still returned here so your team can share it manually.</p>
+          <h3 className="text-xl font-semibold tracking-tight text-white">Client follow-up</h3>
+          <p className="mt-2 text-sm text-slate-300">Send a fresh reminder and secure upload link. If email is not configured, the new link is still returned here so your team can share it manually.</p>
           <div className="mt-4">
             <DocumentRequestReminderButton requestId={request.id} />
           </div>
@@ -52,16 +56,16 @@ export default async function DocumentRequestDetailPage({ params }: { params: { 
       </div>
 
       <Card className="mt-4">
-        <h3 className="font-semibold">Requested checklist items</h3>
+        <h3 className="text-xl font-semibold tracking-tight text-white">Requested checklist items</h3>
         <div className="mt-3 space-y-2">
           {request.items.map((item) => (
-            <div key={item.id} className="rounded-lg border border-border bg-white/55 p-3">
+            <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-medium">{item.checklistItem.label}</p>
-                  <p className="text-xs text-muted">{item.checklistItem.category} - {item.status.toLowerCase()}</p>
+                  <p className="font-medium text-white">{item.checklistItem.label}</p>
+                  <p className="text-xs text-slate-400">{item.checklistItem.category} - {item.status.toLowerCase()}</p>
                 </div>
-                <p className="text-xs text-muted">{item.checklistItem.document ? `Uploaded: ${item.checklistItem.document.fileName}` : "Waiting for upload"}</p>
+                <p className="text-xs text-slate-400">{item.checklistItem.document ? `Uploaded: ${item.checklistItem.document.fileName}` : "Waiting for upload"}</p>
               </div>
             </div>
           ))}

@@ -49,24 +49,24 @@ export function CreateMatterForm({ visaOptions = [] }: { visaOptions?: VisaOptio
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2">
-      <input name="clientFirstName" required placeholder="Client first name" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="clientLastName" required placeholder="Client last name" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="clientEmail" required type="email" placeholder="Client email" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="clientPhone" placeholder="Client phone" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="clientDob" type="date" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="nationality" placeholder="Nationality" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="title" required placeholder="Matter title" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <select name="visaSubclass" defaultValue="500" className="rounded-lg border border-border bg-white/70 p-2 text-sm">
+      <input name="clientFirstName" required placeholder="Client first name" />
+      <input name="clientLastName" required placeholder="Client last name" />
+      <input name="clientEmail" required type="email" placeholder="Client email" />
+      <input name="clientPhone" placeholder="Client phone" />
+      <input name="clientDob" type="date" />
+      <input name="nationality" placeholder="Nationality" />
+      <input name="title" required placeholder="Matter title" />
+      <select name="visaSubclass" defaultValue="500">
         {options.map((option) => (
           <option key={`${option.subclassCode}-${option.title}`} value={option.subclassCode ?? ""}>
             {option.title}
           </option>
         ))}
       </select>
-      <input name="visaStream" required defaultValue="Higher Education" placeholder="Stream" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="lodgementTargetDate" type="date" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      {error ? <p className="md:col-span-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">{error}</p> : null}
-      <button disabled={isSubmitting} className="md:col-span-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <input name="visaStream" required defaultValue="Higher Education" placeholder="Stream" />
+      <input name="lodgementTargetDate" type="date" />
+      {error ? <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300 md:col-span-2">{error}</p> : null}
+      <button disabled={isSubmitting} className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60 md:col-span-2">
         {isSubmitting ? "Creating matter..." : "Create matter"}
       </button>
     </form>

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PrimaryButton } from "@/components/ui/primary-button";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
@@ -27,17 +29,17 @@ export default async function MatterChecklistPage({ params }: { params: { matter
   return (
     <AppShell title="Matters">
       <PageHeader title={`Checklist - ${matter.client.firstName} ${matter.client.lastName}`} subtitle="Real visa checklist records linked to the matter, document uploads, and client request workflows." />
-      <Card className="mb-4">
+      <Card className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold">Visa checklist</h3>
-            <p className="mt-1 text-sm text-muted">Supported subclasses currently include 500, 482, 186, 189, 190, 491, 600, and Partner 820/801.</p>
+            <h3 className="text-xl font-semibold tracking-tight text-white">Visa checklist</h3>
+            <p className="mt-1 text-sm text-slate-300">Supported subclasses currently include 500, 482, 186, 189, 190, 491, 600, and Partner 820/801.</p>
           </div>
           {hasPermission(context.user, "can_edit_matters") ? (
             <form action={handleGenerate}>
-              <button className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white">
+              <PrimaryButton>
                 {matter.checklistItems.length ? "Regenerate checklist" : "Generate checklist"}
-              </button>
+              </PrimaryButton>
             </form>
           ) : null}
         </div>
@@ -47,14 +49,14 @@ export default async function MatterChecklistPage({ params }: { params: { matter
         {matter.checklistItems.length ? (
           <div className="space-y-2">
             {matter.checklistItems.map((item) => (
-              <div key={item.id} className="rounded-lg border border-border bg-white/55 p-3">
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium">{item.label}</p>
-                    <p className="text-xs text-muted">{item.category} - {item.required ? "Required" : "Optional"} - {item.status.toLowerCase()}</p>
-                    {item.description ? <p className="mt-1 text-sm text-muted">{item.description}</p> : null}
+                    <p className="font-medium text-white">{item.label}</p>
+                    <p className="text-xs text-slate-400">{item.category} - {item.required ? "Required" : "Optional"} - {item.status.toLowerCase()}</p>
+                    {item.description ? <p className="mt-1 text-sm text-slate-300">{item.description}</p> : null}
                   </div>
-                  <div className="text-right text-xs text-muted">
+                  <div className="text-right text-xs text-slate-400">
                     {item.document ? <p>Linked file: {item.document.fileName}</p> : <p>No document linked yet</p>}
                     {item.dueDate ? <p>Due: {item.dueDate.toLocaleDateString("en-AU")}</p> : null}
                   </div>
@@ -63,15 +65,18 @@ export default async function MatterChecklistPage({ params }: { params: { matter
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted">No checklist items exist yet. Generate the real checklist for this visa matter to start requesting documents.</p>
+          <EmptyState
+            title="No checklist items yet"
+            description="Generate the real checklist for this visa matter to start requesting documents."
+          />
         )}
       </Card>
 
-      <Card className="mt-4">
-        <h3 className="font-semibold">Next actions</h3>
+      <Card className="mt-6">
+        <h3 className="text-xl font-semibold tracking-tight text-white">Next actions</h3>
         <div className="mt-3 flex flex-wrap gap-3">
-          <Link href={"/app/document-requests" as any} className="rounded-lg border border-border bg-white/70 px-4 py-2 text-sm text-accent">Open document requests</Link>
-          <Link href={`/app/matters/${matter.id}/draft` as any} className="rounded-lg border border-border bg-white/70 px-4 py-2 text-sm text-accent">Open draft review</Link>
+          <Link href={"/app/document-requests" as any} className="aria-chip-link">Open document requests</Link>
+          <Link href={`/app/matters/${matter.id}/draft` as any} className="aria-chip-link">Open draft review</Link>
         </div>
       </Card>
     </AppShell>

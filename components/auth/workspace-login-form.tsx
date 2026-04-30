@@ -38,11 +38,11 @@ export function WorkspaceLoginForm({ workspaceSlug }: { workspaceSlug: string })
 
   return (
     <form className="mt-6 space-y-3" onSubmit={submit}>
-      {accepted ? <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">Account activated. Sign in to continue.</p> : null}
-      <input name="email" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Work email" type="email" />
-      <input name="password" required className="w-full rounded-lg border border-border bg-white/70 p-2" placeholder="Password" type="password" />
-      {error ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
-      <button className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isSubmitting}>
+      {accepted ? <p className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-300">Account activated. Sign in to continue.</p> : null}
+      <input name="email" required className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Work email" type="email" />
+      <input name="password" required className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" placeholder="Password" type="password" />
+      {error ? <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">{error}</p> : null}
+      <button className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60" disabled={isSubmitting}>
         {isSubmitting ? "Signing in..." : "Sign in to workspace"}
       </button>
     </form>

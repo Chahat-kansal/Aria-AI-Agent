@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PrimaryButton } from "@/components/ui/primary-button";
 
 type MatterChecklist = {
   id: string;
@@ -67,7 +68,7 @@ export function DocumentRequestForm({ matters }: { matters: MatterChecklist[] })
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <select value={selectedMatterId} onChange={(event) => setSelectedMatterId(event.target.value)} className="rounded-lg border border-border bg-white/70 p-2 text-sm">
+        <select value={selectedMatterId} onChange={(event) => setSelectedMatterId(event.target.value)} className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15">
           <option value="">Choose matter</option>
           {matters.map((item) => (
             <option key={item.id} value={item.id}>
@@ -75,41 +76,41 @@ export function DocumentRequestForm({ matters }: { matters: MatterChecklist[] })
             </option>
           ))}
         </select>
-        <input name="dueDate" type="date" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-        <input name="recipientName" defaultValue={matter ? `${matter.client.firstName} ${matter.client.lastName}` : ""} placeholder="Client name" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-        <input name="recipientEmail" type="email" defaultValue={matter?.client.email ?? ""} placeholder="Client email" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
+        <input name="dueDate" type="date" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+        <input name="recipientName" defaultValue={matter ? `${matter.client.firstName} ${matter.client.lastName}` : ""} placeholder="Client name" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+        <input name="recipientEmail" type="email" defaultValue={matter?.client.email ?? ""} placeholder="Client email" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
       </div>
 
       {matter ? (
-        <div className="rounded-xl border border-border bg-white/55 p-3">
-          <p className="text-sm font-medium">Checklist items</p>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="text-sm font-medium text-white">Checklist items</p>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
             {matter.checklistItems.map((item) => (
-              <label key={item.id} className="flex items-start gap-2 rounded-lg border border-border bg-white/75 p-3 text-sm">
+              <label key={item.id} className="flex items-start gap-2 rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-sm">
                 <input type="checkbox" name="checklistItemIds" value={item.id} className="mt-1" />
                 <span>
-                  <span className="font-medium">{item.label}</span>
-                  <span className="mt-1 block text-xs text-muted">{item.category} - {item.status.toLowerCase()}</span>
+                  <span className="font-medium text-white">{item.label}</span>
+                  <span className="mt-1 block text-xs text-slate-400">{item.category} - {item.status.toLowerCase()}</span>
                 </span>
               </label>
             ))}
           </div>
         </div>
       ) : (
-        <p className="rounded-lg border border-border bg-white/55 p-3 text-sm text-muted">Choose a matter to select real checklist items from the database.</p>
+        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-400">Choose a matter to select real checklist items from the database.</p>
       )}
 
-      <textarea name="message" placeholder="Message for the client" className="min-h-28 w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
+      <textarea name="message" placeholder="Message for the client" className="min-h-28 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
       {error ? <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">{error}</p> : null}
       {message ? (
-        <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
           <p>{message}</p>
           {link ? <p className="mt-2 break-all text-xs text-emerald-50">{link}</p> : null}
         </div>
       ) : null}
-      <button disabled={isSubmitting} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <PrimaryButton disabled={isSubmitting}>
         {isSubmitting ? "Sending request..." : "Send document request"}
-      </button>
+      </PrimaryButton>
     </form>
   );
 }

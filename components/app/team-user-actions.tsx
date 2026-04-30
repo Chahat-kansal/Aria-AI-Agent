@@ -102,49 +102,49 @@ export function TeamUserActions({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <button disabled={pending} onClick={() => setEditing((value) => !value)} className="rounded-lg border border-border bg-white/50 px-3 py-2 text-xs text-muted hover:bg-white disabled:opacity-60">
+        <button disabled={pending} onClick={() => setEditing((value) => !value)} className="inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-100 hover:bg-white/10 disabled:opacity-60">
           {editing ? "Close" : "Edit user"}
         </button>
-        <button disabled={pending || isCompanyOwner} onClick={updateStatus} className="rounded-lg border border-border bg-white/50 px-3 py-2 text-xs text-muted hover:bg-white disabled:opacity-60">
+        <button disabled={pending || isCompanyOwner} onClick={updateStatus} className="inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-100 hover:bg-white/10 disabled:opacity-60">
           {currentStatus === "DISABLED" ? "Activate" : "Deactivate"}
         </button>
         {currentStatus === "INVITED" ? (
-          <button disabled={pending} onClick={resendInvite} className="rounded-lg border border-border bg-white/50 px-3 py-2 text-xs text-muted hover:bg-white disabled:opacity-60">
+          <button disabled={pending} onClick={resendInvite} className="inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-100 hover:bg-white/10 disabled:opacity-60">
             Resend invite
           </button>
         ) : null}
       </div>
-      {message ? <p className="text-xs text-red-700">{message}</p> : null}
+      {message ? <p className="text-xs text-slate-400">{message}</p> : null}
       {inviteLink ? (
-        <div className="max-w-xs rounded-lg border border-border bg-white/70 p-2 text-xs">
-          <a href={inviteLink} className="break-all text-accent">{inviteLink}</a>
-          <button onClick={copyInviteLink} className="mt-2 rounded border border-border px-2 py-1 text-muted" type="button">Copy invite link</button>
+        <div className="max-w-xs rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs">
+          <a href={inviteLink} className="break-all text-cyan-300">{inviteLink}</a>
+          <button onClick={copyInviteLink} className="mt-2 inline-flex h-8 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-xs text-slate-100 hover:bg-white/10" type="button">Copy invite link</button>
         </div>
       ) : null}
       {editing ? (
-        <form className="min-w-[260px] rounded-xl border border-border bg-white/70 p-3" onSubmit={updatePermissions}>
-          <p className="mb-2 text-xs text-muted">{isCompanyOwner ? "Company Owner permissions are always on." : "Edit staff profile and feature permissions."}</p>
+        <form className="min-w-[260px] rounded-3xl border border-white/10 bg-white/[0.04] p-4" onSubmit={updatePermissions}>
+          <p className="mb-3 text-xs text-slate-400">{isCompanyOwner ? "Company Owner permissions are always on." : "Edit staff profile and feature permissions."}</p>
           <div className="mb-3 grid gap-2">
-            <input name="name" defaultValue={currentName} className="rounded-lg border border-border bg-white/70 p-2 text-xs" placeholder="Full name" />
-            <input name="jobTitle" defaultValue={currentJobTitle ?? ""} className="rounded-lg border border-border bg-white/70 p-2 text-xs" placeholder="Job title" />
-            <select name="role" defaultValue={currentRole} disabled={isCompanyOwner} className="rounded-lg border border-border bg-white/70 p-2 text-xs">
+            <input name="name" defaultValue={currentName} placeholder="Full name" />
+            <input name="jobTitle" defaultValue={currentJobTitle ?? ""} placeholder="Job title" />
+            <select name="role" defaultValue={currentRole} disabled={isCompanyOwner}>
               {roleDefinitions.map((role) => <option key={role.role} value={role.role}>{role.label}</option>)}
             </select>
           </div>
           <div className="space-y-2">
             {permissionDefinitions.map((permission) => (
-              <label key={permission.key} className="flex gap-2 text-xs">
-                <input name={permission.key} type="checkbox" defaultChecked={isCompanyOwner || permissions[permission.key] === true} disabled={isCompanyOwner} />
+              <label key={permission.key} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs">
+                <input name={permission.key} type="checkbox" defaultChecked={isCompanyOwner || permissions[permission.key] === true} disabled={isCompanyOwner} className="mt-1" />
                 <span>
-                  <span className="block font-medium">{permission.label}</span>
-                  <span className="text-muted">{permission.description}</span>
+                  <span className="block font-medium text-white">{permission.label}</span>
+                  <span className="text-slate-400">{permission.description}</span>
                 </span>
               </label>
             ))}
           </div>
-          <button disabled={pending || isCompanyOwner} className="mt-3 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+          <button disabled={pending || isCompanyOwner} className="mt-3 inline-flex h-10 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-4 text-xs font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60">
             Save changes
           </button>
         </form>

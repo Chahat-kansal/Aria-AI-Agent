@@ -2,6 +2,8 @@
 
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PrimaryButton } from "@/components/ui/primary-button";
+import { SecondaryButton } from "@/components/ui/secondary-button";
 
 export function DraftWorkflowActions({
   matterId,
@@ -72,23 +74,23 @@ export function DraftWorkflowActions({
 
   return (
     <div className="space-y-3">
-      {canEditMatter ? <div className="rounded-xl border border-border bg-[#0e182a] p-3">
-        <p className="text-sm font-semibold">Upload client document</p>
-        <p className="mt-1 text-xs text-muted">Stores the file, records metadata in Postgres, classifies evidence, and maps supported values to the draft.</p>
-        <form onSubmit={uploadDocument} className="mt-3 flex gap-2">
+      {canEditMatter ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <p className="text-sm font-semibold text-white">Upload client document</p>
+        <p className="mt-1 text-xs text-slate-400">Stores the file, records metadata in Postgres, classifies evidence, and maps supported values to the draft.</p>
+        <form onSubmit={uploadDocument} className="mt-3 flex flex-col gap-3">
           <input type="hidden" name="matterId" value={matterId} />
-          <input name="file" required type="file" className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
-          <button disabled={pending} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Upload</button>
+          <input name="file" required type="file" className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-2 text-sm text-white" />
+          <PrimaryButton disabled={pending} className="w-full">Upload</PrimaryButton>
         </form>
-      </div> : <p className="rounded-lg border border-border bg-white/50 p-3 text-xs text-muted">You do not have permission to upload or edit matter documents.</p>}
-      {canUseAi ? <button onClick={runMapping} disabled={pending} className="w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Run AI-assisted draft mapping</button> : null}
-      {canRunCrossCheck ? <button onClick={runFinalCrossCheck} disabled={pending} className="w-full rounded-xl border border-accent/50 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-60">Final submission-readiness cross-check</button> : null}
-      {canEditMatter ? <div className="rounded-xl border border-border bg-[#0e182a] p-3">
-        <p className="text-sm font-semibold">Client review/signature foundation</p>
-        <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-2 w-full rounded-lg border border-border bg-white/70 p-2 text-sm" />
-        <button onClick={sendReview} disabled={pending} className="mt-2 w-full rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60">Send to client review</button>
+      </div> : <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-400">You do not have permission to upload or edit matter documents.</p>}
+      {canUseAi ? <PrimaryButton onClick={runMapping} disabled={pending} className="w-full">Run AI-assisted draft mapping</PrimaryButton> : null}
+      {canRunCrossCheck ? <SecondaryButton onClick={runFinalCrossCheck} disabled={pending} className="w-full">Final submission-readiness cross-check</SecondaryButton> : null}
+      {canEditMatter ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <p className="text-sm font-semibold text-white">Client review/signature foundation</p>
+        <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+        <PrimaryButton onClick={sendReview} disabled={pending} className="mt-3 w-full">Send to client review</PrimaryButton>
       </div> : null}
-      {message ? <p className="rounded-lg border border-border bg-[#0e182a] p-2 text-xs text-muted">{message}</p> : null}
+      {message ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-300">{message}</p> : null}
     </div>
   );
 }
@@ -108,9 +110,9 @@ export function DraftFieldReviewControls({ draftFieldId }: { draftFieldId: strin
 
   return (
     <div className="mt-3 flex flex-wrap gap-1">
-      <button disabled={pending} onClick={() => setStatus("VERIFIED")} className="rounded border border-border px-2 py-1 text-xs">Verify</button>
-      <button disabled={pending} onClick={() => setStatus("NEEDS_REVIEW")} className="rounded border border-border px-2 py-1 text-xs">Needs review</button>
-      <button disabled={pending} onClick={() => setStatus("CONFLICTING")} className="rounded border border-border px-2 py-1 text-xs">Conflict</button>
+      <button disabled={pending} onClick={() => setStatus("VERIFIED")} className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-xs text-emerald-300 transition hover:bg-emerald-400/15">Verify</button>
+      <button disabled={pending} onClick={() => setStatus("NEEDS_REVIEW")} className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs text-amber-300 transition hover:bg-amber-400/15">Needs review</button>
+      <button disabled={pending} onClick={() => setStatus("CONFLICTING")} className="rounded-full border border-red-400/20 bg-red-400/10 px-2.5 py-1 text-xs text-red-300 transition hover:bg-red-400/15">Conflict</button>
     </div>
   );
 }

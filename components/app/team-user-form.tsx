@@ -58,18 +58,18 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
     return (
       <div className="flex flex-wrap items-center gap-3">
         <button
-          className="rounded-xl bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white shadow-premium transition hover:opacity-90"
+          className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95"
           onClick={() => setIsOpen(true)}
           type="button"
         >
           + Add Team Member
         </button>
-        {message ? <p className="text-sm text-muted">{message}</p> : null}
+        {message ? <p className="text-sm text-slate-400">{message}</p> : null}
         {inviteLink ? (
-          <div className="rounded-lg border border-border bg-white/60 p-3 text-sm">
-            <p className="text-muted">Share this invite link:</p>
-            <a href={inviteLink} className="break-all text-accent">{inviteLink}</a>
-            <button className="ml-0 mt-2 rounded border border-border px-2 py-1 text-xs text-muted sm:ml-2 sm:mt-0" onClick={copyInviteLink} type="button">Copy invite link</button>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
+            <p className="text-slate-400">Share this invite link:</p>
+            <a href={inviteLink} className="break-all text-cyan-300">{inviteLink}</a>
+            <button className="mt-2 inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-100 hover:bg-white/10 sm:ml-2 sm:mt-0" onClick={copyInviteLink} type="button">Copy invite link</button>
           </div>
         ) : null}
       </div>
@@ -77,53 +77,53 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
   }
 
   return (
-    <form onSubmit={createUser} className="grid gap-3 rounded-2xl border border-border bg-white/45 p-4 md:grid-cols-2">
-      <div className="md:col-span-2 flex items-start justify-between gap-3">
+    <form onSubmit={createUser} className="grid gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-4 md:grid-cols-2">
+      <div className="flex items-start justify-between gap-3 md:col-span-2">
         <div>
-          <h4 className="font-semibold">Add Team Member</h4>
-          <p className="mt-1 text-xs text-muted">Create a staff invitation. The user sets their own password from the invite link.</p>
+          <h4 className="text-sm font-semibold text-slate-100">Add Team Member</h4>
+          <p className="mt-1 text-xs text-slate-400">Create a staff invitation. The user sets their own password from the invite link.</p>
         </div>
-        <button className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs text-muted hover:bg-white" onClick={() => setIsOpen(false)} type="button">Cancel</button>
+        <button className="inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-100 hover:bg-white/10" onClick={() => setIsOpen(false)} type="button">Cancel</button>
       </div>
-      <input name="name" required placeholder="Full name" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <input name="email" required type="email" placeholder="Work email" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <select name="role" required className="rounded-lg border border-border bg-white/70 p-2 text-sm">
+      <input name="name" required placeholder="Full name" />
+      <input name="email" required type="email" placeholder="Work email" />
+      <select name="role" required>
         {roles.map((role) => <option key={role.role} value={role.role}>{role.label}</option>)}
       </select>
-      <select name="visibilityScope" defaultValue="ASSIGNED_ONLY" className="rounded-lg border border-border bg-white/70 p-2 text-sm">
+      <select name="visibilityScope" defaultValue="ASSIGNED_ONLY">
         <option value="ASSIGNED_ONLY">Assigned work only</option>
         <option value="TEAM_OVERSIGHT">Team oversight</option>
         <option value="FIRM_WIDE">Firm-wide visibility</option>
       </select>
-      <input name="jobTitle" placeholder="Job title" className="rounded-lg border border-border bg-white/70 p-2 text-sm" />
-      <select name="supervisorId" defaultValue="" className="rounded-lg border border-border bg-white/70 p-2 text-sm">
+      <input name="jobTitle" placeholder="Job title" />
+      <select name="supervisorId" defaultValue="">
         <option value="">No supervising user</option>
         {supervisors.map((user) => <option key={user.id} value={user.id}>{user.name} - {user.email}</option>)}
       </select>
-      <select name="status" defaultValue="INVITED" className="rounded-lg border border-border bg-white/70 p-2 text-sm" disabled>
+      <select name="status" defaultValue="INVITED" disabled>
         <option value="INVITED">Invited until password is set</option>
       </select>
-      <textarea name="notes" placeholder="Internal access notes" className="min-h-24 rounded-lg border border-border bg-white/70 p-2 text-sm md:col-span-2" />
-      <fieldset className="rounded-xl border border-border bg-white/50 p-3 md:col-span-2">
-        <legend className="px-1 text-sm font-semibold">Feature permissions</legend>
-        <p className="mb-3 text-xs text-muted">These toggles are stored per user. Company Owner accounts always keep every permission enabled.</p>
+      <textarea name="notes" placeholder="Internal access notes" className="md:col-span-2" />
+      <fieldset className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:col-span-2">
+        <legend className="px-1 text-sm font-semibold text-slate-100">Feature permissions</legend>
+        <p className="mb-3 text-xs text-slate-400">These toggles are stored per user. Company Owner accounts always keep every permission enabled.</p>
         <div className="grid gap-2 md:grid-cols-2">
           {permissions.map((permission) => (
-            <label key={permission.key} className="flex gap-3 rounded-lg border border-border bg-white/60 p-3 text-sm">
+            <label key={permission.key} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
               <input name={permission.key} type="checkbox" defaultChecked={permission.key === "can_access_ai"} className="mt-1" />
               <span>
-                <span className="block font-medium">{permission.label}</span>
-                <span className="text-xs text-muted">{permission.description}</span>
+                <span className="block font-medium text-white">{permission.label}</span>
+                <span className="text-xs text-slate-400">{permission.description}</span>
               </span>
             </label>
           ))}
         </div>
       </fieldset>
-      <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-        <button disabled={isSaving} className="rounded-lg bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+        <button disabled={isSaving} className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60">
           {isSaving ? "Adding..." : "Add Team Member"}
         </button>
-        {message ? <p className="text-sm text-muted">{message}</p> : null}
+        {message ? <p className="text-sm text-slate-400">{message}</p> : null}
       </div>
     </form>
   );

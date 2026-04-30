@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { PrimaryButton } from "@/components/ui/primary-button";
 
 type Assignee = {
   id: string;
@@ -48,12 +49,12 @@ export function MatterAssignmentForm({
 
   return (
     <form className="mt-3 space-y-3" onSubmit={onSubmit}>
-      <label className="block text-xs font-medium text-muted" htmlFor="assignedToUserId">Assigned staff member</label>
+      <label className="block text-xs font-medium uppercase tracking-[0.18em] text-slate-400" htmlFor="assignedToUserId">Assigned staff member</label>
       <select
         id="assignedToUserId"
         name="assignedToUserId"
         defaultValue={currentAssigneeId}
-        className="w-full rounded-lg border border-border bg-white/70 p-2 text-sm"
+        className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
       >
         {users.map((user) => (
           <option key={user.id} value={user.id}>
@@ -61,14 +62,10 @@ export function MatterAssignmentForm({
           </option>
         ))}
       </select>
-      {error ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{error}</p> : null}
-      <button
-        className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={isSaving}
-        type="submit"
-      >
+      {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</p> : null}
+      <PrimaryButton disabled={isSaving} type="submit">
         {isSaving ? "Saving..." : "Update assignment"}
-      </button>
+      </PrimaryButton>
     </form>
   );
 }

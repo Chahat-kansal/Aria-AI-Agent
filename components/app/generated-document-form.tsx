@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PrimaryButton } from "@/components/ui/primary-button";
 
 type GeneratedDocumentType =
   | "COVER_LETTER"
@@ -59,16 +60,16 @@ export function GeneratedDocumentForm({ matterId }: { matterId: string }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-[0.18em] text-muted">Document type</label>
-        <select name="type" defaultValue="COVER_LETTER" className="rounded-lg border border-border bg-white/70 p-2 text-sm">
+        <label className="mb-2 block text-xs uppercase tracking-[0.18em] text-slate-400">Document type</label>
+        <select name="type" defaultValue="COVER_LETTER" className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15">
           {documentOptions.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
       </div>
-      <button disabled={isSubmitting} className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <PrimaryButton disabled={isSubmitting}>
         {isSubmitting ? "Generating..." : "Generate document"}
-      </button>
+      </PrimaryButton>
       {error ? <p className="basis-full rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">{error}</p> : null}
       {message ? <p className="basis-full rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 text-sm text-emerald-100">{message}</p> : null}
     </form>

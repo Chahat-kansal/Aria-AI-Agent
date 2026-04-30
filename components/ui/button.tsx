@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
 
 export function Button({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <button className={cn("rounded-lg bg-gradient-to-r from-[#6D5EF6] to-[#19B6A3] px-4 py-2 text-sm font-semibold text-white shadow-premium transition hover:-translate-y-0.5 hover:opacity-95", className)}>{children}</button>;
+  return <button className={cn("inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-cyan-300/60", className)}>{children}</button>;
 }
