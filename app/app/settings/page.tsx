@@ -7,7 +7,18 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getSettingsData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
 import { canManageTeam, hasPermission, roleLabel } from "@/lib/services/roles";
-import { getAiConfigStatus, getAuthConfigStatus, getDatabaseConfigStatus, getEmailConfigStatus, getStorageConfigStatus } from "@/lib/services/runtime-config";
+import {
+  getAiConfigStatus,
+  getAuthConfigStatus,
+  getCronConfigStatus,
+  getDatabaseConfigStatus,
+  getEmailConfigStatus,
+  getEmbeddingsConfigStatus,
+  getEncryptionConfigStatus,
+  getOcrConfigStatus,
+  getStorageConfigStatus,
+  getWebResearchConfigStatus
+} from "@/lib/services/runtime-config";
 
 function ConfigStatus({ configured }: { configured: boolean }) {
   return <StatusChip label={configured ? "Configured" : "Not configured"} />;
@@ -23,6 +34,11 @@ export default async function SettingsPage() {
   const aiStatus = getAiConfigStatus();
   const emailStatus = getEmailConfigStatus();
   const storageStatus = getStorageConfigStatus();
+  const ocrStatus = getOcrConfigStatus();
+  const embeddingsStatus = getEmbeddingsConfigStatus();
+  const webResearchStatus = getWebResearchConfigStatus();
+  const cronStatus = getCronConfigStatus();
+  const encryptionStatus = getEncryptionConfigStatus();
   const onboardingSteps = workspace ? [
     { label: "Company profile completed", done: Boolean(workspace.name && workspace.slug) },
     { label: "Invite team", done: workspace.users.length > 1 },
@@ -30,7 +46,7 @@ export default async function SettingsPage() {
     { label: "Configure AI", done: aiStatus.configured },
     { label: "Configure email", done: emailStatus.configured },
     { label: "Configure storage", done: storageStatus.configured },
-    { label: "Configure visa knowledge research", done: Boolean((process.env.WEB_RESEARCH_PROVIDER === "tavily" && process.env.TAVILY_API_KEY) || (process.env.WEB_RESEARCH_PROVIDER === "firecrawl" && process.env.FIRECRAWL_API_KEY) || (!process.env.WEB_RESEARCH_PROVIDER && (process.env.TAVILY_API_KEY || process.env.FIRECRAWL_API_KEY))) }
+    { label: "Configure visa knowledge research", done: webResearchStatus.configured }
   ] : [];
 
   return (
@@ -89,6 +105,28 @@ export default async function SettingsPage() {
             <p className="mt-3 text-xs text-muted">{aiStatus.configured ? "AI output remains AI-assisted, source-linked where available, and review required." : `Missing ${aiStatus.missing.join(", ")}.`}</p>
           </Card>
           {canManageCompany ? <Card>
+            <h3 className="font-semibold">Production health</h3>
+            <div className="mt-3 space-y-2 text-sm">
+              {[
+                ["OCR provider", ocrStatus.configured, ocrStatus.provider],
+                ["Embeddings", embeddingsStatus.configured, embeddingsStatus.provider],
+                ["Web research", webResearchStatus.configured, webResearchStatus.provider],
+                ["Email", emailStatus.configured, emailStatus.provider],
+                ["Storage", storageStatus.configured, storageStatus.provider],
+                ["Cron monitor", cronStatus.configured, cronStatus.provider],
+                ["Field encryption", encryptionStatus.configured, encryptionStatus.provider]
+              ].map(([label, configured, provider]) => (
+                <div key={String(label)} className="flex items-center justify-between rounded-lg border border-border p-2">
+                  <div>
+                    <p>{label}</p>
+                    <p className="text-xs text-muted">{provider}</p>
+                  </div>
+                  <ConfigStatus configured={Boolean(configured)} />
+                </div>
+              ))}
+            </div>
+          </Card> : null}
+          {canManageCompany ? <Card>
             <h3 className="font-semibold">Authentication</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
               <span>Session configuration</span>
@@ -107,10 +145,18 @@ export default async function SettingsPage() {
           {canManageCompany ? <Card>
             <h3 className="font-semibold">Live web research</h3>
             <div className="mt-3 flex items-center justify-between text-sm text-muted">
-              <span>{process.env.WEB_RESEARCH_PROVIDER || "Provider not selected"}</span>
-              <ConfigStatus configured={Boolean((process.env.WEB_RESEARCH_PROVIDER === "tavily" && process.env.TAVILY_API_KEY) || (process.env.WEB_RESEARCH_PROVIDER === "firecrawl" && process.env.FIRECRAWL_API_KEY) || (!process.env.WEB_RESEARCH_PROVIDER && (process.env.TAVILY_API_KEY || process.env.FIRECRAWL_API_KEY)))} />
+              <span>{webResearchStatus.provider}</span>
+              <ConfigStatus configured={webResearchStatus.configured} />
             </div>
             <p className="mt-3 text-xs text-muted">When configured, Aria can retrieve source-linked official web results. Without provider keys, live research returns a clear configuration message.</p>
+          </Card> : null}
+          {canManageCompany ? <Card>
+            <h3 className="font-semibold">OCR / document AI</h3>
+            <div className="mt-3 flex items-center justify-between text-sm text-muted">
+              <span>{ocrStatus.provider}</span>
+              <ConfigStatus configured={ocrStatus.configured} />
+            </div>
+            <p className="mt-3 text-xs text-muted">{ocrStatus.configured ? "Document extraction uses the configured provider and will still report weak OCR honestly." : `Missing ${ocrStatus.missing.join(", ")}.`}</p>
           </Card> : null}
           {canManageCompany ? <Card>
             <h3 className="font-semibold">Storage settings</h3>

@@ -7,6 +7,7 @@ import { TeamUserActions } from "@/components/app/team-user-actions";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canManageTeam, getUserPermissions, permissionDefinitions, roleDefinitions, roleDescription, roleLabel } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
+import { generateSecurityIntelligence, generateTeamIntelligence } from "@/lib/services/aria-intelligence";
 
 export default async function TeamPage() {
   const context = await requireCurrentWorkspaceContext();
@@ -30,6 +31,10 @@ export default async function TeamPage() {
     },
     orderBy: [{ status: "asc" }, { name: "asc" }]
   });
+  const [teamIntelligence, securityIntelligence] = await Promise.all([
+    generateTeamIntelligence(context.workspace.id, context.user),
+    generateSecurityIntelligence(context.workspace.id, context.user)
+  ]);
 
   return (
     <AppShell title="Team">
@@ -56,6 +61,35 @@ export default async function TeamPage() {
                 <p className="mt-1 text-xs text-muted">{role.description}</p>
               </div>
             ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="mt-4 grid gap-4 xl:grid-cols-2">
+        <Card>
+          <h3 className="font-semibold">Aria workload intelligence</h3>
+          <p className="mt-1 text-sm text-muted">AI-assisted workload view built from assigned matters, tasks, and review queues. Review required before reshuffling work.</p>
+          <p className="mt-3 rounded-lg border border-border bg-white/55 p-4 text-sm leading-7">{teamIntelligence.summary}</p>
+          <div className="mt-3 space-y-2">
+            {teamIntelligence.recommendedActions.length ? teamIntelligence.recommendedActions.map((action) => (
+              <div key={`${action.entityId}-${action.title}`} className="rounded-lg border border-border bg-white/60 p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium">{action.title}</p>
+                  <StatusChip label={action.priority} />
+                </div>
+                <p className="mt-1 text-muted">{action.reason}</p>
+              </div>
+            )) : <p className="rounded-lg border border-border bg-white/55 p-3 text-sm text-muted">No major workload bottleneck is visible right now.</p>}
+          </div>
+        </Card>
+        <Card>
+          <h3 className="font-semibold">Aria security intelligence</h3>
+          <p className="mt-1 text-sm text-muted">Permission breadth, stale invites, and recent audit signals surfaced for owner/admin review.</p>
+          <p className="mt-3 rounded-lg border border-border bg-white/55 p-4 text-sm leading-7">{securityIntelligence.summary}</p>
+          <div className="mt-3 space-y-2">
+            {securityIntelligence.securityWarnings.length ? securityIntelligence.securityWarnings.map((warning) => (
+              <div key={warning} className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{warning}</div>
+            )) : <p className="rounded-lg border border-border bg-white/55 p-3 text-sm text-muted">No major security warning is obvious from the recent audit trail.</p>}
           </div>
         </Card>
       </section>

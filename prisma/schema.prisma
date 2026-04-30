@@ -241,6 +241,7 @@ model Workspace {
   generatedDocuments    GeneratedDocument[]
   portalAccessTokens    ClientPortalAccessToken[]
   timelineEvents        MatterTimelineEvent[]
+  knowledgeEmbeddings   KnowledgeEmbedding[]
 }
 
 model User {
@@ -896,4 +897,20 @@ model AuditEvent {
   action       String
   metadataJson Json?
   createdAt    DateTime  @default(now())
+}
+
+model KnowledgeEmbedding {
+  id            String    @id @default(cuid())
+  workspaceId   String?
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  entityType    String
+  entityId      String
+  content       String
+  embeddingJson Json?
+  sourceUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workspaceId, entityType])
+  @@unique([entityType, entityId])
 }

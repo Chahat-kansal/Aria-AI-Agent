@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/aria-monitor",
+      "schedule": "0 21 * * *"
+    }
+  ]
+}

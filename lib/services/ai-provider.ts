@@ -38,6 +38,18 @@ async function postJson(url: string, init: RequestInit) {
   }
 }
 
+async function withOneRetry<T>(fn: () => Promise<T>) {
+  try {
+    return await fn();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/timed out|aborted|no content|failed/i.test(message)) {
+      return fn();
+    }
+    throw error;
+  }
+}
+
 export async function generateAriaAiResponse(input: AriaAiInput) {
   const provider = (process.env.AI_PROVIDER || "openai").toLowerCase();
 
@@ -45,7 +57,7 @@ export async function generateAriaAiResponse(input: AriaAiInput) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error("ANTHROPIC_API_KEY is missing");
 
-    const res = await postJson("https://api.anthropic.com/v1/messages", {
+    const res = await withOneRetry(() => postJson("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -67,7 +79,7 @@ export async function generateAriaAiResponse(input: AriaAiInput) {
           }
         ]
       })
-    });
+    }));
 
     if (!res.ok) {
       const text = await res.text();
@@ -84,7 +96,7 @@ export async function generateAriaAiResponse(input: AriaAiInput) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is missing");
 
-  const res = await postJson("https://api.openai.com/v1/chat/completions", {
+  const res = await withOneRetry(() => postJson("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -108,7 +120,7 @@ export async function generateAriaAiResponse(input: AriaAiInput) {
         }
       ]
     })
-  });
+  }));
 
   if (!res.ok) {
     const text = await res.text();

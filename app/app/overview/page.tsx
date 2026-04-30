@@ -60,12 +60,12 @@ export default async function OverviewPage() {
               <p className="text-sm font-medium text-[#182033]">Urgent actions</p>
               <div className="mt-2 space-y-2">
                 {briefing.urgentActions.length ? briefing.urgentActions.map((item) => (
-                  <div key={`${item.title}-${item.detail}`} className="rounded-xl border border-border bg-white/65 p-3">
+                  <div key={`${item.title}-${item.reason}`} className="rounded-xl border border-border bg-white/65 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{item.title}</p>
-                      {item.level ? <StatusChip label={item.level} /> : null}
+                      {item.priority ? <StatusChip label={item.priority} /> : null}
                     </div>
-                    <p className="mt-2 text-sm text-muted">{item.detail}</p>
+                    <p className="mt-2 text-sm text-muted">{item.reason}</p>
                     {item.href ? <Link href={item.href as any} className="mt-2 inline-flex text-sm text-accent">Open</Link> : null}
                   </div>
                 )) : <p className="rounded-xl border border-border bg-white/55 p-3 text-sm text-muted">No urgent blockers are visible in your current scope.</p>}
@@ -76,12 +76,12 @@ export default async function OverviewPage() {
               <p className="text-sm font-medium text-[#182033]">Client follow-ups</p>
               <div className="mt-2 space-y-2">
                 {briefing.followUps.length ? briefing.followUps.map((item) => (
-                  <div key={`${item.title}-${item.detail}`} className="rounded-xl border border-border bg-white/65 p-3">
+                  <div key={`${item.title}-${item.reason}`} className="rounded-xl border border-border bg-white/65 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{item.title}</p>
-                      {item.level ? <StatusChip label={item.level} /> : null}
+                      {item.priority ? <StatusChip label={item.priority} /> : null}
                     </div>
-                    <p className="mt-2 text-sm text-muted">{item.detail}</p>
+                    <p className="mt-2 text-sm text-muted">{item.reason}</p>
                     {item.href ? <Link href={item.href as any} className="mt-2 inline-flex text-sm text-accent">Open</Link> : null}
                   </div>
                 )) : <p className="rounded-xl border border-border bg-white/55 p-3 text-sm text-muted">No client follow-up queue is visible right now.</p>}
@@ -91,13 +91,13 @@ export default async function OverviewPage() {
             <div>
               <p className="text-sm font-medium text-[#182033]">Risk warnings</p>
               <div className="mt-2 space-y-2">
-                {briefing.riskWarnings.length ? briefing.riskWarnings.map((item) => (
-                  <div key={`${item.title}-${item.detail}`} className="rounded-xl border border-border bg-white/65 p-3">
+                {briefing.riskWarningsDetailed.length ? briefing.riskWarningsDetailed.map((item) => (
+                  <div key={`${item.title}-${item.reason}`} className="rounded-xl border border-border bg-white/65 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{item.title}</p>
-                      {item.level ? <StatusChip label={item.level} /> : null}
+                      {item.priority ? <StatusChip label={item.priority} /> : null}
                     </div>
-                    <p className="mt-2 text-sm text-muted">{item.detail}</p>
+                    <p className="mt-2 text-sm text-muted">{item.reason}</p>
                     {item.href ? <Link href={item.href as any} className="mt-2 inline-flex text-sm text-accent">Review</Link> : null}
                   </div>
                 )) : <p className="rounded-xl border border-border bg-white/55 p-3 text-sm text-muted">No additional risk warnings are visible right now.</p>}

@@ -154,6 +154,15 @@ export async function uploadDocumentToMatter(input: {
   fileSize?: number;
   contentHash?: string;
   extractedText?: string;
+  extractionMetadata?: {
+    provider?: string;
+    model?: string;
+    confidence?: number;
+    warnings?: string[];
+    configured?: boolean;
+    keyValues?: Array<{ key: string; value: string; confidence?: number }>;
+    extractedTextPreview?: string;
+  };
   uploadedByUserId: string;
 }) {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
@@ -180,12 +189,16 @@ export async function uploadDocumentToMatter(input: {
   await prisma.documentExtractionResult.create({
     data: {
       documentId: document.id,
-      provider: "aria-ai-assisted-extraction",
-      model: "configured-provider",
+      provider: input.extractionMetadata?.provider ?? "aria-ai-assisted-extraction",
+      model: input.extractionMetadata?.model ?? "configured-provider",
       extractedJson: {
         category,
         fields: extractedFields,
-        extractedTextPreview: input.extractedText?.slice(0, 1000) ?? "",
+        extractedTextPreview: input.extractionMetadata?.extractedTextPreview ?? input.extractedText?.slice(0, 1000) ?? "",
+        extractionConfidence: input.extractionMetadata?.confidence ?? null,
+        extractionWarnings: input.extractionMetadata?.warnings ?? [],
+        extractionConfigured: input.extractionMetadata?.configured ?? true,
+        keyValues: input.extractionMetadata?.keyValues ?? [],
         reviewRequired: true
       }
     }

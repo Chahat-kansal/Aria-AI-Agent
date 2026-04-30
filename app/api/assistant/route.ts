@@ -346,7 +346,7 @@ export async function POST(req: Request) {
         pathways.length
           ? "Review pathway analyses before giving client-facing pathway options."
           : "Create a pathway analysis only from real intake facts and evidence.",
-        workspaceBriefing.riskWarnings.length
+        workspaceBriefing.securityWarnings.length
           ? "Review the flagged security, deadline, and update warnings before reprioritising team work."
           : "No additional risk warnings are visible in the current workspace snapshot.",
         "Use linked sources and stored matter records before acting on any recommendation."
@@ -370,7 +370,7 @@ export async function POST(req: Request) {
               .slice(0, 3)
               .map((analysis) => `Review ${analysis.title} before presenting pathway options to the client.`)
           : ["Run official source check when ingestion is enabled", "Review any newly flagged affected matters", "Confirm source-linked changes before updating submission readiness"],
-      riskWarnings: workspaceBriefing.riskWarnings.map((item) => `${item.title}: ${item.detail}`)
+      riskWarnings: workspaceBriefing.securityWarnings
     };
 
     const ai = await generateAriaAiResponse({

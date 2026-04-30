@@ -34,6 +34,25 @@ export function getAiConfigStatus() {
   };
 }
 
+export function getOcrConfigStatus() {
+  const provider = (process.env.DOCUMENT_AI_PROVIDER || "basic").toLowerCase();
+  const configured = provider === "basic"
+    || (
+      provider === "aws-textract"
+      && Boolean(process.env.AWS_ACCESS_KEY_ID)
+      && Boolean(process.env.AWS_SECRET_ACCESS_KEY)
+      && Boolean(process.env.AWS_REGION)
+    );
+
+  return {
+    configured,
+    provider,
+    missing: configured ? [] : provider === "aws-textract"
+      ? ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"]
+      : ["DOCUMENT_AI_PROVIDER"]
+  };
+}
+
 export function getEmailConfigStatus() {
   const provider = (process.env.EMAIL_PROVIDER || "").toLowerCase();
   const configured = provider === "resend" && Boolean(process.env.RESEND_API_KEY) && Boolean(process.env.EMAIL_FROM);
@@ -55,6 +74,48 @@ export function getStorageConfigStatus() {
     configured,
     provider,
     missing: configured ? [] : provider === "local" ? ["production-safe storage provider"] : ["BLOB_READ_WRITE_TOKEN"]
+  };
+}
+
+export function getWebResearchConfigStatus() {
+  const provider = (process.env.WEB_RESEARCH_PROVIDER || "").toLowerCase();
+  const configured =
+    (provider === "tavily" && Boolean(process.env.TAVILY_API_KEY)) ||
+    (provider === "firecrawl" && Boolean(process.env.FIRECRAWL_API_KEY)) ||
+    (!provider && (Boolean(process.env.TAVILY_API_KEY) || Boolean(process.env.FIRECRAWL_API_KEY)));
+
+  return {
+    configured,
+    provider: provider || "not configured",
+    missing: configured ? [] : ["WEB_RESEARCH_PROVIDER plus provider API key"]
+  };
+}
+
+export function getEmbeddingsConfigStatus() {
+  const provider = (process.env.EMBEDDINGS_PROVIDER || "").toLowerCase();
+  const configured = provider === "openai" && Boolean(process.env.OPENAI_API_KEY);
+  return {
+    configured,
+    provider: provider || "keyword fallback",
+    missing: configured ? [] : provider ? ["OPENAI_API_KEY"] : ["EMBEDDINGS_PROVIDER=openai", "OPENAI_API_KEY"]
+  };
+}
+
+export function getCronConfigStatus() {
+  const configured = Boolean(process.env.CRON_SECRET);
+  return {
+    configured,
+    provider: configured ? "secret protected" : "not configured",
+    missing: configured ? [] : ["CRON_SECRET"]
+  };
+}
+
+export function getEncryptionConfigStatus() {
+  const configured = Boolean(process.env.APP_FIELD_ENCRYPTION_KEY);
+  return {
+    configured,
+    provider: configured ? "application field encryption" : "not configured",
+    missing: configured ? [] : ["APP_FIELD_ENCRYPTION_KEY"]
   };
 }
 

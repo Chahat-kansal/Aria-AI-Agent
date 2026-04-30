@@ -3,7 +3,7 @@ import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { attachDocumentToChecklistItem } from "@/lib/services/client-workflows";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { persistDocumentStorageObject, prepareMatterDocumentUpload } from "@/lib/services/storage";
-import { extractReadableText } from "@/lib/services/document-extraction";
+import { extractDocumentResult } from "@/lib/services/document-extraction";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { getUploadLimits, serverLog } from "@/lib/services/runtime-config";
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const limits = getUploadLimits();
     if (file.size > limits.maxBytes) return NextResponse.json({ error: `File is too large. Maximum upload size is ${limits.maxMb} MB.` }, { status: 413 });
     const bytes = Buffer.from(await file.arrayBuffer());
-    const extractedText = await extractReadableText(bytes, mimeType);
+    const extraction = await extractDocumentResult(bytes, mimeType);
 
     const context = await getCurrentWorkspaceContext();
     if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
@@ -46,7 +46,16 @@ export async function POST(req: Request) {
       storageKey: upload?.storageKey,
       fileSize: upload?.fileSize,
       contentHash: upload?.contentHash,
-      extractedText,
+      extractedText: extraction.extractedText,
+      extractionMetadata: {
+        provider: extraction.provider,
+        model: extraction.model,
+        confidence: extraction.confidence,
+        warnings: extraction.warnings,
+        configured: extraction.configured,
+        keyValues: extraction.keyValues,
+        extractedTextPreview: extraction.extractedTextPreview
+      },
       uploadedByUserId: context.user.id
     });
 
@@ -57,7 +66,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       status: "accepted",
-      message: "Document recorded, classified, extracted, and mapped into the review-required Subclass 500 draft.",
+      message: "Document recorded, classified, extracted, and mapped into the review-required draft workflow.",
+      extraction: {
+        provider: extraction.provider,
+        confidence: extraction.confidence,
+        warnings: extraction.warnings
+      },
       document
     });
   } catch (error) {
