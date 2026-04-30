@@ -1,5 +1,3 @@
-const pdfParse = require("pdf-parse");
-
 export type DocumentAiResult = {
   provider: string;
   model?: string;
@@ -35,6 +33,7 @@ async function extractBasic(bytes: Buffer, mimeType: string): Promise<DocumentAi
 
   if (mimeType === "application/pdf" || mimeType.includes("pdf")) {
     try {
+      const pdfParse = require("pdf-parse");
       const parsed = await pdfParse(bytes);
       const text = normalizeText(parsed.text || "");
       if (text.length > 50) {

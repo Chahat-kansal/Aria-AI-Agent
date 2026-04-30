@@ -2,7 +2,6 @@ import crypto from "crypto";
 import { InvoiceAssetKind, InvoiceStatus, Prisma, type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateInvoiceTotals, formatCurrency, normalizeInvoiceLineItems, type InvoiceLineItemDraft as InvoiceLineItemInput } from "@/lib/invoice-calculations";
-import { extractReadableText } from "@/lib/services/document-extraction";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { getAiConfigStatus, getStorageConfigStatus, getUploadLimits } from "@/lib/services/runtime-config";
 import { canAccessMatter, hasFirmWideAccess, hasPermission, hasTeamOversight, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
@@ -454,6 +453,7 @@ export async function buildInvoiceTemplateRecord(input: {
   if (input.mimeType === "text/plain") {
     extractedText = input.bytes.toString("utf8");
   } else if (input.mimeType === "application/pdf") {
+    const { extractReadableText } = await import("@/lib/services/document-extraction");
     extractedText = await extractReadableText(input.bytes, input.mimeType);
   } else if (
     input.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
