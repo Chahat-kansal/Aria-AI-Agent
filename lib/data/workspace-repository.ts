@@ -233,7 +233,7 @@ export async function getAssistantData(workspaceId: string, user?: ScopedUser) {
     where: { workspaceId, ...(user ? { OR: [{ matterId: null }, { matter: scopedMatterWhere(user) }] } : {}) },
     include: {
       matter: { include: { client: true } },
-      messages: { orderBy: { createdAt: "desc" }, take: 1 }
+      messages: { orderBy: { createdAt: "asc" }, take: 24 }
     },
     orderBy: { createdAt: "desc" },
     take: 6

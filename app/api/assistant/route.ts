@@ -1,4 +1,5 @@
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
+import { ChatRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getDraftReviewData } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
@@ -115,6 +116,43 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const prompt = typeof body.prompt === "string" ? body.prompt.slice(0, 2000) : "Summarize current matter";
     const matterId = typeof body.matterId === "string" ? body.matterId : null;
+    const threadId = typeof body.threadId === "string" ? body.threadId : null;
+
+    let existingThread: {
+      id: string;
+      title: string;
+      workspaceId: string;
+      matterId: string | null;
+      matter?: { id: string; workspaceId: string; assignedToUserId: string; assignedToUser?: { supervisorId: string | null } | null } | null;
+    } | null = null;
+
+    if (threadId) {
+      existingThread = await prisma.aiChatThread.findFirst({
+        where: { id: threadId, workspaceId: context.workspace.id },
+        include: {
+          matter: {
+            select: {
+              id: true,
+              workspaceId: true,
+              assignedToUserId: true,
+              assignedToUser: { select: { supervisorId: true } }
+            }
+          }
+        }
+      });
+
+      if (!existingThread) {
+        return NextResponse.json({ error: "That conversation is no longer available." }, { status: 404 });
+      }
+
+      if (existingThread.matter && !canAccessMatter(context.user, existingThread.matter)) {
+        return NextResponse.json({ error: "You do not have access to this conversation." }, { status: 403 });
+      }
+
+      if (matterId && existingThread.matterId !== matterId) {
+        return NextResponse.json({ error: "Start a new conversation to switch matter context." }, { status: 400 });
+      }
+    }
 
     if (matterId) {
       const matter = await prisma.matter.findFirst({
@@ -260,6 +298,40 @@ export async function POST(req: Request) {
         }
       });
 
+      const normalized = normalizeAiResponse(ai, fallback);
+
+      let resolvedThreadId = existingThread?.id ?? null;
+      let resolvedThreadTitle = existingThread?.title ?? prompt.slice(0, 80);
+
+      if (!resolvedThreadId) {
+        const thread = await prisma.aiChatThread.create({
+          data: {
+            workspaceId: context.workspace.id,
+            matterId: matter.id,
+            title: prompt.slice(0, 80),
+            createdByUserId: context.user.id
+          }
+        });
+        resolvedThreadId = thread.id;
+        resolvedThreadTitle = thread.title;
+      }
+
+      await prisma.aiChatMessage.createMany({
+        data: [
+          {
+            threadId: resolvedThreadId,
+            role: ChatRole.USER,
+            content: prompt
+          },
+          {
+            threadId: resolvedThreadId,
+            role: ChatRole.ASSISTANT,
+            content: normalized.content,
+            citationsJson: normalized as any
+          }
+        ]
+      });
+
       await auditAiUsed({
         workspaceId: context.workspace.id,
         userId: context.user.id,
@@ -270,7 +342,10 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         mode: "matter-specific",
-        ...normalizeAiResponse(ai, fallback)
+        threadId: resolvedThreadId,
+        threadTitle: resolvedThreadTitle,
+        matterId: matter.id,
+        ...normalized
       });
     }
 
@@ -398,6 +473,39 @@ export async function POST(req: Request) {
       }
     });
 
+    const normalized = normalizeAiResponse(ai, fallback);
+
+    let resolvedThreadId = existingThread?.id ?? null;
+    let resolvedThreadTitle = existingThread?.title ?? prompt.slice(0, 80);
+
+    if (!resolvedThreadId) {
+      const thread = await prisma.aiChatThread.create({
+        data: {
+          workspaceId: context.workspace.id,
+          title: prompt.slice(0, 80),
+          createdByUserId: context.user.id
+        }
+      });
+      resolvedThreadId = thread.id;
+      resolvedThreadTitle = thread.title;
+    }
+
+    await prisma.aiChatMessage.createMany({
+      data: [
+        {
+          threadId: resolvedThreadId,
+          role: ChatRole.USER,
+          content: prompt
+        },
+        {
+          threadId: resolvedThreadId,
+          role: ChatRole.ASSISTANT,
+          content: normalized.content,
+          citationsJson: normalized as any
+        }
+      ]
+    });
+
     await auditAiUsed({
       workspaceId: context.workspace.id,
       userId: context.user.id,
@@ -407,7 +515,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       mode: "workspace",
-      ...normalizeAiResponse(ai, fallback)
+      threadId: resolvedThreadId,
+      threadTitle: resolvedThreadTitle,
+      matterId: existingThread?.matterId ?? null,
+      ...normalized
     });
   } catch (error) {
     serverLog("assistant.error", {
