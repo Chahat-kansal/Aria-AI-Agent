@@ -2,8 +2,9 @@
 
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PrimaryButton } from "@/components/ui/primary-button";
-import { SecondaryButton } from "@/components/ui/secondary-button";
+import { FormField } from "@/components/ui/form-field";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { SubtleButton } from "@/components/ui/subtle-button";
 
 export function DraftWorkflowActions({
   matterId,
@@ -74,21 +75,30 @@ export function DraftWorkflowActions({
 
   return (
     <div className="space-y-3">
-      {canEditMatter ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      {canEditMatter ? <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
         <p className="text-sm font-semibold text-white">Upload client document</p>
         <p className="mt-1 text-xs text-slate-400">Stores the file, records metadata in Postgres, classifies evidence, and maps supported values to the draft.</p>
         <form onSubmit={uploadDocument} className="mt-3 flex flex-col gap-3">
           <input type="hidden" name="matterId" value={matterId} />
-          <input name="file" required type="file" className="w-full rounded-2xl border border-white/10 bg-white/[0.04] p-2 text-sm text-white" />
-          <PrimaryButton disabled={pending} className="w-full">Upload</PrimaryButton>
+          <FormField label="Upload file">
+            <input
+              name="file"
+              required
+              type="file"
+              className="block w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-100 hover:file:bg-white/15"
+            />
+          </FormField>
+          <GradientButton type="submit" disabled={pending} className="w-full">Upload</GradientButton>
         </form>
       </div> : <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-400">You do not have permission to upload or edit matter documents.</p>}
-      {canUseAi ? <PrimaryButton onClick={runMapping} disabled={pending} className="w-full">Run AI-assisted draft mapping</PrimaryButton> : null}
-      {canRunCrossCheck ? <SecondaryButton onClick={runFinalCrossCheck} disabled={pending} className="w-full">Final submission-readiness cross-check</SecondaryButton> : null}
-      {canEditMatter ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      {canUseAi ? <GradientButton onClick={runMapping} disabled={pending} className="w-full">Run AI-assisted draft mapping</GradientButton> : null}
+      {canRunCrossCheck ? <SubtleButton onClick={runFinalCrossCheck} disabled={pending} className="w-full">Final submission-readiness cross-check</SubtleButton> : null}
+      {canEditMatter ? <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
         <p className="text-sm font-semibold text-white">Client review/signature foundation</p>
-        <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="mt-3 h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
-        <PrimaryButton onClick={sendReview} disabled={pending} className="mt-3 w-full">Send to client review</PrimaryButton>
+        <FormField label="Recipient email" className="mt-3">
+          <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
+        </FormField>
+        <GradientButton onClick={sendReview} disabled={pending} className="mt-3 w-full">Send to client review</GradientButton>
       </div> : null}
       {message ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-300">{message}</p> : null}
     </div>

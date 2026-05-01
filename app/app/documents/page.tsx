@@ -1,10 +1,13 @@
-import { AppShell } from "@/components/app/app-shell";
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { StatusChip } from "@/components/app/blocks/status-chip";
+import { AppShell } from "@/components/app/app-shell";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
+import { DataTable, DataTableCell, DataTableHeading, DataTableHeader, DataTableRow } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSection } from "@/components/ui/page-section";
+import { SectionCard } from "@/components/ui/section-card";
+import { StatusPill } from "@/components/ui/status-pill";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getDocumentsData, getMattersData } from "@/lib/data/workspace-repository";
 import { hasPermission } from "@/lib/services/roles";
@@ -19,100 +22,134 @@ export default async function DocumentsPage() {
   const categories = new Map<string, number>();
   for (const document of documents) categories.set(document.category, (categories.get(document.category) ?? 0) + 1);
 
+  const needsReviewCount = documents.filter((document) => document.reviewStatus !== "VERIFIED").length;
+  const extractedCount = documents.filter((document) => document.extractionStatus === "EXTRACTED").length;
+  const linkedCount = documents.filter((document) => Boolean(document.matterId)).length;
+
   return (
     <AppShell title="Documents">
-      <div className="space-y-6">
+      <div className="space-y-8">
         <PageHeader
-          title="Document Intake & Organization"
-          description="Upload evidence, classify content, and progress extraction with review-required controls."
+          eyebrow="DOCUMENTS"
+          title="Document vault"
+          description="Review uploaded evidence, monitor extraction quality, and keep matter-linked files organized inside the secure workspace vault."
         />
 
-        <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-          <Card className="space-y-5">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-100">Workspace documents</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                Uploads are recorded against live matters from the matter workflow. No placeholder files are shown here.
-              </p>
-            </div>
+        {documents.length ? (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard label="Total documents" value={documents.length} hint="All files visible in your current scope." accent="cyan" />
+            <MetricCard label="Needs review" value={needsReviewCount} hint="Files not yet verified for evidence use." accent={needsReviewCount ? "amber" : "emerald"} />
+            <MetricCard label="Extraction complete" value={extractedCount} hint="Files with completed extraction status." accent={extractedCount ? "emerald" : "violet"} />
+            <MetricCard label="Linked to matters" value={linkedCount} hint="Evidence already tied to a live matter." accent="violet" />
+          </section>
+        ) : null}
 
-            <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center text-sm text-slate-400">
-              Files uploaded through Aria are stored against matters, linked into extraction and review flows, and surfaced here in a single evidence register.
-            </div>
-
-            <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl">
-              {documents.length ? (
-                <table className="w-full text-sm">
-                  <thead className="bg-white/[0.03]">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-slate-500">File</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">Matter</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">Category</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">Size</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">Extraction</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">Review</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">Uploaded</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {documents.map((document) => (
-                      <tr key={document.id} className="border-t border-white/5 transition hover:bg-white/[0.04]">
-                        <td className="px-4 py-3 text-sm text-slate-300">
-                          <Link href={`/app/documents/${document.id}` as any} className="font-medium text-cyan-300 hover:text-cyan-200">
-                            {document.fileName}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-center text-sm text-slate-300">{document.matter.client.firstName} {document.matter.client.lastName}</td>
-                        <td className="px-4 py-3 text-center text-sm text-slate-300">{document.category}</td>
-                        <td className="px-4 py-3 text-center text-sm text-slate-400">{document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : "n/a"}</td>
-                        <td className="px-4 py-3 text-center text-sm text-slate-300"><StatusChip label={formatEnum(document.extractionStatus)} /></td>
-                        <td className="px-4 py-3 text-center text-sm text-slate-300"><StatusChip label={formatEnum(document.reviewStatus)} /></td>
-                        <td className="px-4 py-3 text-center text-sm text-slate-400">{formatDate(document.createdAt)}</td>
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+          <PageSection title="Workspace documents" description="Every record here comes from the live matter workflow. Open a document to review extraction, evidence links, and secure download access.">
+            {documents.length ? (
+              <>
+                <DataTable className="hidden lg:block">
+                  <table className="w-full text-sm">
+                    <DataTableHeader>
+                      <tr>
+                        <DataTableHeading>File</DataTableHeading>
+                        <DataTableHeading>Matter</DataTableHeading>
+                        <DataTableHeading>Category</DataTableHeading>
+                        <DataTableHeading className="text-center">Extraction</DataTableHeading>
+                        <DataTableHeading className="text-center">Review</DataTableHeading>
+                        <DataTableHeading className="text-center">Uploaded</DataTableHeading>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="p-6">
-                  <EmptyState
-                    title="No documents uploaded yet"
-                    description="Upload evidence to a matter and it will appear here with extraction state, review status, and category metadata."
-                  />
+                    </DataTableHeader>
+                    <tbody>
+                      {documents.map((document) => (
+                        <DataTableRow key={document.id}>
+                          <DataTableCell>
+                            <Link href={`/app/documents/${document.id}`} className="font-medium text-cyan-300 transition hover:text-white">
+                              {document.fileName}
+                            </Link>
+                          </DataTableCell>
+                          <DataTableCell>
+                            <p className="font-medium text-white">{document.matter.client.firstName} {document.matter.client.lastName}</p>
+                            <p className="text-xs text-slate-500">{document.matter.title}</p>
+                          </DataTableCell>
+                          <DataTableCell>{document.category}</DataTableCell>
+                          <DataTableCell className="text-center"><StatusPill>{formatEnum(document.extractionStatus)}</StatusPill></DataTableCell>
+                          <DataTableCell className="text-center"><StatusPill tone={document.reviewStatus === "VERIFIED" ? "success" : document.reviewStatus === "FLAGGED" ? "danger" : "warning"}>{formatEnum(document.reviewStatus)}</StatusPill></DataTableCell>
+                          <DataTableCell className="text-center text-slate-400">{formatDate(document.createdAt)}</DataTableCell>
+                        </DataTableRow>
+                      ))}
+                    </tbody>
+                  </table>
+                </DataTable>
+
+                <div className="grid gap-4 lg:hidden">
+                  {documents.map((document) => (
+                    <SectionCard key={document.id} className="space-y-4 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <Link href={`/app/documents/${document.id}`} className="text-base font-semibold text-white">{document.fileName}</Link>
+                          <p className="mt-1 text-sm text-slate-400">{document.matter.client.firstName} {document.matter.client.lastName}</p>
+                          <p className="text-xs text-slate-500">{document.matter.title}</p>
+                        </div>
+                        <StatusPill tone={document.reviewStatus === "VERIFIED" ? "success" : document.reviewStatus === "FLAGGED" ? "danger" : "warning"}>
+                          {formatEnum(document.reviewStatus)}
+                        </StatusPill>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Category</p>
+                          <p className="mt-2 text-sm text-slate-200">{document.category}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Extraction</p>
+                          <p className="mt-2 text-sm text-slate-200">{formatEnum(document.extractionStatus)}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Uploaded</p>
+                          <p className="mt-2 text-sm text-slate-200">{formatDate(document.createdAt)}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">File size</p>
+                          <p className="mt-2 text-sm text-slate-200">{document.fileSize ? `${Math.round(document.fileSize / 1024)} KB` : "n/a"}</p>
+                        </div>
+                      </div>
+                    </SectionCard>
+                  ))}
                 </div>
-              )}
-            </div>
-          </Card>
+              </>
+            ) : (
+              <EmptyState
+                title="No documents uploaded yet"
+                description="Upload evidence to a matter and it will appear here with extraction state, review status, and category metadata."
+              />
+            )}
+          </PageSection>
 
-          <Card className="space-y-5">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-100">Evidence package structure</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                Keep uploads organized into matter-ready categories so the draft, checklist, and client workflows stay aligned.
-              </p>
-            </div>
+          <div className="space-y-6">
+            <PageSection title="Upload evidence">
+              <SectionCard className="space-y-4">
+                <p className="text-sm text-slate-300">Files uploaded through Aria are stored against real matters, linked into extraction and review flows, and surfaced here in a single evidence register.</p>
+                {canEditMatter && matters.length ? (
+                  <DocumentUploadForm matters={matters.map((matter) => ({ id: matter.id, label: `${matter.client.firstName} ${matter.client.lastName} - ${matter.title}` }))} />
+                ) : !canEditMatter ? (
+                  <p className="text-sm text-slate-400">You do not have permission to upload documents or edit matter files.</p>
+                ) : (
+                  <p className="text-sm text-slate-400">Create a matter before uploading documents.</p>
+                )}
+              </SectionCard>
+            </PageSection>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="mb-3 text-sm font-medium text-white">Upload evidence to a matter</p>
-              {canEditMatter && matters.length ? (
-                <DocumentUploadForm matters={matters.map((matter) => ({ id: matter.id, label: `${matter.client.firstName} ${matter.client.lastName} · ${matter.title}` }))} />
-              ) : !canEditMatter ? (
-                <p className="text-sm text-slate-400">You do not have permission to upload documents or edit matter files.</p>
-              ) : (
-                <p className="text-sm text-slate-400">Create a matter before uploading documents.</p>
-              )}
-            </div>
-
-            <ul className="space-y-2 text-sm text-slate-300">
-              {folders.map((folder) => (
-                <li key={folder} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                  <span>/{folder}</span>
-                  <span className="text-slate-400">{categories.get(folder) ?? 0}</span>
-                </li>
-              ))}
-            </ul>
-
-            <p className="text-xs text-slate-400">Folder counts reflect real stored document metadata for the current workspace scope.</p>
-          </Card>
+            <PageSection title="Category distribution" description="Folder counts reflect real stored document metadata for the current workspace scope.">
+              <div className="grid gap-3">
+                {folders.map((folder) => (
+                  <SectionCard key={folder} className="flex items-center justify-between gap-3 p-4">
+                    <span className="text-sm text-slate-200">/{folder}</span>
+                    <span className="text-sm text-slate-500">{categories.get(folder) ?? 0}</span>
+                  </SectionCard>
+                ))}
+              </div>
+            </PageSection>
+          </div>
         </section>
       </div>
     </AppShell>

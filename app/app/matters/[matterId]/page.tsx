@@ -1,269 +1,311 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
-import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { ClientPortalLinkButton } from "@/components/app/client-portal-link-button";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/app/blocks/page-header";
-import { StatusChip } from "@/components/app/blocks/status-chip";
-import { AIInsightCard } from "@/components/ui/ai-insight-card";
-import { StatCard } from "@/components/ui/stat-card";
+import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
+import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { MetricCard } from "@/components/ui/metric-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSection } from "@/components/ui/page-section";
+import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
-import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { SubtleButton } from "@/components/ui/subtle-button";
 import { formatDate, formatEnum, getMatterDetailData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterIntelligence } from "@/lib/services/aria-intelligence";
 import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
-  if (!context) return <AppShell title="Matters"><PageHeader title="Workspace setup required" subtitle="Create or join a workspace to review matter records." /></AppShell>;
+  if (!context) {
+    return (
+      <AppShell title="Matters">
+        <div className="space-y-6">
+          <PageHeader title="Workspace setup required" description="Create or join a workspace to review matter records." />
+        </div>
+      </AppShell>
+    );
+  }
 
   const matter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
   if (!matter) notFound();
-  const intelligence = await getMatterIntelligence({ matterId: matter.id, user: context.user });
 
+  const intelligence = await getMatterIntelligence({ matterId: matter.id, user: context.user });
   const openTasks = matter.tasks.filter((task) => task.status !== "DONE").length;
   const openIssues = matter.validationIssues.filter((issue) => issue.resolutionStatus !== "RESOLVED" && issue.resolutionStatus !== "DISMISSED");
+  const pendingClientActions = [
+    ...matter.intakeRequests.filter((request) => request.status !== "REVIEWED"),
+    ...matter.documentRequests.filter((request) => request.status !== "COMPLETED")
+  ].length;
+  const latestDraft = matter.applicationDrafts[0];
   const canReassign = canManageTeam(context.user) || hasFirmWideAccess(context.user) || hasTeamOversight(context.user);
+  const canManageClients = hasPermission(context.user, "can_manage_clients");
   const assignableUsers = canReassign
     ? await prisma.user.findMany({
       where: { workspaceId: context.workspace.id, status: { not: "DISABLED" } },
       orderBy: { name: "asc" }
     })
     : [];
-  const workflowLinks = [
-    ["Overview", `/app/matters/${matter.id}`],
-    ["Upload documents", "/app/documents"],
-    ["Checklist", `/app/matters/${matter.id}/checklist`],
-    ["Field review", matter.visaSubclass === "500" ? `/app/matters/${matter.id}/draft` : "/app/forms"],
-    ["Generated docs", `/app/matters/${matter.id}/generated-documents`],
-    ["Validation", "/app/validation"],
-    ["Tasks", "/app/tasks"],
-    ["Updates", "/app/updates"],
-    ["Ask Aria", "/app/assistant"]
-  ] as const;
+
+  const actionLinks = [
+    { label: "Draft review", href: matter.visaSubclass === "500" ? `/app/matters/${matter.id}/draft` : "/app/forms" },
+    { label: "Checklist", href: `/app/matters/${matter.id}/checklist` },
+    { label: "Documents", href: "/app/documents" },
+    { label: "Validation", href: "/app/validation" },
+    { label: "Generated docs", href: `/app/matters/${matter.id}/generated-documents` },
+    { label: "Ask Aria", href: "/app/assistant" }
+  ];
 
   return (
     <AppShell title="Matters">
-      <PageHeader title={`${matter.client.firstName} ${matter.client.lastName} - ${matter.title}`} subtitle="AI-assisted matter workspace with source-linked review controls." />
-      <Card>
-        <div className="flex flex-wrap gap-2 text-sm">
-          {workflowLinks.map(([label, href], idx) => (
-            <Link key={label} href={href as any} className={idx === 0 ? "rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-cyan-300" : "rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-slate-300 transition hover:bg-white/[0.08] hover:text-white"}>
-              {label}
-            </Link>
-          ))}
-        </div>
-        <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Status" value={formatEnum(matter.status)} hint={`Stage: ${formatEnum(matter.stage)}`} tone="info" />
-          <StatCard label="Readiness" value={`${matter.readinessScore}%`} hint={`Open issues: ${openIssues.length}`} tone={matter.readinessScore >= 85 ? "success" : matter.readinessScore >= 65 ? "warning" : "danger"} />
-          <StatCard label="Visa expiry" value={formatDate(matter.currentVisaExpiry) || "Not set"} hint={matter.currentVisaStatus || "Current visa not set"} tone="warning" />
-          <StatCard label="Critical deadline" value={formatDate(matter.criticalDeadline) || "Not set"} hint={matter.applicationStatus || "Application status not set"} tone="danger" />
-        </div>
-        <div className="mt-5 grid gap-3 text-sm md:grid-cols-3">
-          <div className="aria-note">Lodgement target<br /><span className="text-white">{formatDate(matter.lodgementTargetDate)}</span></div>
-          <div className="aria-note">Matter ref<br /><span className="text-white">{matter.matterReference ?? matter.id.slice(0, 8)}</span></div>
-          <div className="aria-note">Client ref<br /><span className="text-white">{matter.client.clientReference ?? matter.client.id.slice(0, 8)}</span></div>
-          <div className="aria-note">Current visa<br /><span className="text-white">{matter.currentVisaStatus || "Not set"}</span></div>
-          <div className="aria-note">Application status<br /><span className="text-white">{matter.applicationStatus || "Not set"}</span></div>
-          <div className="aria-note md:col-span-1">Assigned staff<br /><span className="text-white">{matter.assignedToUser.name ?? matter.assignedToUser.email} - {roleLabel(matter.assignedToUser.role)}</span></div>
-        </div>
-      </Card>
-
-      {canReassign ? (
-        <Card className="mt-6">
-          <h3 className="text-xl font-semibold tracking-tight text-white">Matter assignment</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-300">Reassign this matter and linked client ownership within your company workspace. Access stays constrained by role and assignment scope.</p>
-          <MatterAssignmentForm
-            matterId={matter.id}
-            currentAssigneeId={matter.assignedToUserId}
-            users={assignableUsers.map((user) => ({ id: user.id, name: user.name, email: user.email, roleLabel: roleLabel(user.role) }))}
-          />
-        </Card>
-      ) : null}
-
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Checklist summary</h3>
-          {matter.checklistItems.length ? (
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">
-              {matter.checklistItems.slice(0, 6).map((item) => <li key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">{item.label}: {item.status}</li>)}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-slate-400">No checklist items are recorded for this matter yet.</p>
-          )}
-        </Card>
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Flagged issues</h3>
-          {openIssues.length ? (
-            <ul className="mt-3 space-y-2 text-sm text-slate-300">{openIssues.slice(0, 4).map((issue) => <li key={issue.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">{issue.title}</li>)}</ul>
-          ) : (
-            <p className="mt-3 text-sm text-slate-400">No unresolved validation issues are recorded.</p>
-          )}
-        </Card>
-      </section>
-
-      <section className="mt-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="space-y-4">
-          <AIInsightCard
-            summary={intelligence.summary}
-            actions={
-              <>
-                <Link href={`/app/matters/${matter.id}/draft` as any} className="aria-chip-link">Draft review</Link>
-                <Link href={`/app/matters/${matter.id}/checklist` as any} className="aria-chip-link">Checklist</Link>
-                <Link href="/app/assistant" className="aria-chip-link">Ask Aria</Link>
-              </>
-            }
-          />
-          <Card>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-xl font-semibold tracking-tight text-white">Matter intelligence</h3>
-                <p className="mt-1 text-sm text-slate-300">
-                  {intelligence.status === "ai"
-                    ? "AI-assisted operational review grounded in current matter, draft, validation, and update data."
-                    : intelligence.status === "not_configured"
-                      ? "Grounded matter analysis is available, but the AI layer is not configured yet."
-                      : "Grounded operational analysis generated from current matter data."}
-                </p>
-              </div>
-              <StatusPill tone={matter.readinessScore >= 85 && openIssues.length === 0 ? "success" : matter.readinessScore >= 65 ? "warning" : "danger"}>
-                {matter.readinessScore >= 85 && openIssues.length === 0 ? "low risk" : matter.readinessScore >= 65 ? "medium risk" : "high risk"}
+      <div className="space-y-8">
+        <PageHeader
+          eyebrow="MATTER WORKBENCH"
+          title={`${matter.client.firstName} ${matter.client.lastName}`}
+          description={matter.title}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill tone="info">{matter.visaSubclass}</StatusPill>
+              <StatusPill>{formatEnum(matter.stage)}</StatusPill>
+              <StatusPill tone={matter.readinessScore >= 80 ? "success" : matter.readinessScore >= 60 ? "warning" : "danger"}>
+                {matter.readinessScore}% ready
               </StatusPill>
             </div>
-            {intelligence.status === "not_configured" && intelligence.configMessage ? (
-              <p className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-400">{intelligence.configMessage}</p>
-            ) : null}
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="aria-surface p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Matter health</p>
-              <p className="mt-2 font-medium text-white">{intelligence.matterHealth}</p>
-            </div>
-            <div className="aria-surface p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Next best action</p>
-              <p className="mt-2 font-medium text-white">{intelligence.nextBestAction}</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <div>
-              <p className="text-sm font-medium text-white">Evidence gaps</p>
-              <ul className="mt-2 space-y-2 text-sm text-slate-300">
-                {intelligence.evidenceGaps.length ? intelligence.evidenceGaps.map((item) => (
-                  <li key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">{item}</li>
-                )) : <li className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">No immediate evidence gaps are visible from the stored checklist and document links.</li>}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">Draft weaknesses</p>
-              <ul className="mt-2 space-y-2 text-sm text-slate-300">
-                {intelligence.draftWeaknesses.length ? intelligence.draftWeaknesses.map((item) => (
-                  <li key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">{item}</li>
-                )) : <li className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">No major draft weaknesses are currently visible from the stored review state.</li>}
-              </ul>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">Risk warnings</p>
-              <ul className="mt-2 space-y-2 text-sm text-slate-300">
-                {intelligence.riskWarnings.length ? intelligence.riskWarnings.map((item) => (
-                  <li key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">{item}</li>
-                )) : <li className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">No additional risk warnings are visible for this matter right now.</li>}
-              </ul>
-            </div>
-          </div>
-          </Card>
-        </div>
+          }
+        />
 
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Aria follow-up guidance</h3>
-          <div className="mt-3 space-y-3 text-sm text-slate-300">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Client follow-up suggestion</p>
-              <p className="mt-2 leading-7">{intelligence.clientFollowUpSuggestion}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Final review note</p>
-              <p className="mt-2 leading-7">{intelligence.finalReviewNote}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Useful next links</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link href={`/app/matters/${matter.id}/draft` as any} className="aria-chip-link">Draft review</Link>
-                <Link href={`/app/matters/${matter.id}/checklist` as any} className="aria-chip-link">Checklist</Link>
-                <Link href="/app/document-requests" className="aria-chip-link">Document requests</Link>
-                <Link href="/app/assistant" className="aria-chip-link">Ask Aria</Link>
+        <AIInsightPanel
+          eyebrow="Aria matter intelligence"
+          title={intelligence.matterHealth}
+          summary={intelligence.summary}
+          statusLabel="Review required"
+          action={
+            matter.visaSubclass === "500" ? (
+              <Link href={`/app/matters/${matter.id}/draft`}>
+                <GradientButton>Open draft review</GradientButton>
+              </Link>
+            ) : (
+              <Link href={`/app/matters/${matter.id}/checklist`}>
+                <GradientButton>Open checklist</GradientButton>
+              </Link>
+            )
+          }
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Next best action</p>
+              <p className="mt-3 text-sm leading-6 text-slate-200">{intelligence.nextBestAction}</p>
+            </SectionCard>
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Client follow-up</p>
+              <p className="mt-3 text-sm leading-6 text-slate-200">{intelligence.clientFollowUpSuggestion}</p>
+            </SectionCard>
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Final review note</p>
+              <p className="mt-3 text-sm leading-6 text-slate-200">{intelligence.finalReviewNote}</p>
+            </SectionCard>
+          </div>
+        </AIInsightPanel>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Readiness" value={`${matter.readinessScore}%`} hint="Current submission-readiness score." accent={matter.readinessScore >= 80 ? "emerald" : matter.readinessScore >= 60 ? "amber" : "red"} />
+          <MetricCard label="Documents" value={matter.documents.length} hint="Files linked to this matter." accent="cyan" />
+          <MetricCard label="Validation issues" value={openIssues.length} hint="Open issues still needing review." accent={openIssues.length ? "red" : "emerald"} />
+          <MetricCard label="Pending client actions" value={pendingClientActions} hint="Intake, doc requests, and linked review items." accent={pendingClientActions ? "amber" : "emerald"} />
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_360px]">
+          <div className="space-y-6">
+            <PageSection eyebrow="WORKFLOW" title="Continue the matter" description="Use the existing live workflows below to move the matter forward without leaving the review trail.">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {actionLinks.map((action) => (
+                  <Link key={action.label} href={action.href as any}>
+                    <SectionCard className="h-full p-4 transition hover:bg-white/[0.05]">
+                      <p className="text-sm font-semibold text-white">{action.label}</p>
+                      <p className="mt-2 text-sm text-slate-400">Open the linked workspace for this matter.</p>
+                    </SectionCard>
+                  </Link>
+                ))}
               </div>
-            </div>
+            </PageSection>
+
+            <PageSection title="Matter review signals" description="Current evidence, draft, and checklist signals grounded in stored workspace data.">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <SectionCard className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-white">Evidence gaps</h3>
+                    <StatusPill tone={intelligence.evidenceGaps.length ? "warning" : "success"}>
+                      {intelligence.evidenceGaps.length ? "Needs attention" : "Covered"}
+                    </StatusPill>
+                  </div>
+                  <ul className="space-y-2">
+                    {intelligence.evidenceGaps.length ? intelligence.evidenceGaps.map((item) => (
+                      <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-200">{item}</li>
+                    )) : <li className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400">No obvious evidence gap is currently visible from the checklist and document links.</li>}
+                  </ul>
+                </SectionCard>
+
+                <SectionCard className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-white">Draft blockers</h3>
+                    <StatusPill tone={intelligence.draftWeaknesses.length ? "danger" : "success"}>
+                      {intelligence.draftWeaknesses.length ? "Review required" : "Stable"}
+                    </StatusPill>
+                  </div>
+                  <ul className="space-y-2">
+                    {intelligence.draftWeaknesses.length ? intelligence.draftWeaknesses.map((item) => (
+                      <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-200">{item}</li>
+                    )) : <li className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400">No major draft blocker is visible from the current field review state.</li>}
+                  </ul>
+                </SectionCard>
+
+                <SectionCard className="space-y-4 lg:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-white">Risk warnings</h3>
+                    <StatusPill tone={intelligence.riskWarnings.length ? "warning" : "success"}>
+                      {intelligence.riskWarnings.length ? `${intelligence.riskWarnings.length} flagged` : "No current flags"}
+                    </StatusPill>
+                  </div>
+                  <ul className="grid gap-2 md:grid-cols-2">
+                    {intelligence.riskWarnings.length ? intelligence.riskWarnings.map((item) => (
+                      <li key={item} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">{item}</li>
+                    )) : <li className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400 md:col-span-2">No additional risk warnings are visible for this matter right now.</li>}
+                  </ul>
+                </SectionCard>
+              </div>
+            </PageSection>
+
+            <PageSection title="Operational queues" description="The key matter-linked queues, current tasks, and update impacts in one place.">
+              <div className="grid gap-4 md:grid-cols-3">
+                <SectionCard className="space-y-3 p-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Checklist</h3>
+                  {matter.checklistItems.length ? matter.checklistItems.slice(0, 4).map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-sm font-medium text-white">{item.label}</p>
+                      <p className="mt-1 text-xs text-slate-400">{item.required ? "Required" : "Optional"} - {formatEnum(item.status)}</p>
+                    </div>
+                  )) : <p className="text-sm text-slate-400">No checklist items are recorded for this matter yet.</p>}
+                </SectionCard>
+
+                <SectionCard className="space-y-3 p-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Open issues</h3>
+                  {openIssues.length ? openIssues.slice(0, 4).map((issue) => (
+                    <div key={issue.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-sm font-medium text-white">{issue.title}</p>
+                      <p className="mt-1 text-xs text-slate-400">{issue.severity} - {formatEnum(issue.resolutionStatus)}</p>
+                    </div>
+                  )) : <p className="text-sm text-slate-400">No unresolved validation issues are recorded.</p>}
+                </SectionCard>
+
+                <SectionCard className="space-y-3 p-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Update impacts</h3>
+                  {matter.impacts.length ? matter.impacts.slice(0, 4).map((impact) => (
+                    <div key={impact.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-sm font-medium text-white">{impact.officialUpdate.title}</p>
+                      <p className="mt-1 text-xs text-slate-400">{impact.actionRequired ?? "Review required."}</p>
+                    </div>
+                  )) : <p className="text-sm text-slate-400">No official update impact is linked yet.</p>}
+                </SectionCard>
+              </div>
+            </PageSection>
           </div>
-        </Card>
-      </section>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Documents</h3>
-          <p className="mt-2 text-sm text-slate-300">{matter.documents.length} linked files</p>
-          <Link href="/app/documents" className="mt-3 inline-flex text-sm text-cyan-300 transition hover:text-white">Upload or review documents</Link>
-        </Card>
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Potential impacts</h3>
-          <p className="mt-2 text-sm text-slate-300">{matter.impacts.length} update matches</p>
-          {matter.impacts[0] ? (
-            <p className="mt-2 text-xs text-slate-400">{matter.impacts[0].officialUpdate.title}: {matter.impacts[0].actionRequired ?? "Review required."}</p>
-          ) : null}
-        </Card>
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Open tasks</h3>
-          <p className="mt-2 text-sm text-slate-300">{openTasks} active tasks</p>
-          <Link href="/app/tasks" className="mt-3 inline-flex text-sm text-cyan-300 transition hover:text-white">Open tasks</Link>
-        </Card>
-      </section>
-
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Case timeline</h3>
-          <div className="mt-3 space-y-2">
-            {matter.timelineEvents.length ? matter.timelineEvents.map((event) => (
-              <div key={event.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-white">{event.title}</p>
-                  <p className="text-xs text-slate-400">{event.createdAt.toLocaleString("en-AU")}</p>
+          <div className="space-y-6">
+            <PageSection title="Key details" description="Core deadlines, ownership, and matter metadata.">
+              <SectionCard className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Assigned agent</p>
+                    <p className="mt-2 text-sm font-medium text-white">{matter.assignedToUser.name ?? matter.assignedToUser.email}</p>
+                    <p className="mt-1 text-xs text-slate-400">{roleLabel(matter.assignedToUser.role)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Matter reference</p>
+                    <p className="mt-2 text-sm font-medium text-white">{matter.matterReference ?? matter.id.slice(0, 8)}</p>
+                    <p className="mt-1 text-xs text-slate-400">Client ref {matter.client.clientReference ?? matter.client.id.slice(0, 8)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Current visa</p>
+                    <p className="mt-2 text-sm font-medium text-white">{matter.currentVisaStatus || "Not set"}</p>
+                    <p className="mt-1 text-xs text-slate-400">Expiry {formatDate(matter.currentVisaExpiry)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Application status</p>
+                    <p className="mt-2 text-sm font-medium text-white">{matter.applicationStatus || "Not set"}</p>
+                    <p className="mt-1 text-xs text-slate-400">Critical deadline {formatDate(matter.criticalDeadline)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Lodgement target</p>
+                    <p className="mt-2 text-sm font-medium text-white">{formatDate(matter.lodgementTargetDate)}</p>
+                    <p className="mt-1 text-xs text-slate-400">Status {formatEnum(matter.status)}</p>
+                  </div>
                 </div>
-                {event.description ? <p className="mt-2 text-sm text-slate-300">{event.description}</p> : null}
-              </div>
-            )) : <p className="text-sm text-slate-400">No timeline events are recorded yet.</p>}
-          </div>
-        </Card>
-        <Card>
-          <h3 className="text-xl font-semibold tracking-tight text-white">Client-facing workflows</h3>
-          <p className="mt-2 text-sm text-slate-300">Create secure links for the client portal, checklist uploads, and review stages. Links are token-based and scoped to this matter.</p>
-          {hasPermission(context.user, "can_manage_clients") ? (
-            <div className="mt-4">
-              <ClientPortalLinkButton clientId={matter.clientId} matterId={matter.id} />
-            </div>
-          ) : null}
-          <div className="mt-4 space-y-2 text-sm">
-            <Link href={"/app/intake" as any} className="block rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-cyan-300 transition hover:bg-white/[0.08] hover:text-white">Send or review intake request</Link>
-            <Link href={`/app/matters/${matter.id}/checklist` as any} className="block rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-cyan-300 transition hover:bg-white/[0.08] hover:text-white">Open visa checklist</Link>
-            <Link href={`/app/matters/${matter.id}/generated-documents` as any} className="block rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-cyan-300 transition hover:bg-white/[0.08] hover:text-white">Generate migration documents</Link>
-          </div>
-        </Card>
-      </section>
+              </SectionCard>
+            </PageSection>
 
-      <Card className="mt-6">
-        {matter.visaSubclass === "500" ? (
-          <>
-            <h3 className="text-xl font-semibold tracking-tight text-white">Subclass 500 draft workflow</h3>
-            <p className="mt-2 text-sm text-slate-300">Open the source-linked draft application workspace for document mapping, validation, evidence packaging, final cross-check, and client review preparation.</p>
-            <Link href={`/app/matters/${matter.id}/draft` as any} className="mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95">Open draft workflow</Link>
-          </>
-        ) : (
-          <>
-            <h3 className="text-xl font-semibold tracking-tight text-white">Draft template not yet configured</h3>
-            <p className="mt-2 text-sm text-slate-300">Subclass {matter.visaSubclass} can use stored official visa knowledge and Aria research, but field-level draft filling is currently configured only for Subclass 500. This matter will not show fabricated draft fields.</p>
-            <Link href="/app/knowledge" className="mt-4 inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] px-4 text-sm font-medium text-cyan-300 transition hover:bg-white/[0.08] hover:text-white">Review visa knowledge</Link>
-          </>
-        )}
-      </Card>
+            {canReassign ? (
+              <PageSection title="Assignment">
+                <SectionCard>
+                  <MatterAssignmentForm
+                    matterId={matter.id}
+                    currentAssigneeId={matter.assignedToUserId}
+                    users={assignableUsers.map((user) => ({ id: user.id, name: user.name, email: user.email, roleLabel: roleLabel(user.role) }))}
+                  />
+                </SectionCard>
+              </PageSection>
+            ) : null}
+
+            <PageSection title="Timeline">
+              <SectionCard className="space-y-3">
+                {matter.timelineEvents.length ? matter.timelineEvents.map((event) => (
+                  <div key={event.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-white">{event.title}</p>
+                      <p className="text-xs text-slate-400">{event.createdAt.toLocaleString("en-AU")}</p>
+                    </div>
+                    {event.description ? <p className="mt-2 text-sm text-slate-300">{event.description}</p> : null}
+                  </div>
+                )) : <p className="text-sm text-slate-400">No timeline events are recorded yet.</p>}
+              </SectionCard>
+            </PageSection>
+
+            <PageSection title="Client-facing workflows">
+              <SectionCard className="space-y-3">
+                <p className="text-sm text-slate-300">Create secure intake, checklist, and portal actions without exposing public matter data.</p>
+                {canManageClients ? <ClientPortalLinkButton clientId={matter.clientId} matterId={matter.id} /> : null}
+                <div className="grid gap-2">
+                  <Link href="/app/intake"><SubtleButton className="w-full justify-start">Send or review intake request</SubtleButton></Link>
+                  <Link href={`/app/matters/${matter.id}/checklist`}><SubtleButton className="w-full justify-start">Open visa checklist</SubtleButton></Link>
+                  <Link href={`/app/matters/${matter.id}/generated-documents`}><SubtleButton className="w-full justify-start">Generate migration documents</SubtleButton></Link>
+                </div>
+              </SectionCard>
+            </PageSection>
+
+            <PageSection title="Draft workflow">
+              <SectionCard className="space-y-3">
+                {matter.visaSubclass === "500" ? (
+                  <>
+                    <p className="text-sm text-slate-300">The Subclass 500 draft workspace is ready for source-linked field review, validation, evidence packaging, and final cross-check.</p>
+                    <Link href={`/app/matters/${matter.id}/draft`}>
+                      <GradientButton className="w-full">Open draft workflow</GradientButton>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-slate-300">Field-level draft filling is currently configured only for Subclass 500. Other subclasses continue to use live knowledge and review workflows without fabricated fields.</p>
+                    <Link href="/app/knowledge">
+                      <SubtleButton className="w-full">Review visa knowledge</SubtleButton>
+                    </Link>
+                  </>
+                )}
+                {latestDraft ? <p className="text-xs text-slate-500">Latest draft status: {formatEnum(latestDraft.status)}</p> : null}
+              </SectionCard>
+            </PageSection>
+          </div>
+        </section>
+      </div>
     </AppShell>
   );
 }

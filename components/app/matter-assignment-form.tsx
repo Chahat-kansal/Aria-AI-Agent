@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { PrimaryButton } from "@/components/ui/primary-button";
+import { FormField } from "@/components/ui/form-field";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 type Assignee = {
   id: string;
@@ -49,23 +50,24 @@ export function MatterAssignmentForm({
 
   return (
     <form className="mt-3 space-y-3" onSubmit={onSubmit}>
-      <label className="block text-xs font-medium uppercase tracking-[0.18em] text-slate-400" htmlFor="assignedToUserId">Assigned staff member</label>
-      <select
-        id="assignedToUserId"
-        name="assignedToUserId"
-        defaultValue={currentAssigneeId}
-        className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
-      >
-        {users.map((user) => (
-          <option key={user.id} value={user.id}>
-            {(user.name ?? user.email)} - {user.roleLabel}
-          </option>
-        ))}
-      </select>
+      <FormField label="Assigned staff member">
+        <select
+          id="assignedToUserId"
+          name="assignedToUserId"
+          defaultValue={currentAssigneeId}
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        >
+          {users.map((user) => (
+            <option key={user.id} value={user.id}>
+              {(user.name ?? user.email)} - {user.roleLabel}
+            </option>
+          ))}
+        </select>
+      </FormField>
       {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">{error}</p> : null}
-      <PrimaryButton disabled={isSaving} type="submit">
+      <GradientButton type="submit" disabled={isSaving}>
         {isSaving ? "Saving..." : "Update assignment"}
-      </PrimaryButton>
+      </GradientButton>
     </form>
   );
 }

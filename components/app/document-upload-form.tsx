@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { FormField } from "@/components/ui/form-field";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 type MatterOption = {
   id: string;
@@ -37,13 +39,27 @@ export function DocumentUploadForm({ matters, defaultMatterId }: { matters: Matt
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <select name="matterId" defaultValue={defaultMatterId ?? matters[0]?.id} required>
-        {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
-      </select>
-      <input name="file" required type="file" />
-      <button disabled={isUploading || !matters.length} className="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60">
+      <FormField label="Matter">
+        <select
+          name="matterId"
+          defaultValue={defaultMatterId ?? matters[0]?.id}
+          required
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        >
+          {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
+        </select>
+      </FormField>
+      <FormField label="Evidence file" hint="Files remain secure inside the workspace vault.">
+        <input
+          name="file"
+          required
+          type="file"
+          className="block w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white file:mr-4 file:rounded-xl file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-100 hover:file:bg-white/15"
+        />
+      </FormField>
+      <GradientButton type="submit" disabled={isUploading || !matters.length} className="w-full">
         {isUploading ? "Uploading..." : "Upload document"}
-      </button>
+      </GradientButton>
       {message ? <p className="text-xs text-slate-400">{message}</p> : null}
     </form>
   );

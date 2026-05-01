@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { FormField } from "@/components/ui/form-field";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 type VisaOption = {
   subclassCode: string | null;
@@ -48,27 +50,94 @@ export function CreateMatterForm({ visaOptions = [] }: { visaOptions?: VisaOptio
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2">
-      <input name="clientFirstName" required placeholder="Client first name" />
-      <input name="clientLastName" required placeholder="Client last name" />
-      <input name="clientEmail" required type="email" placeholder="Client email" />
-      <input name="clientPhone" placeholder="Client phone" />
-      <input name="clientDob" type="date" />
-      <input name="nationality" placeholder="Nationality" />
-      <input name="title" required placeholder="Matter title" />
-      <select name="visaSubclass" defaultValue="500">
-        {options.map((option) => (
-          <option key={`${option.subclassCode}-${option.title}`} value={option.subclassCode ?? ""}>
-            {option.title}
-          </option>
-        ))}
-      </select>
-      <input name="visaStream" required defaultValue="Higher Education" placeholder="Stream" />
-      <input name="lodgementTargetDate" type="date" />
+    <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+      <FormField label="Client first name">
+        <input
+          name="clientFirstName"
+          required
+          placeholder="Given name"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Client last name">
+        <input
+          name="clientLastName"
+          required
+          placeholder="Family name"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Client email">
+        <input
+          name="clientEmail"
+          required
+          type="email"
+          placeholder="client@example.com"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Client phone">
+        <input
+          name="clientPhone"
+          placeholder="+61 ..."
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Date of birth">
+        <input
+          name="clientDob"
+          type="date"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Nationality">
+        <input
+          name="nationality"
+          placeholder="Nationality"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Matter title" className="md:col-span-2">
+        <input
+          name="title"
+          required
+          placeholder="e.g. Subclass 190 skilled migration pathway"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Visa subclass">
+        <select
+          name="visaSubclass"
+          defaultValue="500"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        >
+          {options.map((option) => (
+            <option key={`${option.subclassCode}-${option.title}`} value={option.subclassCode ?? ""}>
+              {option.title}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      <FormField label="Stream">
+        <input
+          name="visaStream"
+          required
+          defaultValue="Higher Education"
+          placeholder="Stream"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
+      <FormField label="Lodgement target date" className="md:col-span-2">
+        <input
+          name="lodgementTargetDate"
+          type="date"
+          className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+        />
+      </FormField>
       {error ? <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300 md:col-span-2">{error}</p> : null}
-      <button disabled={isSubmitting} className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 disabled:opacity-60 md:col-span-2">
+      <GradientButton type="submit" disabled={isSubmitting} className="md:col-span-2">
         {isSubmitting ? "Creating matter..." : "Create matter"}
-      </button>
+      </GradientButton>
     </form>
   );
 }
