@@ -72,12 +72,12 @@ export async function AppShell({ title, children }: { title: string; children: R
 
   const { user, workspace } = context;
   const canOpenTeam = user.role === UserRole.COMPANY_OWNER || canManageTeam(user);
-  const shellNav = [
-    ...nav.filter((item) => !item.permission || hasPermission(user, item.permission)),
+  const workspaceNavItems = nav.filter((item) => !item.permission || hasPermission(user, item.permission));
+  const accountNavItems = [
+    ...(canOpenTeam ? [{ label: "Team", href: "/app/team", icon: "team" as const }] : []),
     { label: "Profile", href: "/app/profile", icon: "profile" as const },
     { label: "Company", href: "/app/company", icon: "company" as const },
-    { label: "Settings", href: "/app/settings", icon: "settings" as const },
-    ...(canOpenTeam ? [{ label: "Team", href: "/app/team", icon: "team" as const }] : [])
+    { label: "Settings", href: "/app/settings", icon: "settings" as const }
   ];
 
   return (
@@ -87,7 +87,8 @@ export async function AppShell({ title, children }: { title: string; children: R
       workspaceName={workspace.name}
       workspacePlanLabel={`${workspace.plan.toLowerCase()} plan`}
       scopeLabel={canManageTeam(user) ? "Firm-wide" : "Assigned"}
-      navItems={shellNav}
+      workspaceNavItems={workspaceNavItems}
+      accountNavItems={accountNavItems}
       canAccessVisaKnowledge={hasPermission(user, "can_access_visa_knowledge")}
     >
       {children}

@@ -8,7 +8,10 @@
 
 body {
   @apply bg-aria-bg text-slate-50 antialiased;
-  background: linear-gradient(135deg, #08111f, #0d1b2e 45%, #111827);
+  background:
+    radial-gradient(circle at top left, rgba(124, 58, 237, 0.25), transparent 34%),
+    radial-gradient(circle at top right, rgba(6, 182, 212, 0.18), transparent 32%),
+    linear-gradient(135deg, #08111f, #0d1b2e 45%, #111827);
 }
 
 * {
@@ -27,11 +30,11 @@ textarea {
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 select {
-  @apply h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
+  @apply h-11 rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
 }
 
 textarea {
-  @apply min-h-28 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
+  @apply min-h-28 rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15;
 }
 
 input[type="file"] {
@@ -49,11 +52,11 @@ a {
 
 @layer components {
   .aria-surface {
-    @apply rounded-3xl border border-white/10 bg-white/[0.04] p-4;
+    @apply rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-4;
   }
 
   .aria-surface-strong {
-    @apply rounded-3xl border border-white/10 bg-slate-950/65 p-5 shadow-glass backdrop-blur-xl;
+    @apply rounded-[1.9rem] border border-white/10 bg-slate-950/65 p-5 shadow-glass backdrop-blur-xl;
   }
 
   .aria-note {
