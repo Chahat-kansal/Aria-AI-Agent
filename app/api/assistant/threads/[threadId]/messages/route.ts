@@ -32,7 +32,17 @@ export async function POST(req: Request, { params }: { params: { threadId: strin
       user: context.user
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      threadId: result.threadId,
+      threadTitle: result.threadTitle,
+      contextType: result.contextType,
+      contextId: result.contextId,
+      matterId: result.matterId,
+      userMessage: result.userMessage,
+      assistantMessage: result.assistantMessage,
+      payload: result.payload,
+      ...result.payload
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Aria could not complete that request right now.";
     const status = /no longer available/i.test(message) ? 404 : 500;

@@ -18,6 +18,7 @@ const GOOGLE_NEWS_FEEDS = [
   "https://news.google.com/rss/search?q=Australian+employer+sponsored+visa+update+482+186&hl=en-AU&gl=AU&ceid=AU:en",
   "https://news.google.com/rss/search?q=Australian+partner+visa+update+820+801&hl=en-AU&gl=AU&ceid=AU:en"
 ];
+const FEED_TIMEOUT_MS = Math.max(3000, Number(process.env.MIGRATION_INTEL_FEED_TIMEOUT_MS || 12000));
 
 function decodeXml(value: string) {
   return value
@@ -84,12 +85,26 @@ function parseRssItems(xml: string, feedUrl: string) {
 }
 
 async function fetchFeed(feedUrl: string) {
-  const response = await fetch(feedUrl, {
-    headers: {
-      "User-Agent": "AriaMigrationIntel/1.0 (+https://aria.local)"
-    },
-    cache: "no-store"
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FEED_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(feedUrl, {
+      headers: {
+        "User-Agent": "AriaMigrationIntel/1.0 (+https://aria.local)"
+      },
+      cache: "no-store",
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Google News RSS request timed out after ${FEED_TIMEOUT_MS}ms for ${feedUrl}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new Error(`Google News RSS request failed (${response.status}) for ${feedUrl}`);

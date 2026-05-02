@@ -62,7 +62,7 @@ type PersistedThread = {
       lastName: string;
     };
   } | null;
-  messages: PersistedMessage[];
+  messages?: PersistedMessage[];
 };
 
 type ThreadMessage = {
@@ -95,7 +95,7 @@ function buildThreadState(thread: PersistedThread): ThreadState {
     matterId: thread.matterId ?? null,
     matterLabel: thread.matter ? `${thread.matter.client.firstName} ${thread.matter.client.lastName} - ${thread.matter.title}` : "Workspace-wide",
     createdAt: thread.createdAt ? new Date(thread.createdAt).toISOString() : undefined,
-    messages: thread.messages.map((message) => ({
+    messages: (thread.messages ?? []).map((message) => ({
       id: message.id,
       role: message.role,
       content: message.content,
@@ -103,6 +103,11 @@ function buildThreadState(thread: PersistedThread): ThreadState {
       payload: message.role === "ASSISTANT" ? normalizePayload(message.structuredJson ?? message.citationsJson) : null
     }))
   };
+}
+
+function matterLabelForId(matterId: string | null | undefined, matters: MatterOption[]) {
+  if (!matterId) return "Workspace-wide";
+  return matters.find((matter) => matter.id === matterId)?.label ?? null;
 }
 
 function previewText(thread: ThreadState) {
@@ -290,10 +295,12 @@ export function AssistantWorkspace({
     }
 
     const thread = buildThreadState(payload.thread as PersistedThread);
+    thread.matterLabel = thread.matterLabel ?? matterLabelForId(contextMatterId, matters);
     setThreads((current) => [thread, ...current.filter((item) => item.id !== thread.id)]);
     setActiveThreadId(thread.id);
     setSelectedMatterId(thread.matterId ?? "");
     setDraftMessages([]);
+    setThreadLoadError(null);
     return thread.id;
   }
 
@@ -311,6 +318,7 @@ export function AssistantWorkspace({
     setThreads((current) => [thread, ...current.filter((item) => item.id !== thread.id)]);
     setActiveThreadId(thread.id);
     setSelectedMatterId(thread.matterId ?? "");
+    setThreadLoadError(null);
     return thread;
   }
 
@@ -328,6 +336,7 @@ export function AssistantWorkspace({
 
     setIsLoading(true);
     setPrompt("");
+    setThreadLoadError(null);
 
     if (activeThreadId) {
       setThreads((current) =>
@@ -360,87 +369,141 @@ export function AssistantWorkspace({
       }
     }
 
-    const response = await fetch(`/api/assistant/threads/${targetThreadId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: cleanedPrompt
-      })
-    });
+    try {
+      const response = await fetch(`/api/assistant/threads/${targetThreadId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: cleanedPrompt
+        })
+      });
 
-    const payload = await response.json().catch(() => null);
-    const reply: AssistantReply = response.ok
-      ? payload
-      : {
-          ...payload,
-          content: payload?.content ?? payload?.error ?? "Aria could not complete the request.",
-          error: payload?.error
-        };
+      const payload = await response.json().catch(() => null);
+      const replyPayload = normalizePayload(payload?.payload) ?? normalizePayload(payload) ?? {};
+      const reply: AssistantReply = response.ok
+        ? {
+            ...replyPayload,
+            ...payload,
+            content:
+              payload?.assistantMessage?.content ??
+              replyPayload.content ??
+              payload?.content ??
+              "Aria returned an empty response. Review required."
+          }
+        : {
+            ...replyPayload,
+            ...payload,
+            content: payload?.content ?? payload?.error ?? "Aria could not complete the request.",
+            error: payload?.error ?? "Aria could not complete the request."
+          };
 
-    const threadId = typeof reply.threadId === "string" ? reply.threadId : targetThreadId;
-    const matterId = typeof reply.matterId === "string" ? reply.matterId : selectedMatterId || null;
-    const matterLabel = matters.find((matter) => matter.id === matterId)?.label ?? (matterId ? null : "Workspace-wide");
-    const threadTitle =
-      typeof reply.threadTitle === "string" && reply.threadTitle.trim()
-        ? reply.threadTitle.trim()
-        : cleanedPrompt.slice(0, 80);
+      const threadId = typeof reply.threadId === "string" ? reply.threadId : targetThreadId;
+      const matterId = typeof reply.matterId === "string" ? reply.matterId : selectedMatterId || null;
+      const matterLabel = matterLabelForId(matterId, matters);
+      const threadTitle =
+        typeof reply.threadTitle === "string" && reply.threadTitle.trim()
+          ? reply.threadTitle.trim()
+          : cleanedPrompt.slice(0, 80);
 
-    const userMessage: ThreadMessage = {
-      id: `user-${Date.now()}`,
-      role: "USER",
-      content: cleanedPrompt,
-      createdAt: new Date().toISOString()
-    };
-    const assistantMessage: ThreadMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "ASSISTANT",
-      content: reply.content,
-      createdAt: new Date().toISOString(),
-      payload: reply
-    };
+      const savedUserMessage = payload?.userMessage;
+      const savedAssistantMessage = payload?.assistantMessage;
 
-    if (threadId) {
-      setThreads((current) => {
-        const existing = current.find((thread) => thread.id === threadId);
-        if (existing) {
+      const userMessage: ThreadMessage = {
+        id: typeof savedUserMessage?.id === "string" ? savedUserMessage.id : `user-${Date.now()}`,
+        role: "USER",
+        content: typeof savedUserMessage?.content === "string" ? savedUserMessage.content : cleanedPrompt,
+        createdAt:
+          typeof savedUserMessage?.createdAt === "string"
+            ? savedUserMessage.createdAt
+            : new Date().toISOString()
+      };
+      const assistantMessage: ThreadMessage = {
+        id: typeof savedAssistantMessage?.id === "string" ? savedAssistantMessage.id : `assistant-${Date.now()}`,
+        role: "ASSISTANT",
+        content:
+          typeof savedAssistantMessage?.content === "string" && savedAssistantMessage.content.trim()
+            ? savedAssistantMessage.content
+            : reply.content,
+        createdAt:
+          typeof savedAssistantMessage?.createdAt === "string"
+            ? savedAssistantMessage.createdAt
+            : new Date().toISOString(),
+        payload: reply
+      };
+
+      if (threadId) {
+        setThreads((current) => {
+          const existing = current.find((thread) => thread.id === threadId);
+          if (existing) {
+            return [
+              {
+                ...existing,
+                title: threadTitle,
+                matterId,
+                matterLabel,
+                messages: [...existing.messages.filter((message) => !message.pending), userMessage, assistantMessage]
+              },
+              ...current.filter((thread) => thread.id !== threadId)
+            ];
+          }
+
           return [
             {
-              ...existing,
+              id: threadId,
               title: threadTitle,
               matterId,
               matterLabel,
-              messages: [...existing.messages.filter((message) => !message.pending), userMessage, assistantMessage]
+              createdAt: new Date().toISOString(),
+              messages: [userMessage, assistantMessage]
             },
-            ...current.filter((thread) => thread.id !== threadId)
+            ...current
           ];
-        }
-
-        return [
-          {
-            id: threadId,
-            title: threadTitle,
-            matterId,
-            matterLabel,
-            createdAt: new Date().toISOString(),
-            messages: [userMessage, assistantMessage]
-          },
-          ...current
-        ];
-      });
-      setDraftMessages([]);
-      setActiveThreadId(threadId);
-    } else {
-      setDraftMessages((current) => [...current.filter((message) => !message.pending), userMessage, assistantMessage]);
-      setActiveThreadId(null);
-    }
-    setMobileRailOpen(false);
-    setIsLoading(false);
-
-    requestAnimationFrame(() => {
-      if (messageViewportRef.current) {
-        messageViewportRef.current.scrollTop = messageViewportRef.current.scrollHeight;
+        });
+        setDraftMessages([]);
+        setActiveThreadId(threadId);
+      } else {
+        setDraftMessages((current) => [...current.filter((message) => !message.pending), userMessage, assistantMessage]);
+        setActiveThreadId(null);
       }
-    });
+
+      if (!response.ok) {
+        setThreadLoadError(reply.error ?? reply.content);
+      }
+      setMobileRailOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Aria could not complete the request.";
+      const failedReply: ThreadMessage = {
+        id: `assistant-error-${Date.now()}`,
+        role: "ASSISTANT",
+        content: message,
+        createdAt: new Date().toISOString(),
+        payload: { content: message, error: message, reviewRequired: true }
+      };
+
+      if (targetThreadId) {
+        setThreads((current) =>
+          current.map((thread) =>
+            thread.id === targetThreadId
+              ? {
+                  ...thread,
+                  messages: [...thread.messages.filter((message) => !message.pending), failedReply]
+                }
+              : thread
+          )
+        );
+      } else {
+        setDraftMessages((current) => [...current.filter((message) => !message.pending), failedReply]);
+      }
+
+      setThreadLoadError(message);
+    } finally {
+      setIsLoading(false);
+      requestAnimationFrame(() => {
+        if (messageViewportRef.current) {
+          messageViewportRef.current.scrollTop = messageViewportRef.current.scrollHeight;
+        }
+      });
+    }
   }
 
   async function ask(event: FormEvent<HTMLFormElement>) {

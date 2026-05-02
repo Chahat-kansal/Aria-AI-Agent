@@ -23,18 +23,23 @@ export function MigrationIntelActions({
   async function sweepNow() {
     setIsSweeping(true);
     setStatus(null);
-    const response = await fetch("/api/updates/sweep", { method: "POST" });
-    const payload = await response.json().catch(() => null);
-    setIsSweeping(false);
-    if (!response.ok) {
-      setStatus(payload?.error ?? "Unable to run the migration intelligence sweep.");
-      return;
+    try {
+      const response = await fetch("/api/updates/sweep", { method: "POST" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setStatus(payload?.error ?? "Unable to run the migration intelligence sweep.");
+        return;
+      }
+      router.refresh();
+      const summary =
+        payload?.message ??
+        `${payload?.fetched ?? 0} fetched, ${payload?.added ?? 0} added, ${payload?.skipped ?? 0} skipped, ${payload?.impactedMatters ?? 0} matter impact(s) matched.`;
+      setStatus(payload?.warning ? `${summary} ${payload.warning}` : summary);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to run the migration intelligence sweep.");
+    } finally {
+      setIsSweeping(false);
     }
-    router.refresh();
-    const summary =
-      payload?.message ??
-      `${payload?.fetched ?? 0} fetched, ${payload?.added ?? 0} added, ${payload?.skipped ?? 0} skipped, ${payload?.impactedMatters ?? 0} matter impact(s) matched.`;
-    setStatus(payload?.warning ? `${summary} ${payload.warning}` : summary);
   }
 
   async function saveLog(formData: FormData) {

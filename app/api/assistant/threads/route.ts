@@ -2,7 +2,7 @@ import { AssistantContextType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied } from "@/lib/services/audit";
-import { createAssistantThreadForUser, listAssistantThreadsForUser } from "@/lib/services/assistant-threads";
+import { createAssistantThreadForUser, getAssistantThreadForUser, listAssistantThreadsForUser } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
 
 function parseContextType(value: unknown) {
@@ -49,12 +49,17 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
 
   try {
-    const thread = await createAssistantThreadForUser({
+    const created = await createAssistantThreadForUser({
       user: context.user,
       title: typeof body.title === "string" ? body.title : undefined,
       contextType: parseContextType(body.contextType),
       contextId: typeof body.contextId === "string" ? body.contextId : undefined
     });
+
+    const thread = await getAssistantThreadForUser(created.id, context.user);
+    if (!thread) {
+      return NextResponse.json({ error: "Unable to load the new conversation right now." }, { status: 500 });
+    }
 
     return NextResponse.json({ thread }, { status: 201 });
   } catch (error) {

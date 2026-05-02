@@ -95,11 +95,11 @@ function addDays(dateString: string, days: number) {
 }
 
 function fieldClassName(extra = "") {
-  return `h-10 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15 ${extra}`.trim();
+  return `h-10 w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15 ${extra}`.trim();
 }
 
 function textareaClassName(extra = "") {
-  return `min-h-28 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15 ${extra}`.trim();
+  return `min-h-28 w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15 ${extra}`.trim();
 }
 
 function sectionCardClassName(extra = "") {
@@ -256,7 +256,7 @@ function InvoiceLineItemsEditor({
       }
     >
       <div className="space-y-4">
-        <div className="hidden overflow-x-auto lg:block">
+        <div className="hidden overflow-x-auto 2xl:block">
           <div className="grid min-w-[854px] grid-cols-[180px_minmax(220px,1fr)_80px_120px_90px_120px_44px] gap-2 px-1 pb-2">
             {["Service", "Description", "Qty", "Unit price", "GST %", "Amount", ""].map((label) => (
               <div key={label} className="text-xs font-medium text-slate-500">
@@ -325,7 +325,7 @@ function InvoiceLineItemsEditor({
           </div>
         </div>
 
-        <div className="space-y-3 lg:hidden">
+        <div className="space-y-3 2xl:hidden">
           {items.map((item, index) => {
             const amount = item.quantity * item.unitPriceCents;
             return (
@@ -621,33 +621,47 @@ export function InvoiceBuilder({
           </InvoiceEditorSection>
 
           <InvoiceEditorSection eyebrow="B" title="Invoice details" description="Set the key invoice identifiers and defaults that drive issue timing, payment windows, and template selection.">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="Invoice number">
-                <input className={fieldClassName()} value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="AUTO" />
-              </Field>
-              <Field label="Issue date">
-                <input className={fieldClassName()} type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
-              </Field>
-              <Field label="Due date">
-                <input className={fieldClassName()} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
-              </Field>
-              <Field label="Currency">
-                <input className={fieldClassName()} value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} placeholder="AUD" />
-              </Field>
-              <Field label="Template">
-                <select className={fieldClassName()} value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
-                  <option value="">No template selected</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>{template.name}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Branding source">
-                <input className={fieldClassName()} value={activeBranding?.businessName || "Workspace default"} readOnly />
-              </Field>
-              <Field label="Discount">
-                <input className={fieldClassName()} value={discountInput} onChange={(event) => setDiscountInput(event.target.value)} placeholder="0.00" />
-              </Field>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-12">
+              <div className="xl:col-span-4">
+                <Field label="Invoice number">
+                  <input className={fieldClassName()} value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} placeholder="AUTO" />
+                </Field>
+              </div>
+              <div className="xl:col-span-3">
+                <Field label="Issue date">
+                  <input className={fieldClassName()} type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
+                </Field>
+              </div>
+              <div className="xl:col-span-3">
+                <Field label="Due date">
+                  <input className={fieldClassName()} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+                </Field>
+              </div>
+              <div className="xl:col-span-2">
+                <Field label="Currency">
+                  <input className={fieldClassName()} value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} placeholder="AUD" />
+                </Field>
+              </div>
+              <div className="xl:col-span-4">
+                <Field label="Template">
+                  <select className={fieldClassName()} value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
+                    <option value="">No template selected</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>{template.name}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="xl:col-span-4">
+                <Field label="Branding source">
+                  <input className={fieldClassName()} value={activeBranding?.businessName || "Workspace default"} readOnly />
+                </Field>
+              </div>
+              <div className="xl:col-span-4">
+                <Field label="Discount">
+                  <input className={fieldClassName()} value={discountInput} onChange={(event) => setDiscountInput(event.target.value)} placeholder="0.00" />
+                </Field>
+              </div>
             </div>
           </InvoiceEditorSection>
 
