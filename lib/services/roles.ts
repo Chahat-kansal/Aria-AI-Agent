@@ -200,6 +200,12 @@ export function canManageTeam(user: Pick<User, "role" | "status" | "permissionsJ
   return hasPermission(user, "can_manage_team");
 }
 
+export function canAccessCompanyWorkspace(user: Pick<User, "role" | "status" | "permissionsJson">) {
+  if (user.status === UserStatus.DISABLED) return false;
+  if (user.role === UserRole.COMPANY_OWNER) return true;
+  return canManageTeam(user);
+}
+
 export function hasFirmWideAccess(user: Pick<User, "role" | "visibilityScope" | "status" | "permissionsJson">) {
   if (user.status === UserStatus.DISABLED) return false;
   if (user.role === UserRole.COMPANY_OWNER) return true;

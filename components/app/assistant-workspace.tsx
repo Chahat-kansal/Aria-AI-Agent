@@ -237,12 +237,14 @@ export function AssistantWorkspace({
   matters,
   suggestions,
   initialThreads,
+  briefingLabel,
   aiConfigured,
   aiSetupMessage
 }: {
   matters: MatterOption[];
   suggestions?: string[];
   initialThreads: PersistedThread[];
+  briefingLabel: string;
   aiConfigured: boolean;
   aiSetupMessage?: string | null;
 }) {
@@ -595,6 +597,7 @@ export function AssistantWorkspace({
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">AI ASSISTANT</p>
               <h2 className="mt-2 font-serif text-3xl tracking-tight text-white sm:text-4xl">Ask Aria anything about your practice</h2>
+              <p className="mt-2 text-sm text-slate-500">{briefingLabel}</p>
             </div>
             <div className="flex items-center gap-2">
               <button

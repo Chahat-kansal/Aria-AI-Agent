@@ -13,6 +13,16 @@ export function WorkspaceLoginForm({ workspaceSlug }: { workspaceSlug: string })
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function getWorkspaceErrorMessage(message: string | undefined) {
+    if (!message) return "Unable to sign in to this workspace right now.";
+    if (message.startsWith("INVITE_NOT_ACCEPTED")) return "Invite not accepted yet. Open your invite link first, set your password, and then sign in here.";
+    if (message.startsWith("PASSWORD_NOT_SET")) return "Your account is not active yet. Finish account setup from your invite link before signing in.";
+    if (message.startsWith("WRONG_WORKSPACE")) return "This email belongs to a different workspace. Use your own firm workspace portal to sign in.";
+    if (message === "USER_DEACTIVATED") return "Your account has been deactivated. Ask your workspace administrator for help.";
+    if (message === "INVALID_CREDENTIALS") return "Email or password is incorrect for this workspace.";
+    return "Unable to sign in to this workspace right now.";
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -30,7 +40,7 @@ export function WorkspaceLoginForm({ workspaceSlug }: { workspaceSlug: string })
 
     setIsSubmitting(false);
     if (result?.error) {
-      setError("Email or password is incorrect for this workspace.");
+      setError(getWorkspaceErrorMessage(result.error));
       return;
     }
 
@@ -51,6 +61,7 @@ export function WorkspaceLoginForm({ workspaceSlug }: { workspaceSlug: string })
       <GradientButton className="w-full" disabled={isSubmitting}>
         {isSubmitting ? "Signing in..." : "Sign in to workspace"}
       </GradientButton>
+      <p className="text-xs text-slate-500">Staff and agents sign in through your firm workspace portal. Company owners create and manage workspaces through the public owner portal.</p>
     </form>
   );
 }

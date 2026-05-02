@@ -15,7 +15,7 @@ export default async function AcceptInvitePage({ params }: { params: { token: st
           <>
             <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white">Join {invite.workspace.name}</h1>
             <p className="mt-3 text-base leading-7 text-slate-400">
-              {invite.name}, set your password to activate your staff account. Aria is AI-assisted and all migration outputs remain review required.
+              {invite.name}, set your password to activate your staff account. After activation, staff and agents sign in through the workspace portal, not the public owner portal.
             </p>
             <div className="mt-5 rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
               <p><span className="text-slate-500">Email:</span> {invite.email}</p>

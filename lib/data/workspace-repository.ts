@@ -1,6 +1,6 @@
 import { Prisma, type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { scopedMatterWhere } from "@/lib/services/roles";
+import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 
 type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
 
@@ -57,6 +57,7 @@ export function formatDate(value: Date | null | undefined) {
 
 export async function getOverviewData(workspaceId: string, user?: ScopedUser) {
   const matterWhere = user ? scopedMatterWhere(user) : { workspaceId };
+  const canSeeUpdates = user ? hasPermission(user, "can_access_update_monitor") : true;
   const [matters, openIssueCount, updates, tasks, pendingIntakes, pendingDocumentRequests, upcomingAppointments] = await Promise.all([
     prisma.matter.findMany({
       where: matterWhere,
@@ -71,16 +72,18 @@ export async function getOverviewData(workspaceId: string, user?: ScopedUser) {
     prisma.validationIssue.count({
       where: { matter: matterWhere, resolutionStatus: { in: ["OPEN", "IN_PROGRESS"] } }
     }),
-    prisma.officialUpdate.findMany({
-      include: {
-        officialSource: true,
-        impacts: {
-          where: { matter: matterWhere, status: { in: ["NEW", "REVIEWING"] } }
-        }
-      },
-      orderBy: { publishedAt: "desc" },
-      take: 6
-    }),
+    canSeeUpdates
+      ? prisma.officialUpdate.findMany({
+          include: {
+            officialSource: true,
+            impacts: {
+              where: { matter: matterWhere, status: { in: ["NEW", "REVIEWING"] } }
+            }
+          },
+          orderBy: { publishedAt: "desc" },
+          take: 6
+        })
+      : Promise.resolve([]),
     prisma.task.findMany({
       where: { workspaceId, status: { not: "DONE" }, matter: matterWhere },
       include: { matter: { include: { client: true } }, assignedToUser: true },

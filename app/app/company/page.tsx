@@ -5,10 +5,18 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { CompanyProfileForm } from "@/components/app/company-profile-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getCompanyProfileData } from "@/lib/data/workspace-repository";
-import { canManageTeam, roleLabel } from "@/lib/services/roles";
+import { canAccessCompanyWorkspace, canManageTeam, roleLabel } from "@/lib/services/roles";
 
 export default async function CompanyPage() {
   const context = await getCurrentWorkspaceContext();
+  if (context && !canAccessCompanyWorkspace(context.user)) {
+    return (
+      <AppShell title="Company">
+        <PageHeader title="Company access unavailable" subtitle="Company profile and workspace administration stay inside the owner and administrator portal experience." />
+        <Card><p className="text-sm text-muted">You do not currently have permission to open company-wide business settings.</p></Card>
+      </AppShell>
+    );
+  }
   const workspace = context ? await getCompanyProfileData(context.workspace.id) : null;
   const canManageCompany = context ? canManageTeam(context.user) : false;
 

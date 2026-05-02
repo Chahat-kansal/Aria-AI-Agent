@@ -14,7 +14,7 @@ export default async function WorkspaceLoginPage({ params }: { params: { workspa
       <Card className="w-full max-w-md p-8 sm:p-10">
         <p className="text-xs font-medium uppercase tracking-[0.24em] text-cyan-300">Aria workspace portal</p>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white">{workspace.name}</h1>
-        <p className="mt-3 text-base leading-7 text-slate-400">Staff sign in for AI-assisted migration operations. Public company setup stays separate from this workspace portal.</p>
+        <p className="mt-3 text-base leading-7 text-slate-400">Staff and agents sign in through your firm workspace portal. Public company owner signup stays separate from this workspace login.</p>
         <WorkspaceLoginForm workspaceSlug={workspace.slug} />
         <p className="mt-5 text-sm text-slate-400">
           Need access? Ask your company owner or access administrator to invite you.

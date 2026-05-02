@@ -2,10 +2,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/prisma";
 import { ClientReviewActions } from "@/components/app/client-review-actions";
+import { serverLog } from "@/lib/services/runtime-config";
 
 export default async function ClientReviewPage({ params }: { params: { requestId: string } }) {
-  const request = await prisma.matterReviewRequest.findUnique({
-    where: { id: params.requestId },
+  const request = await prisma.matterReviewRequest.findFirst({
+    where: { publicToken: params.requestId, expiresAt: { gt: new Date() } },
     include: {
       matter: { include: { client: true } },
       draft: { include: { fields: { include: { templateField: true } } } }
@@ -13,6 +14,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
   });
 
   if (!request) {
+    serverLog("client.review.invalid_or_expired", { token: params.requestId });
     return <main className="min-h-screen p-8 text-[#182033]">Review request not found.</main>;
   }
 
@@ -52,7 +54,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
         <Card>
           <h2 className="font-semibold">Client confirmation</h2>
           <p className="mb-3 mt-2 text-sm text-muted">Confirming records client acknowledgement only. It is not a final legal decision and does not replace migration agent review.</p>
-          <ClientReviewActions requestId={request.id} />
+          <ClientReviewActions requestId={params.requestId} />
           <p className="mt-3 text-xs text-muted">External e-sign provider integration is pending; this records secure review workflow status inside Aria.</p>
         </Card>
       </div>

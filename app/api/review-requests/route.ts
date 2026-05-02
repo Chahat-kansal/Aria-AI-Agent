@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const matter = await prisma.matter.findFirst({ where: { id: matterId, workspaceId: context.workspace.id }, include: { assignedToUser: true } });
   if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
 
-  const request = await createClientReviewRequest({
+  const result = await createClientReviewRequest({
     matterId,
     draftId,
     recipientName: typeof body.recipientName === "string" ? body.recipientName : undefined,
@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     status: "sent_to_client",
     reviewRequired: true,
-    message: "Client review request recorded. Provider integration can be attached later.",
-    request
+    message: "Client review request recorded. Share the secure client review link if email delivery is not configured.",
+    request: result.request,
+    reviewUrl: result.reviewUrl
   });
 }

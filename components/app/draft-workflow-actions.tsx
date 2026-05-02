@@ -23,6 +23,7 @@ export function DraftWorkflowActions({
   const [recipientEmail, setRecipientEmail] = useState("");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [reviewUrl, setReviewUrl] = useState<string | null>(null);
 
   async function uploadDocument(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,6 +64,7 @@ export function DraftWorkflowActions({
 
   async function sendReview() {
     setMessage(null);
+    setReviewUrl(null);
     const res = await fetch("/api/review-requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -70,6 +72,7 @@ export function DraftWorkflowActions({
     });
     const data = await res.json();
     setMessage(data.message ?? data.error);
+    setReviewUrl(typeof data.reviewUrl === "string" ? data.reviewUrl : null);
     startTransition(() => router.refresh());
   }
 
@@ -99,6 +102,11 @@ export function DraftWorkflowActions({
           <input value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="client@example.com" className="h-11 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15" />
         </FormField>
         <GradientButton onClick={sendReview} disabled={pending} className="mt-3 w-full">Send to client review</GradientButton>
+        {reviewUrl ? (
+          <div className="mt-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-3 text-xs text-cyan-200">
+            Secure client review link: <a href={reviewUrl} className="break-all underline underline-offset-2">{reviewUrl}</a>
+          </div>
+        ) : null}
       </div> : null}
       {message ? <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-300">{message}</p> : null}
     </div>

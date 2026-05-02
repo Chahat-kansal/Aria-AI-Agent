@@ -727,6 +727,8 @@ model MatterReviewRequest {
   recipientEmail String?
   recipientName  String?
   message        String?
+  publicToken    String?                @unique
+  expiresAt      DateTime?
   sentAt         DateTime?
   viewedAt       DateTime?
   confirmedAt    DateTime?

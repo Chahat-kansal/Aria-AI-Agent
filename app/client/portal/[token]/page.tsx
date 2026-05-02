@@ -19,6 +19,23 @@ export default async function ClientPortalPage({ params }: { params: { token: st
     );
   }
 
+  const visibleTimelineEvents = (portal.matter?.timelineEvents ?? []).filter((event) =>
+    [
+      "matter.created",
+      "intake.sent",
+      "intake.viewed",
+      "intake.submitted",
+      "documents.requested",
+      "document.uploaded",
+      "documents.reminder_sent",
+      "appointment.booked",
+      "generated_document.created",
+      "client.review.sent",
+      "client.review.returned",
+      "client.review.confirmed"
+    ].includes(event.eventType)
+  );
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_36%),radial-gradient(circle_at_top_right,rgba(6,182,212,0.12),transparent_34%),linear-gradient(135deg,#0B1322,#10203A_45%,#172033)] px-4 py-10 text-slate-50">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -51,13 +68,13 @@ export default async function ClientPortalPage({ params }: { params: { token: st
                 <Card>
                   <h3 className="text-sm font-semibold text-slate-100">Case timeline</h3>
                   <div className="mt-4 space-y-3">
-                    {portal.matter.timelineEvents.length ? portal.matter.timelineEvents.map((event) => (
+                    {visibleTimelineEvents.length ? visibleTimelineEvents.map((event) => (
                       <div key={event.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
                         <p className="font-medium text-white">{event.title}</p>
                         <p className="mt-1 text-xs text-slate-500">{event.createdAt.toLocaleString("en-AU")}</p>
                         {event.description ? <p className="mt-2 text-slate-300">{event.description}</p> : null}
                       </div>
-                    )) : <p className="text-sm text-slate-400">No timeline events are recorded yet.</p>}
+                    )) : <p className="text-sm text-slate-400">No client-visible timeline events are recorded yet.</p>}
                   </div>
                 </Card>
                 <Card>
@@ -78,14 +95,16 @@ export default async function ClientPortalPage({ params }: { params: { token: st
               </div>
 
               <Card className="mt-6">
-                <h3 className="text-sm font-semibold text-slate-100">Upcoming tasks & actions</h3>
+                <h3 className="text-sm font-semibold text-slate-100">Next secure actions</h3>
                 <div className="mt-4 space-y-2 text-sm text-slate-300">
-                  {portal.matter.tasks.length ? portal.matter.tasks.map((task) => (
-                    <div key={task.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                      <p className="font-medium text-white">{task.title}</p>
-                      <p className="text-xs text-slate-500">{task.dueDate.toLocaleDateString("en-AU")}</p>
-                    </div>
-                  )) : <p>No pending tasks are visible in this portal yet.</p>}
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="font-medium text-white">Upload requested documents</p>
+                    <p className="text-xs text-slate-500">Use your secure checklist upload link for anything still marked missing.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="font-medium text-white">Check review requests</p>
+                    <p className="text-xs text-slate-500">Your migration team will send separate secure review links when confirmation is needed.</p>
+                  </div>
                 </div>
               </Card>
             </>

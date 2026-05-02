@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import {
   DraftFieldStatus,
   DraftStatus,
@@ -11,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getSubclass500Template } from "@/lib/services/subclass-templates";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
+import { buildClientLink } from "@/lib/services/client-workflows";
 
 const packageFolders = [
   "Identity",
@@ -503,17 +505,24 @@ export async function createClientReviewRequest(input: {
   recipientEmail?: string;
   message?: string;
 }) {
-  return prisma.matterReviewRequest.create({
+  const publicToken = crypto.randomBytes(32).toString("base64url");
+  const request = await prisma.matterReviewRequest.create({
     data: {
       matterId: input.matterId,
       draftId: input.draftId,
       recipientName: input.recipientName,
       recipientEmail: input.recipientEmail,
       message: input.message,
+      publicToken,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14),
       status: ReviewRequestStatus.SENT_TO_CLIENT,
       sentAt: new Date()
     }
   });
+  return {
+    request,
+    reviewUrl: buildClientLink("/client-review", publicToken)
+  };
 }
 
 export function buildPackageFolders(documents: Array<{ id: string; fileName: string; category: string; reviewStatus: ReviewStatus }>) {

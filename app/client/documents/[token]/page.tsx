@@ -27,6 +27,10 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
     if (!(file instanceof File) || !checklistItemId) {
       redirect(`/client/documents/${params.token}`);
     }
+    const allowedChecklistItem = activeRequest.items.find((item) => item.checklistItemId === checklistItemId);
+    if (!allowedChecklistItem) {
+      redirect(`/client/documents/${params.token}`);
+    }
     const bytes = Buffer.from(await file.arrayBuffer());
     const upload = await prepareMatterDocumentUpload({ matterId: activeRequest.matterId, fileName: file.name, bytes });
     const extractedText = await extractReadableText(bytes, file.type || "application/octet-stream");

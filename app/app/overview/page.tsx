@@ -64,6 +64,8 @@ export default async function OverviewPage() {
     upcomingAppointments
   } = await getOverviewData(context.workspace.id, context.user);
   const briefing = await getOverviewIntelligence(context.workspace.id, context.user);
+  const canAccessUpdates = hasPermission(context.user, "can_access_update_monitor");
+  const canAccessAi = hasPermission(context.user, "can_access_ai");
   const dashboardScope = hasFirmWideAccess(context.user)
     ? "Company-wide"
     : hasTeamOversight(context.user)
@@ -93,7 +95,7 @@ export default async function OverviewPage() {
           title="Today, here's what matters."
           summary={briefing.summary}
           statusLabel={briefing.urgency}
-          action={briefing.status === "not_configured" ? null : (
+          action={briefing.status === "not_configured" || !canAccessAi ? null : (
             <Link href="/app/assistant" className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 hover:bg-white/[0.08]">
               Open Aria
             </Link>
@@ -124,7 +126,7 @@ export default async function OverviewPage() {
           <MetricCard label="Pending intakes" value={pendingIntakes} hint="Sent, viewed, or submitted" accent={pendingIntakes > 0 ? "amber" : "cyan"} />
           <MetricCard label="Missing documents" value={pendingDocumentRequests} hint="Outstanding document requests" accent={pendingDocumentRequests > 0 ? "amber" : "emerald"} />
           <MetricCard label="Appointments" value={upcomingAppointments.length} hint="Upcoming consultations" accent="cyan" />
-          <MetricCard label="Official updates" value={updates.length} hint="Stored source-linked alerts" accent={updates.length ? "violet" : "emerald"} />
+          {canAccessUpdates ? <MetricCard label="Official updates" value={updates.length} hint="Stored source-linked alerts" accent={updates.length ? "violet" : "emerald"} /> : null}
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
@@ -292,7 +294,7 @@ export default async function OverviewPage() {
           </PageSection>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className={`grid gap-5 ${canAccessUpdates ? "xl:grid-cols-[0.95fr_1.05fr]" : ""}`}>
           <PageSection title="Missing documents and review queues" description="Outstanding evidence collection and assigned follow-up work in one place.">
             <div className="space-y-3">
               <SectionCard className="p-4">
@@ -330,33 +332,35 @@ export default async function OverviewPage() {
             </div>
           </PageSection>
 
-          <PageSection title="Update impacts" description="Source-linked alerts and policy changes that may affect active matters.">
-            <div className="space-y-3">
-              {updates.slice(0, 4).map((update) => (
-                <Link key={update.id} href={`/app/updates/${update.id}` as any} className="block">
-                  <SectionCard className="p-4 transition hover:bg-white/[0.05]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-[1rem] bg-cyan-400/10 text-cyan-300">
-                          <Activity className="h-4 w-4" />
+          {canAccessUpdates ? (
+            <PageSection title="Update impacts" description="Source-linked alerts and policy changes that may affect active matters.">
+              <div className="space-y-3">
+                {updates.slice(0, 4).map((update) => (
+                  <Link key={update.id} href={`/app/updates/${update.id}` as any} className="block">
+                    <SectionCard className="p-4 transition hover:bg-white/[0.05]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-[1rem] bg-cyan-400/10 text-cyan-300">
+                            <Activity className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-white">{update.title}</p>
+                            <p className="mt-1 text-sm text-slate-400">{update.source} - {formatDate(update.publishedAt)}</p>
+                            <p className="mt-2 text-xs text-slate-500">{update.impacts.length} potential impact(s)</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-white">{update.title}</p>
-                          <p className="mt-1 text-sm text-slate-400">{update.source} - {formatDate(update.publishedAt)}</p>
-                          <p className="mt-2 text-xs text-slate-500">{update.impacts.length} potential impact(s)</p>
-                        </div>
+                        <StatusPill tone={update.impacts.length ? "warning" : "info"}>{update.impacts.length} impacts</StatusPill>
                       </div>
-                      <StatusPill tone={update.impacts.length ? "warning" : "info"}>{update.impacts.length} impacts</StatusPill>
-                    </div>
-                  </SectionCard>
-                </Link>
-              ))}
+                    </SectionCard>
+                  </Link>
+                ))}
 
-              {!updates.length ? (
-                <EmptyState title="No update impacts in queue" description="When official alerts arrive or become relevant to active matters, Aria will surface them here." />
-              ) : null}
-            </div>
-          </PageSection>
+                {!updates.length ? (
+                  <EmptyState title="No update impacts in queue" description="When official alerts arrive or become relevant to active matters, Aria will surface them here." />
+                ) : null}
+              </div>
+            </PageSection>
+          ) : null}
         </div>
       </div>
     </AppShell>

@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { getAssistantData, getMattersData } from "@/lib/data/workspace-repository";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { hasPermission } from "@/lib/services/roles";
+import { hasFirmWideAccess, hasPermission, hasTeamOversight } from "@/lib/services/roles";
 import { getAiConfigStatus } from "@/lib/services/runtime-config";
 
 const prompts = [
@@ -39,6 +39,13 @@ export default async function AssistantPage() {
 
   const threads = context ? await getAssistantData(context.workspace.id, context.user) : [];
   const matters = context ? await getMattersData(context.workspace.id, context.user) : [];
+  const briefingLabel = context
+    ? hasFirmWideAccess(context.user)
+      ? "Workspace briefing"
+      : hasTeamOversight(context.user)
+        ? "Team-scoped briefing"
+        : "My work briefing"
+    : "Workspace briefing";
 
   return (
     <AppShell title="AI Assistant">
@@ -46,6 +53,7 @@ export default async function AssistantPage() {
         matters={matters.map((matter) => ({ id: matter.id, label: `${matter.client.firstName} ${matter.client.lastName} - ${matter.title}` }))}
         suggestions={prompts}
         initialThreads={threads as any}
+        briefingLabel={briefingLabel}
         aiConfigured={aiConfig.configured}
         aiSetupMessage={aiConfig.configured ? null : "AI is not configured. Add OPENAI_API_KEY and set AI_PROVIDER=openai to enable Aria responses."}
       />

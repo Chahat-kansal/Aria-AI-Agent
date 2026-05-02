@@ -1,7 +1,9 @@
 import type { NextAuthOptions } from "next-auth";
 import { compare } from "bcryptjs";
+import { UserRole, UserStatus } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { auditEvent } from "@/lib/services/audit";
 import { getAuthConfigStatus, serverLog } from "@/lib/services/runtime-config";
 
 const authConfig = getAuthConfigStatus();
@@ -22,7 +24,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           serverLog("auth.credentials_missing");
-          return null;
+          throw new Error("MISSING_CREDENTIALS");
         }
 
         const user = await prisma.user.findUnique({
@@ -40,20 +42,96 @@ export const authOptions: NextAuthOptions = {
           }
         });
 
-        if (!user?.hashedPassword || user.status !== "ACTIVE") {
-          serverLog("auth.login_rejected", { email: credentials.email.toLowerCase(), reason: "inactive_or_missing_password" });
-          return null;
+        if (!user) {
+          serverLog("auth.login_rejected", { email: credentials.email.toLowerCase(), reason: "user_not_found" });
+          throw new Error("INVALID_CREDENTIALS");
         }
+
+        if (user.status === UserStatus.INVITED) {
+          await auditEvent({
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            entityType: "User",
+            entityId: user.id,
+            action: "auth.login_failed",
+            metadata: { reason: "invite_not_accepted", requestedWorkspace: credentials.workspaceSlug ?? null }
+          });
+          serverLog("auth.login_rejected", { email: user.email, reason: "invite_not_accepted" });
+          throw new Error(`INVITE_NOT_ACCEPTED:${user.workspace.slug}`);
+        }
+
+        if (user.status === UserStatus.DISABLED) {
+          await auditEvent({
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            entityType: "User",
+            entityId: user.id,
+            action: "auth.login_failed",
+            metadata: { reason: "user_deactivated", requestedWorkspace: credentials.workspaceSlug ?? null }
+          });
+          serverLog("auth.login_rejected", { email: user.email, reason: "user_deactivated" });
+          throw new Error("USER_DEACTIVATED");
+        }
+
+        if (!user.hashedPassword) {
+          serverLog("auth.login_rejected", { email: user.email, reason: "missing_password" });
+          throw new Error(`PASSWORD_NOT_SET:${user.workspace.slug}`);
+        }
+
+        const publicPortalRoles = new Set<UserRole>([
+          UserRole.COMPANY_OWNER,
+          UserRole.COMPANY_ADMIN,
+          UserRole.ORGANISATION_ACCESS_ADMIN
+        ]);
+
+        if (!credentials.workspaceSlug && !publicPortalRoles.has(user.role)) {
+          await auditEvent({
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            entityType: "Workspace",
+            entityId: user.workspaceId,
+            action: "auth.public_portal_denied",
+            metadata: { role: user.role, workspaceSlug: user.workspace.slug }
+          });
+          serverLog("auth.public_portal_rejected", { email: user.email, workspaceSlug: user.workspace.slug, role: user.role });
+          throw new Error(`WORKSPACE_PORTAL_REQUIRED:${user.workspace.slug}`);
+        }
+
         if (credentials.workspaceSlug && user.workspace.slug !== credentials.workspaceSlug) {
+          await auditEvent({
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            entityType: "Workspace",
+            entityId: user.workspaceId,
+            action: "auth.workspace_login_failed",
+            metadata: { requestedWorkspace: credentials.workspaceSlug, actualWorkspace: user.workspace.slug }
+          });
           serverLog("auth.workspace_mismatch", { email: user.email, requestedWorkspace: credentials.workspaceSlug });
-          return null;
+          throw new Error(`WRONG_WORKSPACE:${user.workspace.slug}`);
         }
 
         const isValidPassword = await compare(credentials.password, user.hashedPassword);
         if (!isValidPassword) {
+          await auditEvent({
+            workspaceId: user.workspaceId,
+            userId: user.id,
+            entityType: "User",
+            entityId: user.id,
+            action: "auth.login_failed",
+            metadata: { reason: "bad_password", requestedWorkspace: credentials.workspaceSlug ?? null }
+          });
           serverLog("auth.bad_password", { email: user.email });
-          return null;
+          throw new Error("INVALID_CREDENTIALS");
         }
+
+        await auditEvent({
+          workspaceId: user.workspaceId,
+          userId: user.id,
+          entityType: "User",
+          entityId: user.id,
+          action: credentials.workspaceSlug ? "auth.workspace_login_succeeded" : "auth.login_succeeded",
+          metadata: { workspaceSlug: user.workspace.slug }
+        });
 
         return {
           id: user.id,

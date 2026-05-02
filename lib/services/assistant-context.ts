@@ -2,7 +2,7 @@ import { Prisma, type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getDraftReviewData } from "@/lib/services/application-draft";
 import { generateDailyBriefing, generateMatterIntelligence, generateNextBestActions, generateSecurityIntelligence } from "@/lib/services/aria-intelligence";
-import { hasPermission, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
+import { hasFirmWideAccess, hasPermission, hasTeamOversight, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
 
 export type AssistantScopedUser = Pick<User, "id" | "workspaceId" | "role" | "status" | "visibilityScope" | "permissionsJson">;
 
@@ -29,6 +29,11 @@ export async function buildAssistantContextPack(input: AssistantContextInput) {
   const canSeeInvoices = hasPermission(input.user, "can_view_invoices");
   const canSeeUpdates = hasPermission(input.user, "can_access_update_monitor");
   const canSeeSecurity = input.user.role === "COMPANY_OWNER" || input.user.role === "COMPANY_ADMIN" || input.user.role === "ORGANISATION_ACCESS_ADMIN";
+  const scopeLabel = hasFirmWideAccess(input.user)
+    ? "Workspace briefing"
+    : hasTeamOversight(input.user)
+      ? "Team-scoped briefing"
+      : "My work briefing";
 
   if (effectiveMatterId) {
     const matter = await prisma.matter.findFirst({
@@ -81,7 +86,14 @@ export async function buildAssistantContextPack(input: AssistantContextInput) {
       contextStatus: "ok",
       workspace: {
         id: input.workspaceId,
-        userRole: input.user.role
+        userRole: input.user.role,
+        scopeLabel,
+        permissions: {
+          canAccessAi: hasPermission(input.user, "can_access_ai"),
+          canAccessUpdates: canSeeUpdates,
+          canViewInvoices: canSeeInvoices,
+          canSeeSecurity
+        }
       },
       matter: {
         id: matter.id,
@@ -267,6 +279,13 @@ export async function buildAssistantContextPack(input: AssistantContextInput) {
     workspace: {
       id: input.workspaceId,
       userRole: input.user.role,
+      scopeLabel,
+      permissions: {
+        canAccessAi: hasPermission(input.user, "can_access_ai"),
+        canAccessUpdates: canSeeUpdates,
+        canViewInvoices: canSeeInvoices,
+        canSeeSecurity
+      },
       briefing: {
         summary: briefing.summary,
         urgency: briefing.urgency,

@@ -65,7 +65,7 @@ export default function SignUpPage() {
       <Card className="w-full max-w-3xl p-8 sm:p-10">
         <p className="text-xs font-medium uppercase tracking-[0.24em] text-cyan-300">Company onboarding</p>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white">Create your workspace.</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-400">Set up the migration firm workspace. The first user becomes the Company Owner and can invite staff later.</p>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-400">Company owners create and manage workspaces here. The first user becomes the Company Owner and can invite staff later.</p>
 
         <form className="mt-8 grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
           <FormField label="Owner full name">

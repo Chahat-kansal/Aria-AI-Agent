@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AppPage } from "@/components/ui/app-page";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
+import { canAccessCompanyWorkspace, canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
 import { AppShellClient } from "@/components/app/app-shell-client";
 
 const nav: Array<{
@@ -76,7 +76,7 @@ export async function AppShell({ title, children }: { title: string; children: R
   const accountNavItems = [
     ...(canOpenTeam ? [{ label: "Team", href: "/app/team", icon: "team" as const }] : []),
     { label: "Profile", href: "/app/profile", icon: "profile" as const },
-    { label: "Company", href: "/app/company", icon: "company" as const },
+    ...(canAccessCompanyWorkspace(user) ? [{ label: "Company", href: "/app/company", icon: "company" as const }] : []),
     { label: "Settings", href: "/app/settings", icon: "settings" as const }
   ];
 
