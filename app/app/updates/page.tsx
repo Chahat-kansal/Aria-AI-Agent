@@ -9,8 +9,8 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { prisma } from "@/lib/prisma";
-import { getAiConfigStatus, getCronConfigStatus, getWebResearchConfigStatus } from "@/lib/services/runtime-config";
-import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
+import { getAiConfigStatus, getCronConfigStatus } from "@/lib/services/runtime-config";
+import { hasFirmWideAccess, hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 
 function formatDate(value: Date | null | undefined) {
   if (!value) return "No date";
@@ -68,6 +68,7 @@ export default async function UpdatesPage({
     context.user.role === "COMPANY_OWNER" ||
     context.user.role === "COMPANY_ADMIN" ||
     hasPermission(context.user, "can_access_update_monitor");
+  const canViewAllIntel = hasFirmWideAccess(context.user);
 
   if (!canViewUpdates) {
     return (
@@ -91,9 +92,11 @@ export default async function UpdatesPage({
   const sourceTypeFilter = typeof searchParams?.sourceType === "string" ? searchParams.sourceType : "ALL";
   const subclassFilter = typeof searchParams?.subclass === "string" ? searchParams.subclass.trim() : "";
   const reviewFilter = typeof searchParams?.review === "string" ? searchParams.review : "ALL";
-  const tabFilter = typeof searchParams?.tab === "string" && searchParams.tab === "notes" ? "notes" : "intel";
+  const tabFilter =
+    typeof searchParams?.tab === "string" && ["intel", "official", "notes"].includes(searchParams.tab)
+      ? searchParams.tab
+      : "intel";
   const aiConfig = getAiConfigStatus();
-  const webResearchConfig = getWebResearchConfigStatus();
   const cronConfig = getCronConfigStatus();
 
   const visibleWhere: Prisma.OfficialUpdateWhereInput = {
@@ -103,11 +106,13 @@ export default async function UpdatesPage({
         OR: [{ workspaceId: null }, { workspaceId: context.workspace.id }]
       },
       {
-        OR: [
-          { workspaceId: context.workspace.id },
-          { workspaceId: null, impacts: { some: { matter: scopedMatterWhere(context.user) } } },
-          { workspaceId: null, sourceType: "OFFICIAL" as any }
-        ]
+        OR: canViewAllIntel
+          ? [{ workspaceId: context.workspace.id }, { workspaceId: null }]
+          : [
+              { workspaceId: context.workspace.id },
+              { workspaceId: null, impacts: { some: { matter: scopedMatterWhere(context.user) } } },
+              { workspaceId: null, sourceType: "OFFICIAL" as any }
+            ]
       }
     ]
   };
@@ -143,7 +148,8 @@ export default async function UpdatesPage({
 
   const filteredItems = items.filter((item) => {
     if (tabFilter === "notes" && item.sourceType !== "FIRM_NOTE") return false;
-    if (tabFilter === "intel" && item.sourceType === "FIRM_NOTE") return false;
+    if (tabFilter === "official" && item.sourceType !== "OFFICIAL") return false;
+    if (tabFilter === "intel" && !["NEWS", "AI_SUMMARY"].includes(String(item.sourceType))) return false;
     if (severityFilter !== "ALL" && item.severity !== severityFilter) return false;
     if (sourceTypeFilter !== "ALL" && item.sourceType !== sourceTypeFilter) return false;
     if (reviewFilter === "REVIEWED" && !item.reviewedAt) return false;
@@ -175,13 +181,11 @@ export default async function UpdatesPage({
     context.user.role === "COMPANY_OWNER" ||
     context.user.role === "COMPANY_ADMIN" ||
     hasPermission(context.user, "can_review_update_impacts");
-  const intelCount = items.filter((item) => item.sourceType !== "FIRM_NOTE").length;
+  const intelCount = items.filter((item) => ["NEWS", "AI_SUMMARY"].includes(String(item.sourceType))).length;
+  const officialCount = items.filter((item) => item.sourceType === "OFFICIAL").length;
   const configWarnings = [
-    !webResearchConfig.configured
-      ? "Live migration research is not configured. Add TAVILY_API_KEY and WEB_RESEARCH_PROVIDER=tavily."
-      : null,
     !aiConfig.configured
-      ? "AI classification is not configured. Aria can still store manual notes and raw sweep results when web research is available."
+      ? "AI classification is not configured. Aria can still fetch Google News RSS migration items, but severity summaries and subclass classification will fall back to limited keyword review."
       : null,
     !cronConfig.configured
       ? "CRON_SECRET is missing. Scheduled migration intelligence sweeps are disabled."
@@ -194,7 +198,7 @@ export default async function UpdatesPage({
         <PageHeader
           eyebrow="INTEL"
           title="Migration intelligence"
-          description="Aria monitors Australian visa updates, classifies severity, and highlights affected matters."
+          description="Aria monitors Australian visa news and official updates, classifies severity, and highlights affected matters."
           action={<MigrationIntelActions canSweep={canSweep} canLog={canLog} />}
         />
 
@@ -216,7 +220,13 @@ export default async function UpdatesPage({
             href={`/app/updates${buildQueryString(searchParams, { tab: "intel" })}` as any}
             className={`border-b-2 pb-3 text-sm font-medium transition ${tabFilter === "intel" ? "border-cyan-400 text-cyan-300" : "border-transparent text-slate-400 hover:text-white"}`}
           >
-            Aria intel - {intelCount}
+            Migration Intel - {intelCount}
+          </Link>
+          <Link
+            href={`/app/updates${buildQueryString(searchParams, { tab: "official" })}` as any}
+            className={`border-b-2 pb-3 text-sm font-medium transition ${tabFilter === "official" ? "border-cyan-400 text-cyan-300" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Official Updates - {officialCount}
           </Link>
           <Link
             href={`/app/updates${buildQueryString(searchParams, { tab: "notes" })}` as any}
@@ -283,8 +293,9 @@ export default async function UpdatesPage({
                         <StatusPill tone={item.severity === "CRITICAL" || item.severity === "HIGH" ? "danger" : item.severity === "MEDIUM" ? "warning" : "info"}>
                           {item.severity}
                         </StatusPill>
+                        <StatusPill>{String(item.sourceType || "NEWS").replace(/_/g, " ")}</StatusPill>
                         <p className="text-sm text-slate-400">
-                          {(item.source || "Unknown source")} - {formatDate(item.publishedAt)}
+                          {(item.source || "Unknown source")} - {formatDate(item.publishedAt ?? item.fetchedAt)}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
@@ -336,8 +347,8 @@ export default async function UpdatesPage({
             title={items.length ? "No migration intelligence matched these filters" : "No migration intelligence yet"}
             description={
               items.length
-                ? "Change the current filters, log a workspace update, or run a live sweep when web research is configured."
-                : "Run a sweep or log an update to start building your migration intelligence record."
+                ? "Change the current filters, log a workspace update, or run another live sweep to refresh migration intelligence."
+                : "No migration intelligence yet. Run Sweep now to fetch current Australian migration updates."
             }
           />
         )}

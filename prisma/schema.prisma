@@ -1057,7 +1057,10 @@ model MigrationIntelSweep {
   status       MigrationIntelSweepStatus
   provider     String
   queryJson    Json?
+  feedUrlsJson Json?
   resultCount  Int                      @default(0)
+  addedCount   Int                      @default(0)
+  skippedCount Int                      @default(0)
   errorMessage String?
   startedAt    DateTime                 @default(now())
   completedAt  DateTime?

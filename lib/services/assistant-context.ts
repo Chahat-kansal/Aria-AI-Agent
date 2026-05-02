@@ -29,6 +29,7 @@ export async function buildAssistantContextPack(input: AssistantContextInput) {
   const canSeeInvoices = hasPermission(input.user, "can_view_invoices");
   const canSeeUpdates = hasPermission(input.user, "can_access_update_monitor");
   const canSeeSecurity = input.user.role === "COMPANY_OWNER" || input.user.role === "COMPANY_ADMIN" || input.user.role === "ORGANISATION_ACCESS_ADMIN";
+  const canSeeAllUpdates = hasFirmWideAccess(input.user);
   const scopeLabel = hasFirmWideAccess(input.user)
     ? "Workspace briefing"
     : hasTeamOversight(input.user)
@@ -238,7 +239,13 @@ export async function buildAssistantContextPack(input: AssistantContextInput) {
       ? prisma.officialUpdate.findMany({
           where: {
             isArchived: false,
-            OR: [{ workspaceId: null }, { workspaceId: input.workspaceId }]
+            OR: canSeeAllUpdates
+              ? [{ workspaceId: null }, { workspaceId: input.workspaceId }]
+              : [
+                  { workspaceId: input.workspaceId },
+                  { workspaceId: null, impacts: { some: { matter: matterWhere, status: { in: ["NEW", "REVIEWING"] } } } },
+                  { workspaceId: null, sourceType: "OFFICIAL" as any }
+                ]
           },
           include: {
             impacts: {

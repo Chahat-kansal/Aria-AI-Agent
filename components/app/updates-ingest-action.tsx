@@ -5,7 +5,6 @@ import { useState } from "react";
 type IngestResult = {
   status: string;
   message?: string;
-  sources?: number;
   fetched?: number;
   stored?: number;
   impactedMatters?: number;
@@ -30,7 +29,7 @@ export function UpdatesIngestAction() {
         disabled={isRunning}
         className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isRunning ? "Checking sources..." : "Run source check"}
+        {isRunning ? "Sweeping..." : "Sweep now"}
       </button>
       {result ? (
         <span className="text-xs text-muted">

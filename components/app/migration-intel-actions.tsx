@@ -31,7 +31,9 @@ export function MigrationIntelActions({
       return;
     }
     router.refresh();
-    const summary = `${payload?.stored ?? 0} item(s) stored and ${payload?.impactedMatters ?? 0} matter impact(s) matched.`;
+    const summary =
+      payload?.message ??
+      `${payload?.fetched ?? 0} fetched, ${payload?.added ?? 0} added, ${payload?.skipped ?? 0} skipped, ${payload?.impactedMatters ?? 0} matter impact(s) matched.`;
     setStatus(payload?.warning ? `${summary} ${payload.warning}` : summary);
   }
 

@@ -61,7 +61,7 @@ export async function POST() {
       metadata: { error: message }
     });
 
-    const status = /not configured/i.test(message) ? 400 : 500;
+    const status = /not configured|unable to fetch google news rss/i.test(message) ? 400 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

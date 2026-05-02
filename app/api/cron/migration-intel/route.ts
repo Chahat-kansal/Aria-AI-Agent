@@ -27,7 +27,17 @@ export async function GET(req: Request) {
     }
   });
 
-  const results: Array<{ workspaceId: string; status: string; stored: number; impactedMatters: number; error?: string }> = [];
+  const results: Array<{
+    workspaceId: string;
+    status: string;
+    fetched: number;
+    added: number;
+    skipped: number;
+    stored: number;
+    impactedMatters: number;
+    warning?: string | null;
+    error?: string;
+  }> = [];
 
   for (const workspace of workspaces) {
     try {
@@ -48,8 +58,12 @@ export async function GET(req: Request) {
       results.push({
         workspaceId: workspace.id,
         status: "ok",
+        fetched: result.fetched,
+        added: result.added,
+        skipped: result.skipped,
         stored: result.stored,
-        impactedMatters: result.impactedMatters
+        impactedMatters: result.impactedMatters,
+        warning: result.warning
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -57,6 +71,9 @@ export async function GET(req: Request) {
       results.push({
         workspaceId: workspace.id,
         status: "failed",
+        fetched: 0,
+        added: 0,
+        skipped: 0,
         stored: 0,
         impactedMatters: 0,
         error: message
