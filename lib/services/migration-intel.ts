@@ -1,0 +1,539 @@
+import crypto from "crypto";
+import {
+  ImpactLevel,
+  ImpactStatus,
+  MigrationIntelSeverity,
+  MigrationIntelSourceType,
+  MigrationIntelSweepStatus,
+  type User
+} from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { generateAriaAiResponse } from "@/lib/services/ai-provider";
+import { isAiConfigured } from "@/lib/services/ai-config";
+import { getWebResearchConfigStatus, serverLog } from "@/lib/services/runtime-config";
+import { getWebResearchProvider } from "@/lib/services/web-research";
+
+type ClassifiedIntel = {
+  severity: "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  summary: string;
+  affectedSubclasses: string[];
+  tags: string[];
+  isOfficial: boolean;
+  riskReason: string;
+  recommendedAgentActions: string[];
+  reviewRequired: true;
+};
+
+type RawIntelItem = {
+  title: string;
+  summary?: string;
+  sourceUrl: string;
+  sourceName: string;
+  sourceType: MigrationIntelSourceType;
+  publishedAt?: string | null;
+  rawContent: string;
+};
+
+const SWEEP_QUERIES = [
+  "Australian visa policy changes Department of Home Affairs migration update",
+  "Australia student visa update subclass 500 migration",
+  "Australia skilled visa updates subclass 189 190 491 migration",
+  "Australia partner visa update subclass 820 801 migration",
+  "Australia temporary skilled migration subclass 482 update",
+  "Australia migration legislation fee processing form update"
+];
+
+function sha256(value: string) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function safeHostLabel(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "Workspace note";
+  }
+}
+
+function buildInternalSourceUrl(workspaceId: string, title: string, summary: string) {
+  return `aria://workspace-note/${workspaceId}/${sha256(`${title}:${summary}`).slice(0, 16)}`;
+}
+
+function extractSubclasses(text: string) {
+  const matches = new Set<string>();
+  for (const match of text.matchAll(/\b(?:subclass\s*)?(\d{3})(?:\/(\d{3}))?\b/gi)) {
+    if (match[1]) matches.add(match[1]);
+    if (match[2]) matches.add(match[2]);
+  }
+  if (/partner/i.test(text)) {
+    if (/\b820\b/.test(text)) matches.add("820");
+    if (/\b801\b/.test(text)) matches.add("801");
+  }
+  return Array.from(matches).slice(0, 12);
+}
+
+function extractTags(text: string) {
+  const tags = new Set<string>();
+  const rules: Array<[string, RegExp]> = [
+    ["policy", /\bpolicy|guidance|procedure\b/i],
+    ["legislation", /\blegislation|instrument|regulation|bill\b/i],
+    ["fees", /\bfee|charge|levy|pricing\b/i],
+    ["processing", /\bprocessing|backlog|timeframe|priority\b/i],
+    ["compliance", /\bcompliance|enforcement|cancellation|deport|section 48\b/i],
+    ["student", /\bstudent|subclass 500|500\b/i],
+    ["skilled", /\b189|190|491|482|skilled\b/i],
+    ["partner", /\bpartner|820|801\b/i],
+    ["forms", /\bform|application form\b/i],
+    ["evidence", /\bevidence|document|checklist|proof\b/i]
+  ];
+  for (const [tag, pattern] of rules) {
+    if (pattern.test(text)) tags.add(tag);
+  }
+  return Array.from(tags).slice(0, 12);
+}
+
+function deterministicClassification(rawItem: RawIntelItem): ClassifiedIntel {
+  const haystack = `${rawItem.title} ${rawItem.summary ?? ""} ${rawItem.rawContent}`;
+  const lower = haystack.toLowerCase();
+  const severity: ClassifiedIntel["severity"] =
+    /\b(deport|cancelled visas?|legislation change|compliance action|pause)\b/i.test(haystack)
+      ? "CRITICAL"
+      : /\b(urgent|deadline|major change|processing suspension|fee increase|health|character)\b/i.test(haystack)
+        ? "HIGH"
+        : /\b(update|guidance|processing|form|document|evidence)\b/i.test(haystack)
+          ? "MEDIUM"
+          : /\b(news|report|commentary)\b/i.test(haystack)
+            ? "LOW"
+            : "INFO";
+
+  const affectedSubclasses = extractSubclasses(haystack);
+  const tags = extractTags(haystack);
+  const isOfficial = rawItem.sourceType === MigrationIntelSourceType.OFFICIAL;
+  const limitedSourceContext = rawItem.rawContent.trim().length < 180;
+
+  return {
+    severity,
+    summary: rawItem.summary?.trim() || rawItem.rawContent.trim().slice(0, 320) || "Limited source context was available for this migration intelligence item.",
+    affectedSubclasses,
+    tags,
+    isOfficial,
+    riskReason: limitedSourceContext
+      ? "Classification used limited source context and requires review."
+      : severity === "CRITICAL"
+        ? "The source mentions enforcement, cancellation, or major migration policy change signals."
+        : "The source appears relevant to migration operations and should be reviewed by an agent.",
+    recommendedAgentActions: [
+      isOfficial ? "Open the original source and confirm the exact policy language." : "Confirm this report against an official government or legislative source.",
+      affectedSubclasses.length ? `Review active matters touching subclasses ${affectedSubclasses.join(", ")}.` : "Review whether any active matters rely on the changed policy area.",
+      "Record human review before changing client-facing advice."
+    ],
+    reviewRequired: true
+  };
+}
+
+async function aiClassification(rawItem: RawIntelItem): Promise<ClassifiedIntel> {
+  const classification = await generateAriaAiResponse({
+    system: `
+You classify Australian migration intelligence items.
+
+Rules:
+- Use only the supplied title, summary, raw content, source name, and source URL.
+- Do not invent source content.
+- If the source snippet is weak, say "limited source context".
+- Distinguish official government sources from news or firm notes.
+- Return strict JSON only with:
+{
+  "severity": "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+  "summary": string,
+  "affectedSubclasses": string[],
+  "tags": string[],
+  "isOfficial": boolean,
+  "riskReason": string,
+  "recommendedAgentActions": string[],
+  "reviewRequired": true
+}
+`.trim(),
+    user: "Classify this migration intelligence item.",
+    context: rawItem
+  });
+
+  const fallback = deterministicClassification(rawItem);
+  return {
+    severity: ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(String(classification?.severity))
+      ? classification.severity
+      : fallback.severity,
+    summary: typeof classification?.summary === "string" && classification.summary.trim() ? classification.summary.trim() : fallback.summary,
+    affectedSubclasses: Array.isArray(classification?.affectedSubclasses)
+      ? classification.affectedSubclasses.map(String).slice(0, 12)
+      : fallback.affectedSubclasses,
+    tags: Array.isArray(classification?.tags)
+      ? classification.tags.map(String).slice(0, 12)
+      : fallback.tags,
+    isOfficial: typeof classification?.isOfficial === "boolean" ? classification.isOfficial : fallback.isOfficial,
+    riskReason: typeof classification?.riskReason === "string" && classification.riskReason.trim() ? classification.riskReason.trim() : fallback.riskReason,
+    recommendedAgentActions: Array.isArray(classification?.recommendedAgentActions)
+      ? classification.recommendedAgentActions.map(String).slice(0, 8)
+      : fallback.recommendedAgentActions,
+    reviewRequired: true
+  };
+}
+
+export async function classifyMigrationIntel(rawItem: RawIntelItem): Promise<ClassifiedIntel> {
+  if (!isAiConfigured()) {
+    return deterministicClassification(rawItem);
+  }
+
+  try {
+    return await aiClassification(rawItem);
+  } catch (error) {
+    serverLog("migration_intel.classification_failed", {
+      sourceUrl: rawItem.sourceUrl,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return deterministicClassification(rawItem);
+  }
+}
+
+async function ensureOfficialSource(rawItem: RawIntelItem) {
+  if (!/^https?:\/\//i.test(rawItem.sourceUrl)) return null;
+
+  const baseUrl = new URL(rawItem.sourceUrl).origin;
+  return prisma.officialSource.upsert({
+    where: { url: baseUrl },
+    update: {
+      name: rawItem.sourceName,
+      active: true,
+      sourceType: rawItem.sourceType
+    },
+    create: {
+      name: rawItem.sourceName,
+      url: baseUrl,
+      active: true,
+      sourceType: rawItem.sourceType
+    }
+  });
+}
+
+async function upsertIntelItem(input: {
+  rawItem: RawIntelItem;
+  classification: ClassifiedIntel;
+  workspaceId?: string | null;
+}) {
+  const source = await ensureOfficialSource(input.rawItem);
+  const rawContentHash = sha256(input.rawItem.rawContent);
+
+  return prisma.officialUpdate.upsert({
+    where: {
+      sourceUrl_rawContentHash: {
+        sourceUrl: input.rawItem.sourceUrl,
+        rawContentHash
+      }
+    },
+    update: {
+      workspaceId: input.workspaceId ?? null,
+      officialSourceId: source?.id ?? null,
+      source: input.rawItem.sourceName,
+      sourceType: input.rawItem.sourceType,
+      title: input.rawItem.title,
+      summary: input.classification.summary,
+      updateType: input.classification.tags[0] ?? "migration-intel",
+      severity: input.classification.severity as MigrationIntelSeverity,
+      publishedAt: input.rawItem.publishedAt ? new Date(input.rawItem.publishedAt) : new Date(),
+      fetchedAt: new Date(),
+      sourceMetadata: {
+        rawSummary: input.rawItem.summary ?? null,
+        limitedSourceContext: input.rawItem.rawContent.trim().length < 180
+      } as any,
+      affectedSubclassesJson: input.classification.affectedSubclasses as any,
+      tagsJson: input.classification.tags as any,
+      aiClassificationJson: input.classification as any,
+      ingestedAt: new Date(),
+      isArchived: false
+    },
+    create: {
+      workspaceId: input.workspaceId ?? null,
+      officialSourceId: source?.id ?? null,
+      source: input.rawItem.sourceName,
+      sourceType: input.rawItem.sourceType,
+      sourceUrl: input.rawItem.sourceUrl,
+      title: input.rawItem.title,
+      summary: input.classification.summary,
+      updateType: input.classification.tags[0] ?? "migration-intel",
+      severity: input.classification.severity as MigrationIntelSeverity,
+      effectiveDate: null,
+      publishedAt: input.rawItem.publishedAt ? new Date(input.rawItem.publishedAt) : new Date(),
+      fetchedAt: new Date(),
+      rawContentHash,
+      sourceMetadata: {
+        rawSummary: input.rawItem.summary ?? null,
+        limitedSourceContext: input.rawItem.rawContent.trim().length < 180
+      } as any,
+      affectedSubclassesJson: input.classification.affectedSubclasses as any,
+      tagsJson: input.classification.tags as any,
+      aiClassificationJson: input.classification as any,
+      isArchived: false
+    }
+  });
+}
+
+export async function findAffectedMatters(workspaceId: string, intelItemId: string) {
+  const intelItem = await prisma.officialUpdate.findUnique({ where: { id: intelItemId } });
+  if (!intelItem) return [];
+
+  const affectedSubclasses = Array.isArray(intelItem.affectedSubclassesJson)
+    ? intelItem.affectedSubclassesJson.map(String)
+    : extractSubclasses(`${intelItem.title} ${intelItem.summary}`);
+  const haystack = `${intelItem.title} ${intelItem.summary} ${JSON.stringify(intelItem.tagsJson ?? [])}`.toLowerCase();
+
+  const matters = await prisma.matter.findMany({
+    where: {
+      workspaceId,
+      archivedAt: null,
+      client: { archivedAt: null }
+    },
+    include: {
+      client: true,
+      pathwayAnalyses: { include: { options: { take: 2 } }, take: 2 }
+    }
+  });
+
+  const impacts = [];
+  for (const matter of matters) {
+    const pathwayText = matter.pathwayAnalyses
+      .flatMap((analysis) => analysis.options.map((option) => option.title))
+      .join(" ")
+      .toLowerCase();
+    const currentVisaText = `${matter.currentVisaStatus ?? ""} ${matter.client.currentVisaStatus ?? ""}`.toLowerCase();
+    const subclassMatch = affectedSubclasses.includes(matter.visaSubclass);
+    const statusMatch = currentVisaText.includes(matter.visaSubclass.toLowerCase());
+    const partnerMatch = affectedSubclasses.some((code) => pathwayText.includes(code.toLowerCase()));
+    const thematicMatch =
+      haystack.includes(matter.visaSubclass.toLowerCase()) ||
+      (matter.visaStream && haystack.includes(matter.visaStream.toLowerCase())) ||
+      (haystack.includes("student") && matter.visaSubclass === "500") ||
+      (haystack.includes("partner") && ["820", "801"].includes(matter.visaSubclass)) ||
+      (haystack.includes("skilled") && ["189", "190", "491", "482", "186"].includes(matter.visaSubclass));
+
+    if (!subclassMatch && !statusMatch && !partnerMatch && !thematicMatch) continue;
+
+    const impactLevel =
+      intelItem.severity === "CRITICAL" || intelItem.severity === "HIGH"
+        ? ImpactLevel.HIGH
+        : intelItem.severity === "MEDIUM"
+          ? ImpactLevel.MEDIUM
+          : ImpactLevel.LOW;
+
+    const impact = await prisma.matterImpact.upsert({
+      where: { officialUpdateId_matterId: { officialUpdateId: intelItem.id, matterId: matter.id } },
+      update: {
+        clientId: matter.clientId,
+        impactLevel,
+        reason: subclassMatch
+          ? `Matched Subclass ${matter.visaSubclass} against the classified affected subclasses.`
+          : thematicMatch
+            ? "Matched the update theme against the matter visa pathway and status."
+            : "Matched current matter or client visa context against the migration intelligence item.",
+        actionRequired: "Review the source-linked migration intelligence item against this matter before changing advice, evidence requests, or submission readiness.",
+        status: ImpactStatus.NEW
+      },
+      create: {
+        officialUpdateId: intelItem.id,
+        matterId: matter.id,
+        clientId: matter.clientId,
+        impactLevel,
+        reason: subclassMatch
+          ? `Matched Subclass ${matter.visaSubclass} against the classified affected subclasses.`
+          : thematicMatch
+            ? "Matched the update theme against the matter visa pathway and status."
+            : "Matched current matter or client visa context against the migration intelligence item.",
+        actionRequired: "Review the source-linked migration intelligence item against this matter before changing advice, evidence requests, or submission readiness.",
+        status: ImpactStatus.NEW
+      }
+    });
+    impacts.push(impact);
+  }
+
+  return impacts;
+}
+
+export async function generateUpdateSummary(intelItemId: string) {
+  const intelItem = await prisma.officialUpdate.findUnique({ where: { id: intelItemId } });
+  if (!intelItem) return null;
+
+  const classification = (intelItem.aiClassificationJson ?? {}) as Record<string, unknown>;
+  const summary = typeof classification.summary === "string" && classification.summary.trim()
+    ? classification.summary.trim()
+    : intelItem.summary;
+
+  return {
+    id: intelItem.id,
+    title: intelItem.title,
+    summary,
+    severity: intelItem.severity,
+    affectedSubclasses: Array.isArray(intelItem.affectedSubclassesJson) ? intelItem.affectedSubclassesJson.map(String) : [],
+    tags: Array.isArray(intelItem.tagsJson) ? intelItem.tagsJson.map(String) : [],
+    reviewRequired: true
+  };
+}
+
+export async function markUpdateReviewed(intelItemId: string, userId: string, workspaceId?: string) {
+  const updated = await prisma.officialUpdate.update({
+    where: { id: intelItemId },
+    data: {
+      reviewedByUserId: userId,
+      reviewedAt: new Date()
+    }
+  });
+
+  if (workspaceId) {
+    await prisma.matterImpact.updateMany({
+      where: {
+        officialUpdateId: intelItemId,
+        matter: { workspaceId }
+      },
+      data: {
+        reviewedByUserId: userId,
+        reviewedAt: new Date(),
+        status: ImpactStatus.REVIEWING
+      }
+    });
+  }
+
+  return updated;
+}
+
+export async function logManualMigrationIntel(input: {
+  workspaceId: string;
+  title: string;
+  summary: string;
+  severity: MigrationIntelSeverity;
+  sourceName: string;
+  sourceUrl?: string | null;
+  affectedSubclasses?: string[];
+  tags?: string[];
+}) {
+  const rawItem: RawIntelItem = {
+    title: input.title.trim(),
+    summary: input.summary.trim(),
+    sourceUrl: input.sourceUrl?.trim() || buildInternalSourceUrl(input.workspaceId, input.title, input.summary),
+    sourceName: input.sourceName.trim() || "Workspace note",
+    sourceType: MigrationIntelSourceType.FIRM_NOTE,
+    publishedAt: new Date().toISOString(),
+    rawContent: input.summary.trim()
+  };
+
+  const classification: ClassifiedIntel = {
+    severity: input.severity,
+    summary: input.summary.trim(),
+    affectedSubclasses: (input.affectedSubclasses ?? []).map(String).slice(0, 12),
+    tags: (input.tags ?? []).map(String).slice(0, 12),
+    isOfficial: false,
+    riskReason: "Manually logged workspace note. Human review is required before operational changes.",
+    recommendedAgentActions: ["Review the note, link any affected matters, and confirm whether a source citation should be added."],
+    reviewRequired: true
+  };
+
+  return upsertIntelItem({
+    rawItem,
+    classification,
+    workspaceId: input.workspaceId
+  });
+}
+
+export async function sweepMigrationIntel(workspaceId?: string | null) {
+  const provider = getWebResearchProvider();
+  const researchStatus = getWebResearchConfigStatus();
+
+  if (!researchStatus.configured) {
+    throw new Error("Live migration research is not configured.");
+  }
+
+  const sweep = await prisma.migrationIntelSweep.create({
+    data: {
+      workspaceId: workspaceId ?? null,
+      status: MigrationIntelSweepStatus.STARTED,
+      provider: researchStatus.provider,
+      queryJson: SWEEP_QUERIES as any
+    }
+  });
+
+  try {
+    const batches = await Promise.all(
+      SWEEP_QUERIES.map((query) =>
+        provider.search({
+          query,
+          maxResults: 6,
+          officialOnly: false
+        })
+      )
+    );
+
+    const rawItems: RawIntelItem[] = [];
+    for (const batch of batches) {
+      for (const result of batch.results) {
+        rawItems.push({
+          title: result.title,
+          summary: result.content.slice(0, 600),
+          sourceUrl: result.url,
+          sourceName: safeHostLabel(result.url),
+          sourceType: result.sourceType === "official" ? MigrationIntelSourceType.OFFICIAL : MigrationIntelSourceType.NEWS,
+          publishedAt: result.publishedAt ?? null,
+          rawContent: result.content
+        });
+      }
+    }
+
+    const uniqueItems = rawItems.filter((item, index, array) => {
+      const key = `${item.sourceUrl}:${sha256(item.rawContent)}`;
+      return array.findIndex((candidate) => `${candidate.sourceUrl}:${sha256(candidate.rawContent)}` === key) === index;
+    });
+
+    const persisted = [];
+    for (const rawItem of uniqueItems) {
+      const classification = await classifyMigrationIntel(rawItem);
+      const stored = await upsertIntelItem({ rawItem, classification, workspaceId: null });
+      persisted.push(stored);
+    }
+
+    const impacted = [];
+    if (workspaceId) {
+      for (const item of persisted) {
+        impacted.push(...(await findAffectedMatters(workspaceId, item.id)));
+      }
+    } else {
+      const workspaces = await prisma.workspace.findMany({ select: { id: true } });
+      for (const workspace of workspaces) {
+        for (const item of persisted) {
+          impacted.push(...(await findAffectedMatters(workspace.id, item.id)));
+        }
+      }
+    }
+
+    await prisma.migrationIntelSweep.update({
+      where: { id: sweep.id },
+      data: {
+        status: MigrationIntelSweepStatus.COMPLETED,
+        resultCount: persisted.length,
+        completedAt: new Date()
+      }
+    });
+
+    return {
+      sweepId: sweep.id,
+      provider: researchStatus.provider,
+      stored: persisted.length,
+      impactedMatters: impacted.length
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await prisma.migrationIntelSweep.update({
+      where: { id: sweep.id },
+      data: {
+        status: MigrationIntelSweepStatus.FAILED,
+        errorMessage: message,
+        completedAt: new Date()
+      }
+    });
+    throw error;
+  }
+}

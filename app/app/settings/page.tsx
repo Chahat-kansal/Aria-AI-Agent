@@ -30,6 +30,15 @@ export default async function SettingsPage() {
   const context = await getCurrentWorkspaceContext();
   const workspace = context ? await getSettingsData(context.workspace.id) : null;
   const visaKnowledgeCount = await prisma.visaKnowledgeRecord.count();
+  const lastSuccessfulSweep = context
+    ? await prisma.migrationIntelSweep.findFirst({
+        where: {
+          OR: [{ workspaceId: context.workspace.id }, { workspaceId: null }],
+          status: "COMPLETED"
+        },
+        orderBy: { startedAt: "desc" }
+      })
+    : null;
   const canManageCompany = context ? canManageTeam(context.user) : false;
   const authStatus = getAuthConfigStatus();
   const dbStatus = getDatabaseConfigStatus();
@@ -118,6 +127,7 @@ export default async function SettingsPage() {
                 ["Email", emailStatus.configured, emailStatus.provider],
                 ["Storage", storageStatus.configured, storageStatus.provider],
                 ["Cron monitor", cronStatus.configured, cronStatus.provider],
+                ["Update sweep", webResearchStatus.configured && cronStatus.configured, webResearchStatus.configured ? "live migration research enabled" : "live migration research not configured"],
                 ["Field encryption", encryptionStatus.configured, encryptionStatus.provider]
               ].map(([label, configured, provider]) => (
                 <div key={String(label)} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
@@ -174,7 +184,7 @@ export default async function SettingsPage() {
             <h3 className="text-xl font-semibold tracking-tight text-white">Update source settings</h3>
             <div className="mt-4 flex items-center justify-between text-sm text-slate-300">
               <span>Scheduled ingestion</span>
-              <ConfigStatus configured={process.env.OFFICIAL_UPDATE_INGESTION_ENABLED === "true"} />
+              <ConfigStatus configured={webResearchStatus.configured} />
             </div>
             <div className="mt-4 space-y-3">
               {workspace.officialSources.length ? workspace.officialSources.map((source) => (
@@ -186,7 +196,10 @@ export default async function SettingsPage() {
                 <p className="text-xs text-slate-400">Global official sources are created when ingestion runs. Workspace-specific sources are not configured.</p>
               )}
             </div>
-            <p className="mt-3 text-xs text-slate-400">Live ingestion can be enabled for official-source monitoring. Every potential impact remains review required.</p>
+            <p className="mt-3 text-xs text-slate-400">
+              Live ingestion can be enabled for source-linked migration intelligence. Every potential impact remains review required.
+              {lastSuccessfulSweep ? ` Last successful sweep: ${formatDate(lastSuccessfulSweep.completedAt ?? lastSuccessfulSweep.startedAt)}.` : " No successful sweep has been recorded yet."}
+            </p>
           </Card> : null}
           {hasPermission(context!.user, "can_access_visa_knowledge") ? <Card>
             <h3 className="text-xl font-semibold tracking-tight text-white">Visa knowledge</h3>

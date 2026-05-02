@@ -179,6 +179,47 @@ enum ChatRole {
   ASSISTANT
 }
 
+enum AssistantContextType {
+  WORKSPACE
+  MATTER
+  CLIENT
+  DOCUMENT
+  INVOICE
+  UPDATE
+}
+
+enum AssistantThreadStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum AssistantRunStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum MigrationIntelSourceType {
+  OFFICIAL
+  NEWS
+  FIRM_NOTE
+  AI_SUMMARY
+}
+
+enum MigrationIntelSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MigrationIntelSweepStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
 enum TemplateValueType {
   TEXT
   DATE
@@ -245,10 +286,14 @@ model Workspace {
   documents             Document[]
   tasks                 Task[]
   aiThreads             AiChatThread[]
+  aiMessages            AiChatMessage[]
+  assistantRuns         AssistantRun[]
   auditEvents           AuditEvent[]
   visaSubclassTemplates VisaSubclassTemplate[]
   visaKnowledgeRecords  VisaKnowledgeRecord[]
   officialSources       OfficialSource[]
+  migrationIntelItems   OfficialUpdate[]      @relation("WorkspaceIntelItems")
+  migrationIntelSweeps  MigrationIntelSweep[]
   pathwayAnalyses       PathwayAnalysis[]
   intakeRequests        ClientIntakeRequest[]
   documentRequests      DocumentRequest[]
@@ -291,7 +336,11 @@ model User {
   uploadedDocuments Document[]          @relation("DocumentUploader")
   tasksAssigned     Task[]              @relation("TaskAssignee")
   createdThreads    AiChatThread[]      @relation("ThreadCreator")
+  assistantMessages AiChatMessage[]     @relation("AssistantMessageUser")
+  assistantRuns     AssistantRun[]
   auditEvents       AuditEvent[]
+  reviewedIntelItems   OfficialUpdate[] @relation("IntelReviewedBy")
+  reviewedIntelImpacts MatterImpact[]   @relation("IntelImpactReviewedBy")
   pathwayAnalyses   PathwayAnalysis[]
   intakeRequests    ClientIntakeRequest[] @relation("IntakeRequestCreator")
   documentRequests  DocumentRequest[]     @relation("DocumentRequestCreator")
@@ -331,6 +380,7 @@ model Client {
   appointments     Appointment[]
   portalAccessTokens ClientPortalAccessToken[]
   invoices         Invoice[]
+  matterImpacts    MatterImpact[]
 }
 
 model Matter {
@@ -819,24 +869,39 @@ model MatterTimelineEvent {
 
 model OfficialUpdate {
   id               String          @id @default(cuid())
+  workspaceId       String?
+  workspace         Workspace?      @relation("WorkspaceIntelItems", fields: [workspaceId], references: [id], onDelete: Cascade)
   officialSourceId String?
   officialSource   OfficialSource? @relation(fields: [officialSourceId], references: [id])
   source           String
+  sourceType       MigrationIntelSourceType @default(OFFICIAL)
   sourceUrl        String
   title            String
   summary          String
   updateType       String
+  severity         MigrationIntelSeverity @default(INFO)
   effectiveDate    DateTime?
   publishedAt      DateTime
+  fetchedAt        DateTime        @default(now())
   rawContentHash   String
   sourceMetadata   Json?
+  affectedSubclassesJson Json?
+  tagsJson         Json?
+  aiClassificationJson Json?
+  isArchived       Boolean         @default(false)
+  reviewedByUserId String?
+  reviewedByUser   User?           @relation("IntelReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?
   ingestedAt       DateTime        @default(now())
   createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   impacts          MatterImpact[]
 
   @@unique([sourceUrl, rawContentHash])
   @@index([publishedAt])
   @@index([updateType])
+  @@index([workspaceId, sourceType, publishedAt])
+  @@index([severity, publishedAt])
 }
 
 model OfficialSource {
@@ -863,11 +928,17 @@ model MatterImpact {
   officialUpdate   OfficialUpdate @relation(fields: [officialUpdateId], references: [id])
   matterId         String
   matter           Matter         @relation(fields: [matterId], references: [id])
+  clientId         String?
+  client           Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
   impactLevel      ImpactLevel
   reason           String
   actionRequired   String?
   status           ImpactStatus
+  reviewedByUserId String?
+  reviewedByUser   User?          @relation("IntelImpactReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?
   createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@unique([officialUpdateId, matterId])
 }
@@ -894,20 +965,58 @@ model AiChatThread {
   matterId        String?
   matter          Matter?         @relation(fields: [matterId], references: [id])
   title           String
+  contextType     AssistantContextType?
+  contextId       String?
+  status          AssistantThreadStatus @default(ACTIVE)
+  lastMessageAt   DateTime        @default(now())
   createdByUserId String
   createdByUser   User            @relation("ThreadCreator", fields: [createdByUserId], references: [id])
   createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   messages        AiChatMessage[]
+  runs            AssistantRun[]
+
+  @@index([workspaceId, status, lastMessageAt])
+  @@index([createdByUserId, status, lastMessageAt])
 }
 
 model AiChatMessage {
   id            String       @id @default(cuid())
   threadId      String
   thread        AiChatThread @relation(fields: [threadId], references: [id])
+  workspaceId   String
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?        @relation("AssistantMessageUser", fields: [userId], references: [id], onDelete: SetNull)
   role          ChatRole
   content       String
+  structuredJson Json?
   citationsJson Json?
+  model         String?
+  tokenUsageJson Json?
   createdAt     DateTime     @default(now())
+
+  @@index([threadId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model AssistantRun {
+  id            String             @id @default(cuid())
+  threadId       String
+  thread         AiChatThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  workspaceId    String
+  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         AssistantRunStatus
+  inputJson      Json
+  outputJson     Json?
+  errorMessage   String?
+  createdAt      DateTime           @default(now())
+  completedAt    DateTime?
+
+  @@index([threadId, createdAt])
+  @@index([workspaceId, createdAt])
 }
 
 model AuditEvent {
@@ -937,6 +1046,22 @@ model KnowledgeEmbedding {
 
   @@index([workspaceId, entityType])
   @@unique([entityType, entityId])
+}
+
+model MigrationIntelSweep {
+  id           String                   @id @default(cuid())
+  workspaceId  String?
+  workspace    Workspace?               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  status       MigrationIntelSweepStatus
+  provider     String
+  queryJson    Json?
+  resultCount  Int                      @default(0)
+  errorMessage String?
+  startedAt    DateTime                 @default(now())
+  completedAt  DateTime?
+
+  @@index([workspaceId, startedAt])
+  @@index([status, startedAt])
 }
 
 model InvoiceBranding {

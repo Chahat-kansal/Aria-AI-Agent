@@ -180,9 +180,29 @@ export async function getValidationData(workspaceId: string, user?: ScopedUser) 
 }
 
 export async function getUpdatesData(workspaceId: string, user?: ScopedUser) {
+  const visibilityWhere: Prisma.OfficialUpdateWhereInput = {
+    AND: [
+      {
+        isArchived: false,
+        OR: [{ workspaceId: null }, { workspaceId }]
+      },
+      ...(user
+        ? [{
+            OR: [
+              { workspaceId },
+              { workspaceId: null, impacts: { some: { matter: scopedMatterWhere(user) } } },
+              { workspaceId: null, sourceType: "OFFICIAL" as any }
+            ]
+          }]
+        : [])
+    ]
+  };
+
   return prisma.officialUpdate.findMany({
+    where: visibilityWhere,
     include: {
       officialSource: true,
+      reviewedByUser: true,
       impacts: {
         where: { matter: user ? scopedMatterWhere(user) : { workspaceId } },
         include: { matter: { include: { client: true } } },
@@ -195,9 +215,14 @@ export async function getUpdatesData(workspaceId: string, user?: ScopedUser) {
 
 export async function getUpdateDetailData(workspaceId: string, updateId: string, user?: ScopedUser) {
   return prisma.officialUpdate.findFirst({
-    where: { id: updateId },
+    where: {
+      id: updateId,
+      isArchived: false,
+      OR: [{ workspaceId: null }, { workspaceId }]
+    },
     include: {
       officialSource: true,
+      reviewedByUser: true,
       impacts: {
         where: { matter: user ? scopedMatterWhere(user) : { workspaceId } },
         include: { matter: { include: { client: true } } },
@@ -230,12 +255,21 @@ export async function getCompanyProfileData(workspaceId: string) {
 
 export async function getAssistantData(workspaceId: string, user?: ScopedUser) {
   return prisma.aiChatThread.findMany({
-    where: { workspaceId, ...(user ? { OR: [{ matterId: null }, { matter: scopedMatterWhere(user) }] } : {}) },
+    where: {
+      workspaceId,
+      status: "ACTIVE",
+      ...(user
+        ? {
+            createdByUserId: user.id,
+            OR: [{ matterId: null }, { matter: scopedMatterWhere(user) }]
+          }
+        : {})
+    },
     include: {
       matter: { include: { client: true } },
-      messages: { orderBy: { createdAt: "asc" }, take: 24 }
+      messages: { orderBy: { createdAt: "asc" }, take: 80 }
     },
-    orderBy: { createdAt: "desc" },
-    take: 6
+    orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
+    take: 20
   });
 }

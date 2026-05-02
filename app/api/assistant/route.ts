@@ -1,536 +1,58 @@
-import { generateAriaAiResponse } from "@/lib/services/ai-provider";
-import { ChatRole } from "@prisma/client";
+import { AssistantContextType } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { getDraftReviewData } from "@/lib/services/application-draft";
-import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { getMatterPathwayAnalyses } from "@/lib/services/pathway-analysis";
-import { getVisaKnowledgeForAssistant } from "@/lib/services/visa-knowledge";
-import { researchMigrationQuestion } from "@/lib/services/web-research";
-import { prisma } from "@/lib/prisma";
-import { canAccessMatter, hasPermission, scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
-import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
-import { serverLog } from "@/lib/services/runtime-config";
-import { getMatterIntelligence, getOverviewIntelligence } from "@/lib/services/aria-intelligence";
-import { auditAiUsed } from "@/lib/services/audit";
-
-function wantsLiveResearch(prompt: string) {
-  return /\b(current|latest|today|recent|changed|official|web|internet|source|policy|news|update|visa rule|home affairs)\b/i.test(prompt);
-}
-
-function summarizeResearch(results: Awaited<ReturnType<typeof researchMigrationQuestion>>) {
-  if (!results.configured) return results.setupMessage ?? "Live web research is not configured.";
-  if (!results.results.length) return "No live official web results were returned for this question.";
-
-  return results.results
-    .slice(0, 3)
-    .map((result) => `${result.sourceType === "official" ? "Official source" : "Public source"}: ${result.title} - ${result.content.slice(0, 240)}`)
-    .join(" | ");
-}
-
-function sentenceList(items: string[]) {
-  return items.filter(Boolean).slice(0, 6);
-}
-
-const SYSTEM_PROMPT = `
-You are Aria, an AI migration workbench for registered migration agents.
-
-You assist with:
-- matter review
-- document evidence review
-- draft application review
-- validation issues
-- final cross-check preparation
-- pathway analysis
-- official update impacts
-- visa knowledge search
-
-Rules:
-- Do not claim to be a registered migration agent.
-- Do not replace the registered migration agent.
-- Do not give guaranteed approval language.
-- Always say review is required.
-- Separate grounded facts from AI-assisted reasoning.
-- Use only the provided context and linked sources.
-- If information is missing, say what is missing.
-- Be practical, operational, and concise.
-
-Return strict JSON only:
-{
-  "content": string,
-  "groundedFacts": string[],
-  "reasoning": string[],
-  "recommendedActions": string[],
-  "citations": [{"label": string, "href": string}],
-  "riskWarnings": string[],
-  "reviewRequired": true
-}
-`;
-
-function normalizeAiResponse(ai: any, fallback: any) {
-  return {
-    content: typeof ai?.content === "string" ? ai.content : fallback.content,
-    groundedFacts: Array.isArray(ai?.groundedFacts) ? ai.groundedFacts : fallback.groundedFacts,
-    reasoning: Array.isArray(ai?.reasoning) ? ai.reasoning : fallback.reasoning,
-    recommendedActions: Array.isArray(ai?.recommendedActions) ? ai.recommendedActions : fallback.recommendedActions,
-    citations: Array.isArray(ai?.citations) ? ai.citations : fallback.citations,
-    riskWarnings: Array.isArray(ai?.riskWarnings)
-      ? ai.riskWarnings
-      : Array.isArray(fallback?.riskWarnings) && fallback.riskWarnings.length
-        ? fallback.riskWarnings
-        : ["AI-assisted output requires registered migration agent review."],
-    reviewRequired: true
-  };
-}
+import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { auditAccessDenied } from "@/lib/services/audit";
+import { createAssistantThreadForUser, sendAssistantThreadMessage } from "@/lib/services/assistant-threads";
+import { hasPermission } from "@/lib/services/roles";
 
 export async function POST(req: Request) {
-  try {
-    const context = await getCurrentWorkspaceContext();
+  const context = await requireCurrentWorkspaceContext();
 
-    if (!context) {
-      return NextResponse.json(
-        { error: "Authentication and workspace setup are required" },
-        { status: 401 }
-      );
-    }
-
-    if (!hasPermission(context.user, "can_access_ai")) {
-      return NextResponse.json(
-        { error: "You do not have permission to use Aria AI." },
-        { status: 403 }
-      );
-    }
-
-    if (!isAiConfigured()) {
-      return NextResponse.json({
-        content: "Aria cannot answer with the AI layer right now because no AI provider is configured.",
-        groundedFacts: [],
-        reasoning: [],
-        recommendedActions: [],
-        citations: [],
-        riskWarnings: [],
-        reviewRequired: true,
-        ...aiNotConfiguredResponse()
-      }, { status: 503 });
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const prompt = typeof body.prompt === "string" ? body.prompt.slice(0, 2000) : "Summarize current matter";
-    const matterId = typeof body.matterId === "string" ? body.matterId : null;
-    const threadId = typeof body.threadId === "string" ? body.threadId : null;
-
-    let existingThread: {
-      id: string;
-      title: string;
-      workspaceId: string;
-      matterId: string | null;
-      matter?: { id: string; workspaceId: string; assignedToUserId: string; assignedToUser?: { supervisorId: string | null } | null } | null;
-    } | null = null;
-
-    if (threadId) {
-      existingThread = await prisma.aiChatThread.findFirst({
-        where: { id: threadId, workspaceId: context.workspace.id },
-        include: {
-          matter: {
-            select: {
-              id: true,
-              workspaceId: true,
-              assignedToUserId: true,
-              assignedToUser: { select: { supervisorId: true } }
-            }
-          }
-        }
-      });
-
-      if (!existingThread) {
-        return NextResponse.json({ error: "That conversation is no longer available." }, { status: 404 });
-      }
-
-      if (existingThread.matter && !canAccessMatter(context.user, existingThread.matter)) {
-        return NextResponse.json({ error: "You do not have access to this conversation." }, { status: 403 });
-      }
-
-      if (matterId && existingThread.matterId !== matterId) {
-        return NextResponse.json({ error: "Start a new conversation to switch matter context." }, { status: 400 });
-      }
-    }
-
-    if (matterId) {
-      const matter = await prisma.matter.findFirst({
-        where: {
-          id: matterId,
-          workspaceId: context.workspace.id
-        },
-        include: {
-          assignedToUser: true,
-          client: true
-        }
-      });
-
-      if (!matter || !canAccessMatter(context.user, matter)) {
-        return NextResponse.json(
-          { error: "You do not have access to this matter." },
-          { status: 403 }
-        );
-      }
-
-      const data = await getDraftReviewData(matterId);
-      const matterIntelligence = await getMatterIntelligence({ matterId, user: context.user });
-
-      const impacts = await prisma.matterImpact.findMany({
-        where: {
-          matterId,
-          status: { in: ["NEW", "REVIEWING"] }
-        },
-        include: { officialUpdate: true },
-        orderBy: { createdAt: "desc" },
-        take: 5
-      });
-
-      const openIssueTitles = data.openIssues.slice(0, 5).map((issue: any) => issue.title);
-
-      const impactTitles = impacts.map(
-        (impact) => `${impact.officialUpdate.title}: ${impact.reason}`
-      );
-
-      const pathways = await getMatterPathwayAnalyses(matterId);
-
-      const pathwaySummary = pathways
-        .map((analysis) => `${analysis.title}: ${analysis.options[0]?.title ?? "evidence intake required"}`)
-        .join(" | ");
-
-      const visaKnowledge = await getVisaKnowledgeForAssistant(prompt);
-
-      const research = wantsLiveResearch(prompt)
-        ? await researchMigrationQuestion(prompt).catch((error) => ({
-            provider: "error",
-            configured: false,
-            query: prompt,
-            results: [],
-            setupMessage: `Live research failed: ${error instanceof Error ? error.message : "unknown error"}`
-          }))
-        : null;
-
-      const researchSummary = research
-        ? summarizeResearch(research)
-        : "Live web research was not requested for this answer.";
-
-      const fallback = {
-        content:
-          "Aria reviewed this matter using stored draft, document, validation, pathway, visa knowledge, and update records. This is AI-assisted operational guidance only; final review remains with the registered migration agent.",
-        groundedFacts: sentenceList([
-          `Client: ${matter.client.firstName} ${matter.client.lastName}.`,
-          `Visa subclass: ${matter.visaSubclass}.`,
-          `Draft readiness: ${data.draft.readinessScore}%.`,
-          `Open validation items: ${openIssueTitles.length ? openIssueTitles.join("; ") : "none recorded"}.`,
-          `Official update impacts: ${impactTitles.length ? impactTitles.join(" | ") : "none recorded"}.`,
-          `Matter intelligence: ${matterIntelligence.summary}.`,
-          `Pathway context: ${pathwaySummary || "no linked pathway analysis recorded"}.`,
-          `Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}.`,
-          `Live research: ${researchSummary}.`
-        ]),
-        reasoning: sentenceList([
-          data.openIssues.length
-            ? "Prioritise unresolved validation issues before sending anything to the client."
-            : "No stored validation blockers were found, but source-linked field verification is still required.",
-          impacts.length
-            ? "Review the flagged official update impacts before relying on current readiness."
-            : "No stored official update impact currently changes this matter queue.",
-          matterIntelligence.evidenceGaps.length
-            ? "Close the documented evidence gaps before treating the draft as client-ready."
-            : "No immediate evidence gap is visible from the stored checklist links.",
-          pathways.length
-            ? "Use pathway analysis as scenario planning, not final legal advice."
-            : "No linked pathway analysis is available for this matter."
-        ]),
-        citations: [
-          { label: "Draft fields", href: `/app/matters/${matterId}/draft` },
-          { label: "Validation issues", href: `/app/matters/${matterId}/draft` },
-          { label: "Official update impacts", href: `/app/matters/${matterId}` },
-          { label: "Pathway analyses", href: "/app/pathways" },
-          { label: "Visa knowledge", href: "/app/knowledge" },
-          ...(research?.results ?? []).slice(0, 3).map((result) => ({
-            label: result.title,
-            href: result.url
-          }))
-        ],
-        recommendedActions: impacts.length
-          ? impacts.slice(0, 3).map((impact) => impact.actionRequired ?? "Review the source-linked official update against this matter.")
-          : pathways.length
-            ? pathways[0].options
-                .slice(0, 3)
-                .flatMap((option) =>
-                  Array.isArray(option.nextActionsJson)
-                    ? option.nextActionsJson.map(String).slice(0, 1)
-                    : []
-                )
-              : data.openIssues.length
-                ? data.openIssues.slice(0, 3).map((issue: any) => issue.description)
-              : ["Confirm all source-linked fields", "Review official update monitor", "Record final migration agent review"],
-        riskWarnings: matterIntelligence.riskWarnings
-      };
-
-      const ai = await generateAriaAiResponse({
-        system: SYSTEM_PROMPT,
-        user: prompt,
-        context: {
-          mode: "matter-specific",
-          workspaceId: context.workspace.id,
-          userRole: context.user.role,
-          permissions: context.user.permissionsJson,
-          matter: {
-            id: matter.id,
-            clientName: `${matter.client.firstName} ${matter.client.lastName}`,
-            visaSubclass: matter.visaSubclass,
-            status: matter.status,
-            stage: matter.stage
-          },
-          matterIntelligence,
-          draftReadiness: data.draft.readinessScore,
-          openIssues: data.openIssues,
-          updateImpacts: impactTitles,
-          pathways: pathwaySummary,
-          visaKnowledge: visaKnowledge.map((item) => ({
-            title: item.title,
-            subclassCode: item.subclassCode,
-            sourceUrl: item.sourceUrl
-          })),
-          liveResearch: researchSummary
-        }
-      });
-
-      const normalized = normalizeAiResponse(ai, fallback);
-
-      let resolvedThreadId = existingThread?.id ?? null;
-      let resolvedThreadTitle = existingThread?.title ?? prompt.slice(0, 80);
-
-      if (!resolvedThreadId) {
-        const thread = await prisma.aiChatThread.create({
-          data: {
-            workspaceId: context.workspace.id,
-            matterId: matter.id,
-            title: prompt.slice(0, 80),
-            createdByUserId: context.user.id
-          }
-        });
-        resolvedThreadId = thread.id;
-        resolvedThreadTitle = thread.title;
-      }
-
-      await prisma.aiChatMessage.createMany({
-        data: [
-          {
-            threadId: resolvedThreadId,
-            role: ChatRole.USER,
-            content: prompt
-          },
-          {
-            threadId: resolvedThreadId,
-            role: ChatRole.ASSISTANT,
-            content: normalized.content,
-            citationsJson: normalized as any
-          }
-        ]
-      });
-
-      await auditAiUsed({
-        workspaceId: context.workspace.id,
-        userId: context.user.id,
-        feature: "assistant.matter",
-        matterId,
-        metadata: { promptLength: prompt.length }
-      });
-
-      return NextResponse.json({
-        mode: "matter-specific",
-        threadId: resolvedThreadId,
-        threadTitle: resolvedThreadTitle,
-        matterId: matter.id,
-        ...normalized
-      });
-    }
-
-    const impacts = await prisma.matterImpact.findMany({
-      where: {
-        matter: scopedMatterWhere(context.user),
-        status: { in: ["NEW", "REVIEWING"] }
-      },
-      include: {
-        matter: { include: { client: true } },
-        officialUpdate: true
-      },
-      orderBy: { createdAt: "desc" },
-      take: 8
-    });
-
-    const pathways = await prisma.pathwayAnalysis.findMany({
-      where: {
-        workspaceId: context.workspace.id,
-        OR: [
-          { createdByUserId: context.user.id },
-          { matter: scopedMatterWhere(context.user) },
-          { client: scopedClientWhere(context.user) }
-        ]
-      },
-      include: {
-        client: true,
-        matter: true,
-        options: {
-          orderBy: { rank: "asc" },
-          take: 2
-        }
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5
-    });
-
-    const pathwayLines = pathways.map(
-      (analysis) => `${analysis.title}: ${analysis.options[0]?.title ?? "evidence intake required"}`
-    );
-
-    const visaKnowledge = await getVisaKnowledgeForAssistant(prompt);
-    const workspaceBriefing = await getOverviewIntelligence(context.workspace.id, context.user);
-
-    const research = wantsLiveResearch(prompt)
-      ? await researchMigrationQuestion(prompt).catch((error) => ({
-          provider: "error",
-          configured: false,
-          query: prompt,
-          results: [],
-          setupMessage: `Live research failed: ${error instanceof Error ? error.message : "unknown error"}`
-        }))
-      : null;
-
-    const researchSummary = research
-      ? summarizeResearch(research)
-      : "Live web research was not requested for this answer.";
-
-    const fallback = {
-      content:
-        "Aria reviewed the workspace records available to your role and assignment scope. This answer is AI-assisted and review required; it does not make final legal decisions.",
-      groundedFacts: sentenceList([
-        `${impacts.length} matter update impact alert(s) are flagged for review.`,
-        `Daily briefing: ${workspaceBriefing.summary}`,
-        `Recent pathway context: ${pathwayLines.join(" | ") || "no pathway analyses recorded"}.`,
-        `Stored visa knowledge: ${visaKnowledge.map((item) => item.title).join(" | ") || "no matching official visa knowledge stored"}.`,
-        `Live research: ${researchSummary}.`
-      ]),
-      reasoning: sentenceList([
-        impacts.length
-          ? "Start with update impact alerts because they may affect active matter assumptions."
-          : "No update-impact queue is visible for your scope.",
-        pathways.length
-          ? "Review pathway analyses before giving client-facing pathway options."
-          : "Create a pathway analysis only from real intake facts and evidence.",
-        workspaceBriefing.securityWarnings.length
-          ? "Review the flagged security, deadline, and update warnings before reprioritising team work."
-          : "No additional risk warnings are visible in the current workspace snapshot.",
-        "Use linked sources and stored matter records before acting on any recommendation."
-      ]),
-      citations: [
-        { label: "Official updates", href: "/app/updates" },
-        { label: "Validation", href: "/app/validation" },
-        { label: "Pathway Analysis", href: "/app/pathways" },
-        { label: "Visa Knowledge", href: "/app/knowledge" },
-        ...(research?.results ?? []).slice(0, 3).map((result) => ({
-          label: result.title,
-          href: result.url
-        }))
-      ],
-      recommendedActions: impacts.length
-        ? impacts
-            .slice(0, 3)
-            .map((impact) => `${impact.matter.client.firstName} ${impact.matter.client.lastName}: ${impact.actionRequired ?? impact.reason}`)
-        : pathways.length
-          ? pathways
-              .slice(0, 3)
-              .map((analysis) => `Review ${analysis.title} before presenting pathway options to the client.`)
-          : ["Run official source check when ingestion is enabled", "Review any newly flagged affected matters", "Confirm source-linked changes before updating submission readiness"],
-      riskWarnings: workspaceBriefing.securityWarnings
-    };
-
-    const ai = await generateAriaAiResponse({
-      system: SYSTEM_PROMPT,
-      user: prompt,
-      context: {
-        mode: "workspace",
-        workspaceId: context.workspace.id,
-        userRole: context.user.role,
-        permissions: context.user.permissionsJson,
-        workspaceBriefing,
-        visibleUpdateImpacts: impacts.map((impact) => ({
-          matter: `${impact.matter.client.firstName} ${impact.matter.client.lastName}`,
-          update: impact.officialUpdate.title,
-          reason: impact.reason,
-          actionRequired: impact.actionRequired
-        })),
-        pathwayAnalyses: pathwayLines,
-        visaKnowledge: visaKnowledge.map((item) => ({
-          title: item.title,
-          subclassCode: item.subclassCode,
-          sourceUrl: item.sourceUrl
-        })),
-        liveResearch: researchSummary
-      }
-    });
-
-    const normalized = normalizeAiResponse(ai, fallback);
-
-    let resolvedThreadId = existingThread?.id ?? null;
-    let resolvedThreadTitle = existingThread?.title ?? prompt.slice(0, 80);
-
-    if (!resolvedThreadId) {
-      const thread = await prisma.aiChatThread.create({
-        data: {
-          workspaceId: context.workspace.id,
-          title: prompt.slice(0, 80),
-          createdByUserId: context.user.id
-        }
-      });
-      resolvedThreadId = thread.id;
-      resolvedThreadTitle = thread.title;
-    }
-
-    await prisma.aiChatMessage.createMany({
-      data: [
-        {
-          threadId: resolvedThreadId,
-          role: ChatRole.USER,
-          content: prompt
-        },
-        {
-          threadId: resolvedThreadId,
-          role: ChatRole.ASSISTANT,
-          content: normalized.content,
-          citationsJson: normalized as any
-        }
-      ]
-    });
-
-    await auditAiUsed({
+  if (!hasPermission(context.user, "can_access_ai")) {
+    await auditAccessDenied({
       workspaceId: context.workspace.id,
       userId: context.user.id,
-      feature: "assistant.workspace",
-      metadata: { promptLength: prompt.length }
+      entityType: "AssistantThread",
+      reason: "AI access disabled for assistant request."
+    });
+    return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const incomingThreadId = typeof body.threadId === "string" ? body.threadId : null;
+  const matterId = typeof body.matterId === "string" ? body.matterId : null;
+
+  if (!prompt) {
+    return NextResponse.json({ error: "A message prompt is required." }, { status: 400 });
+  }
+
+  try {
+    const threadId =
+      incomingThreadId ||
+      (
+        await createAssistantThreadForUser({
+          user: context.user,
+          contextType: matterId ? AssistantContextType.MATTER : AssistantContextType.WORKSPACE,
+          contextId: matterId
+        })
+      ).id;
+
+    const result = await sendAssistantThreadMessage({
+      threadId,
+      prompt,
+      user: context.user
     });
 
     return NextResponse.json({
-      mode: "workspace",
-      threadId: resolvedThreadId,
-      threadTitle: resolvedThreadTitle,
-      matterId: existingThread?.matterId ?? null,
-      ...normalized
+      threadId: result.threadId,
+      threadTitle: result.threadTitle,
+      matterId: result.matterId,
+      ...result.payload
     });
   } catch (error) {
-    serverLog("assistant.error", {
-      error: error instanceof Error ? error.message : String(error)
-    });
-
     return NextResponse.json(
-      {
-        error: "Aria could not complete that request right now.",
-        reviewRequired: true,
-        configured: isAiConfigured()
-      },
+      { error: error instanceof Error ? error.message : "Aria could not complete that request right now." },
       { status: 500 }
     );
   }

@@ -43,6 +43,7 @@ type PersistedMessage = {
   id: string;
   role: "USER" | "ASSISTANT" | "SYSTEM";
   content: string;
+  structuredJson?: unknown;
   citationsJson?: unknown;
   createdAt?: string | Date;
 };
@@ -99,7 +100,7 @@ function buildThreadState(thread: PersistedThread): ThreadState {
       role: message.role,
       content: message.content,
       createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : undefined,
-      payload: message.role === "ASSISTANT" ? normalizePayload(message.citationsJson) : null
+      payload: message.role === "ASSISTANT" ? normalizePayload(message.structuredJson ?? message.citationsJson) : null
     }))
   };
 }
@@ -140,7 +141,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             {isUser ? "You" : message.role === "SYSTEM" ? "System" : "Aria"}
           </span>
           {message.createdAt ? <span className="text-[11px] text-slate-500">{formatMessageTime(message.createdAt)}</span> : null}
-          {message.pending ? <span className="text-[11px] text-slate-500">Sending…</span> : null}
+          {message.pending ? <span className="text-[11px] text-slate-500">Sending...</span> : null}
         </div>
         <div className="mt-3 whitespace-pre-wrap text-sm leading-7">{message.content}</div>
 
@@ -249,6 +250,7 @@ export function AssistantWorkspace({
   const [prompt, setPrompt] = useState("");
   const [mobileRailOpen, setMobileRailOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [threadLoadError, setThreadLoadError] = useState<string | null>(null);
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
 
   const starterPrompts = suggestions?.length
@@ -265,6 +267,46 @@ export function AssistantWorkspace({
     [threads, activeThreadId]
   );
   const visibleMessages = activeThread ? activeThread.messages : draftMessages;
+
+  async function createThread(contextMatterId?: string) {
+    const response = await fetch("/api/assistant/threads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contextType: contextMatterId ? "MATTER" : "WORKSPACE",
+        contextId: contextMatterId || null
+      })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.thread) {
+      throw new Error(payload?.error ?? "Unable to start a new conversation right now.");
+    }
+
+    const thread = buildThreadState(payload.thread as PersistedThread);
+    setThreads((current) => [thread, ...current.filter((item) => item.id !== thread.id)]);
+    setActiveThreadId(thread.id);
+    setSelectedMatterId(thread.matterId ?? "");
+    setDraftMessages([]);
+    return thread.id;
+  }
+
+  async function loadThread(threadId: string) {
+    setThreadLoadError(null);
+    const response = await fetch(`/api/assistant/threads/${threadId}`);
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.thread) {
+      const error = payload?.error ?? "Unable to load that conversation.";
+      setThreadLoadError(error);
+      throw new Error(error);
+    }
+
+    const thread = buildThreadState(payload.thread as PersistedThread);
+    setThreads((current) => [thread, ...current.filter((item) => item.id !== thread.id)]);
+    setActiveThreadId(thread.id);
+    setSelectedMatterId(thread.matterId ?? "");
+    return thread;
+  }
 
   async function submitPrompt(nextPrompt: string) {
     const cleanedPrompt = nextPrompt.trim();
@@ -293,13 +335,30 @@ export function AssistantWorkspace({
       setDraftMessages((current) => [...current, pendingUserMessage]);
     }
 
-    const response = await fetch("/api/assistant", {
+    let targetThreadId = activeThreadId;
+    if (!targetThreadId) {
+      try {
+        targetThreadId = await createThread(selectedMatterId || undefined);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to start a new conversation.";
+        const failedReply: ThreadMessage = {
+          id: `assistant-error-${Date.now()}`,
+          role: "ASSISTANT",
+          content: message,
+          createdAt: new Date().toISOString(),
+          payload: { content: message, error: message, reviewRequired: true }
+        };
+        setDraftMessages((current) => [...current.filter((message) => !message.pending), pendingUserMessage, failedReply]);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    const response = await fetch(`/api/assistant/threads/${targetThreadId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        prompt: cleanedPrompt,
-        matterId: selectedMatterId || null,
-        threadId: activeThreadId
+        prompt: cleanedPrompt
       })
     });
 
@@ -312,7 +371,7 @@ export function AssistantWorkspace({
           error: payload?.error
         };
 
-    const threadId = typeof reply.threadId === "string" ? reply.threadId : activeThreadId;
+    const threadId = typeof reply.threadId === "string" ? reply.threadId : targetThreadId;
     const matterId = typeof reply.matterId === "string" ? reply.matterId : selectedMatterId || null;
     const matterLabel = matters.find((matter) => matter.id === matterId)?.label ?? (matterId ? null : "Workspace-wide");
     const threadTitle =
@@ -384,19 +443,17 @@ export function AssistantWorkspace({
   }
 
   function startNewConversation() {
-    setActiveThreadId(null);
-    setDraftMessages([]);
-    setSelectedMatterId("");
     setPrompt("");
     setMobileRailOpen(false);
+    void createThread().catch((error) => {
+      setThreadLoadError(error instanceof Error ? error.message : "Unable to start a new conversation.");
+    });
   }
 
   function selectThread(threadId: string) {
-    const thread = threads.find((item) => item.id === threadId);
-    setActiveThreadId(threadId);
     setDraftMessages([]);
-    setSelectedMatterId(thread?.matterId ?? "");
     setMobileRailOpen(false);
+    void loadThread(threadId).catch(() => null);
   }
 
   const rail = (
@@ -611,11 +668,13 @@ export function AssistantWorkspace({
                     name="matterId"
                     value={selectedMatterId}
                     onChange={(event) => setSelectedMatterId(event.target.value)}
+                    disabled={Boolean(activeThreadId)}
                     className="h-10 min-w-[180px] rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
                   >
                     <option value="">Workspace mode</option>
                     {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
                   </select>
+                  {activeThreadId ? <span className="text-xs text-slate-500">Start a new conversation to change context.</span> : null}
                 </div>
                 <div className="flex items-end gap-3">
                   <textarea
@@ -632,7 +691,7 @@ export function AssistantWorkspace({
                       }
                     }}
                     rows={1}
-                    placeholder="Message Aria…"
+                    placeholder="Message Aria..."
                     className="min-h-[52px] flex-1 resize-none rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
                   />
                   <GradientButton type="submit" disabled={isLoading || !prompt.trim()} className="h-[52px] w-[52px] rounded-[1.2rem] px-0">
@@ -643,6 +702,7 @@ export function AssistantWorkspace({
               <p className="mt-3 text-xs text-slate-500">
                 Aria is AI-assisted. Review required before actioning important migration advice.
               </p>
+              {threadLoadError ? <p className="mt-2 text-xs text-red-300">{threadLoadError}</p> : null}
             </form>
           </div>
         </section>

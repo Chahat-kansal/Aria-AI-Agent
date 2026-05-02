@@ -2,7 +2,6 @@ import { AppShell } from "@/components/app/app-shell";
 import { AssistantWorkspace } from "@/components/app/assistant-workspace";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
 import { getAssistantData, getMattersData } from "@/lib/data/workspace-repository";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { hasPermission } from "@/lib/services/roles";
@@ -41,20 +40,11 @@ export default async function AssistantPage() {
 
   return (
     <AppShell title="AI Assistant">
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="AI ASSISTANT"
-          title="Ask Aria anything about your practice"
-          description="Matter-aware, source-linked, review-required workspace guidance grounded in real firm data."
-          action={<StatusPill tone="info">Review required</StatusPill>}
-        />
-
-        <AssistantWorkspace
-          matters={matters.map((matter) => ({ id: matter.id, label: `${matter.client.firstName} ${matter.client.lastName} - ${matter.title}` }))}
-          suggestions={prompts}
-          initialThreads={threads as any}
-        />
-      </div>
+      <AssistantWorkspace
+        matters={matters.map((matter) => ({ id: matter.id, label: `${matter.client.firstName} ${matter.client.lastName} - ${matter.title}` }))}
+        suggestions={prompts}
+        initialThreads={threads as any}
+      />
     </AppShell>
   );
 }

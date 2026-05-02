@@ -22,6 +22,9 @@ export type PermissionKey =
   | "can_manage_appointments"
   | "can_export_data"
   | "can_generate_documents"
+  | "can_log_updates"
+  | "can_run_update_sweep"
+  | "can_review_update_impacts"
   | "can_view_invoices"
   | "can_manage_invoices"
   | "can_generate_invoices"
@@ -45,6 +48,9 @@ export const permissionDefinitions: Array<{ key: PermissionKey; label: string; d
   { key: "can_manage_appointments", label: "Manage appointments", description: "Create, confirm, and manage consultation bookings." },
   { key: "can_export_data", label: "Export data", description: "Export workspace, matter, and client data packages." },
   { key: "can_generate_documents", label: "Generate documents", description: "Create AI-assisted generated migration documents and templates." },
+  { key: "can_log_updates", label: "Log migration updates", description: "Create manual workspace migration intelligence notes and update records." },
+  { key: "can_run_update_sweep", label: "Run migration intel sweep", description: "Run live migration research sweeps against configured web research providers." },
+  { key: "can_review_update_impacts", label: "Review update impacts", description: "Mark migration intelligence items reviewed and manage affected matter impact review." },
   { key: "can_view_invoices", label: "View invoices", description: "Open invoice lists, previews, and invoice records within the workspace." },
   { key: "can_manage_invoices", label: "Manage invoices", description: "Create, edit, duplicate, and update invoice records." },
   { key: "can_generate_invoices", label: "Generate invoices with Aria", description: "Use Aria to generate structured invoice drafts from real client, branding, and pricing data." },
@@ -106,6 +112,9 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
       can_edit_matters: true,
       can_run_cross_check: true,
       can_access_update_monitor: true,
+      can_log_updates: true,
+      can_run_update_sweep: true,
+      can_review_update_impacts: true,
       can_manage_clients: true,
       can_send_client_requests: true,
       can_manage_appointments: true,
@@ -125,6 +134,9 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
       can_edit_matters: true,
       can_run_cross_check: true,
       can_access_update_monitor: true,
+      can_log_updates: true,
+      can_run_update_sweep: true,
+      can_review_update_impacts: true,
       can_manage_clients: true,
       can_send_client_requests: true,
       can_manage_appointments: true,
@@ -137,7 +149,7 @@ export function defaultPermissionsForRole(role: UserRole): PermissionMap {
   }
 
   if (role === UserRole.CASE_MANAGER) {
-    return { ...base, can_edit_matters: true, can_access_update_monitor: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true, can_view_invoices: true };
+    return { ...base, can_edit_matters: true, can_access_update_monitor: true, can_log_updates: true, can_review_update_impacts: true, can_manage_clients: true, can_send_client_requests: true, can_manage_appointments: true, can_view_invoices: true };
   }
 
   if (role === UserRole.CLIENT_REVIEW_COORDINATOR) {
