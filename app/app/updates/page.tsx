@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { prisma } from "@/lib/prisma";
+import { getAiConfigStatus, getCronConfigStatus, getWebResearchConfigStatus } from "@/lib/services/runtime-config";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 
 function formatDate(value: Date | null | undefined) {
@@ -20,8 +21,26 @@ function formatDate(value: Date | null | undefined) {
   }).format(value);
 }
 
-function canViewSourceLink(url: string) {
-  return /^https?:\/\//i.test(url);
+function canViewSourceLink(url: string | null | undefined) {
+  return typeof url === "string" && /^https?:\/\//i.test(url);
+}
+
+function buildQueryString(
+  current: Record<string, string | string[] | undefined> | undefined,
+  next: Record<string, string | undefined>
+) {
+  const params = new URLSearchParams();
+  if (current) {
+    for (const [key, value] of Object.entries(current)) {
+      if (typeof value === "string" && value) params.set(key, value);
+    }
+  }
+  for (const [key, value] of Object.entries(next)) {
+    if (!value) params.delete(key);
+    else params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 export default async function UpdatesPage({
@@ -45,7 +64,12 @@ export default async function UpdatesPage({
     );
   }
 
-  if (!hasPermission(context.user, "can_access_update_monitor")) {
+  const canViewUpdates =
+    context.user.role === "COMPANY_OWNER" ||
+    context.user.role === "COMPANY_ADMIN" ||
+    hasPermission(context.user, "can_access_update_monitor");
+
+  if (!canViewUpdates) {
     return (
       <AppShell title="Migration intelligence">
         <div className="space-y-6">
@@ -67,6 +91,10 @@ export default async function UpdatesPage({
   const sourceTypeFilter = typeof searchParams?.sourceType === "string" ? searchParams.sourceType : "ALL";
   const subclassFilter = typeof searchParams?.subclass === "string" ? searchParams.subclass.trim() : "";
   const reviewFilter = typeof searchParams?.review === "string" ? searchParams.review : "ALL";
+  const tabFilter = typeof searchParams?.tab === "string" && searchParams.tab === "notes" ? "notes" : "intel";
+  const aiConfig = getAiConfigStatus();
+  const webResearchConfig = getWebResearchConfigStatus();
+  const cronConfig = getCronConfigStatus();
 
   const visibleWhere: Prisma.OfficialUpdateWhereInput = {
     AND: [
@@ -114,6 +142,8 @@ export default async function UpdatesPage({
   ]);
 
   const filteredItems = items.filter((item) => {
+    if (tabFilter === "notes" && item.sourceType !== "FIRM_NOTE") return false;
+    if (tabFilter === "intel" && item.sourceType === "FIRM_NOTE") return false;
     if (severityFilter !== "ALL" && item.severity !== severityFilter) return false;
     if (sourceTypeFilter !== "ALL" && item.sourceType !== sourceTypeFilter) return false;
     if (reviewFilter === "REVIEWED" && !item.reviewedAt) return false;
@@ -145,6 +175,18 @@ export default async function UpdatesPage({
     context.user.role === "COMPANY_OWNER" ||
     context.user.role === "COMPANY_ADMIN" ||
     hasPermission(context.user, "can_review_update_impacts");
+  const intelCount = items.filter((item) => item.sourceType !== "FIRM_NOTE").length;
+  const configWarnings = [
+    !webResearchConfig.configured
+      ? "Live migration research is not configured. Add TAVILY_API_KEY and WEB_RESEARCH_PROVIDER=tavily."
+      : null,
+    !aiConfig.configured
+      ? "AI classification is not configured. Aria can still store manual notes and raw sweep results when web research is available."
+      : null,
+    !cronConfig.configured
+      ? "CRON_SECRET is missing. Scheduled migration intelligence sweeps are disabled."
+      : null
+  ].filter((value): value is string => Boolean(value));
 
   return (
     <AppShell title="Migration intelligence">
@@ -156,11 +198,32 @@ export default async function UpdatesPage({
           action={<MigrationIntelActions canSweep={canSweep} canLog={canLog} />}
         />
 
+        {configWarnings.length ? (
+          <SectionCard className="border-amber-400/20 bg-amber-400/10">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Configuration required</p>
+              {configWarnings.map((warning) => (
+                <p key={warning} className="text-sm leading-7 text-amber-100">
+                  {warning}
+                </p>
+              ))}
+            </div>
+          </SectionCard>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-8 border-b border-white/8 pb-4">
-          <div className="border-b-2 border-cyan-400 pb-3 text-sm font-medium text-cyan-300">
-            Aria intel · {items.filter((item) => item.sourceType !== "FIRM_NOTE").length}
-          </div>
-          <div className="pb-3 text-sm text-slate-400">Workspace notes · {workspaceNotesCount}</div>
+          <Link
+            href={`/app/updates${buildQueryString(searchParams, { tab: "intel" })}` as any}
+            className={`border-b-2 pb-3 text-sm font-medium transition ${tabFilter === "intel" ? "border-cyan-400 text-cyan-300" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Aria intel - {intelCount}
+          </Link>
+          <Link
+            href={`/app/updates${buildQueryString(searchParams, { tab: "notes" })}` as any}
+            className={`border-b-2 pb-3 text-sm font-medium transition ${tabFilter === "notes" ? "border-cyan-400 text-cyan-300" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Workspace notes - {workspaceNotesCount}
+          </Link>
           <div className="ml-auto text-sm text-slate-500">
             Last sync: {lastSweep ? `${formatDate(lastSweep.completedAt ?? lastSweep.startedAt)}, ${new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(lastSweep.completedAt ?? lastSweep.startedAt)}` : "Not yet run"}
           </div>
@@ -221,7 +284,7 @@ export default async function UpdatesPage({
                           {item.severity}
                         </StatusPill>
                         <p className="text-sm text-slate-400">
-                          {item.source} · {formatDate(item.publishedAt)}
+                          {(item.source || "Unknown source")} - {formatDate(item.publishedAt)}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
@@ -270,8 +333,12 @@ export default async function UpdatesPage({
           </div>
         ) : (
           <EmptyState
-            title="No migration intelligence matched these filters"
-            description="Change the current filters, log a workspace update, or run a live sweep when web research is configured."
+            title={items.length ? "No migration intelligence matched these filters" : "No migration intelligence yet"}
+            description={
+              items.length
+                ? "Change the current filters, log a workspace update, or run a live sweep when web research is configured."
+                : "Run a sweep or log an update to start building your migration intelligence record."
+            }
           />
         )}
       </div>

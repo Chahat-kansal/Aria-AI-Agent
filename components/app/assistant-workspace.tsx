@@ -236,11 +236,15 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
 export function AssistantWorkspace({
   matters,
   suggestions,
-  initialThreads
+  initialThreads,
+  aiConfigured,
+  aiSetupMessage
 }: {
   matters: MatterOption[];
   suggestions?: string[];
   initialThreads: PersistedThread[];
+  aiConfigured: boolean;
+  aiSetupMessage?: string | null;
 }) {
   const [threads, setThreads] = useState<ThreadState[]>(() => initialThreads.map(buildThreadState));
   const [activeThreadId, setActiveThreadId] = useState<string | null>(initialThreads[0]?.id ?? null);
@@ -606,6 +610,11 @@ export function AssistantWorkspace({
           </div>
 
           <div ref={messageViewportRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+            {!aiConfigured && aiSetupMessage ? (
+              <div className="mx-auto mb-6 max-w-4xl rounded-[1.4rem] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+                {aiSetupMessage}
+              </div>
+            ) : null}
             {visibleMessages.length ? (
               <div className="mx-auto flex max-w-4xl flex-col gap-4 pb-16">
                 {activeThread?.matterLabel ? (

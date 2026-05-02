@@ -1,12 +1,15 @@
 import { AssistantContextType } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied } from "@/lib/services/audit";
 import { createAssistantThreadForUser, sendAssistantThreadMessage } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
 
 export async function POST(req: Request) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
 
   if (!hasPermission(context.user, "can_access_ai")) {
     await auditAccessDenied({

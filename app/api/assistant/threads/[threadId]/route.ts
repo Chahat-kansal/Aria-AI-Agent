@@ -1,6 +1,6 @@
 import { AssistantThreadStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied } from "@/lib/services/audit";
 import { archiveAssistantThreadForUser, getAssistantThreadForUser, updateAssistantThreadForUser } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
@@ -13,7 +13,10 @@ function parseStatus(value: unknown) {
 }
 
 export async function GET(_: Request, { params }: { params: { threadId: string } }) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
   if (!hasPermission(context.user, "can_access_ai")) {
     await auditAccessDenied({
       workspaceId: context.workspace.id,
@@ -34,7 +37,10 @@ export async function GET(_: Request, { params }: { params: { threadId: string }
 }
 
 export async function PATCH(req: Request, { params }: { params: { threadId: string } }) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
   if (!hasPermission(context.user, "can_access_ai")) {
     await auditAccessDenied({
       workspaceId: context.workspace.id,
@@ -62,7 +68,10 @@ export async function PATCH(req: Request, { params }: { params: { threadId: stri
 }
 
 export async function DELETE(_: Request, { params }: { params: { threadId: string } }) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
   if (!hasPermission(context.user, "can_access_ai")) {
     await auditAccessDenied({
       workspaceId: context.workspace.id,

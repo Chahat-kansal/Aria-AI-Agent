@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { prisma } from "@/lib/prisma";
 import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { markUpdateReviewed } from "@/lib/services/migration-intel";
 import { hasPermission } from "@/lib/services/roles";
 
 export async function PATCH(_: Request, { params }: { params: { updateId: string } }) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
   const canReview =
     context.user.role === "COMPANY_OWNER" ||
     context.user.role === "COMPANY_ADMIN" ||

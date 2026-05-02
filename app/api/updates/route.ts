@@ -1,6 +1,6 @@
 import { MigrationIntelSeverity } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { logManualMigrationIntel } from "@/lib/services/migration-intel";
 import { hasPermission } from "@/lib/services/roles";
@@ -13,7 +13,10 @@ function parseSeverity(value: unknown) {
 }
 
 export async function POST(req: Request) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
   const canLogUpdate =
     context.user.role === "COMPANY_OWNER" ||
     context.user.role === "COMPANY_ADMIN" ||

@@ -31,7 +31,8 @@ export function MigrationIntelActions({
       return;
     }
     router.refresh();
-    setStatus(`${payload?.stored ?? 0} item(s) stored and ${payload?.impactedMatters ?? 0} matter impact(s) matched.`);
+    const summary = `${payload?.stored ?? 0} item(s) stored and ${payload?.impactedMatters ?? 0} matter impact(s) matched.`;
+    setStatus(payload?.warning ? `${summary} ${payload.warning}` : summary);
   }
 
   async function saveLog(formData: FormData) {
@@ -69,7 +70,7 @@ export function MigrationIntelActions({
 
     setModalOpen(false);
     router.refresh();
-    setStatus("Workspace migration note saved. Refresh the page to see the latest list ordering.");
+    setStatus("Workspace migration note saved.");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -134,6 +135,14 @@ export function MigrationIntelActions({
                     name="sourceUrl"
                     className="h-11 w-full rounded-[0.95rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-500 outline-none focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
                     placeholder="Optional source link"
+                  />
+                </label>
+                <label className="space-y-2 text-sm font-medium text-slate-200">
+                  <span>Source type</span>
+                  <input
+                    value="FIRM_NOTE"
+                    readOnly
+                    className="h-11 w-full rounded-[0.95rem] border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-300 outline-none"
                   />
                 </label>
                 <label className="space-y-2 text-sm font-medium text-slate-200">

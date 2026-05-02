@@ -443,9 +443,10 @@ export async function logManualMigrationIntel(input: {
 export async function sweepMigrationIntel(workspaceId?: string | null) {
   const provider = getWebResearchProvider();
   const researchStatus = getWebResearchConfigStatus();
+  const aiConfigured = isAiConfigured();
 
   if (!researchStatus.configured) {
-    throw new Error("Live migration research is not configured.");
+    throw new Error("Live migration research is not configured. Add TAVILY_API_KEY and WEB_RESEARCH_PROVIDER=tavily.");
   }
 
   const sweep = await prisma.migrationIntelSweep.create({
@@ -522,7 +523,9 @@ export async function sweepMigrationIntel(workspaceId?: string | null) {
       sweepId: sweep.id,
       provider: researchStatus.provider,
       stored: persisted.length,
-      impactedMatters: impacted.length
+      impactedMatters: impacted.length,
+      aiConfigured,
+      warning: aiConfigured ? null : "AI classification is not configured."
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

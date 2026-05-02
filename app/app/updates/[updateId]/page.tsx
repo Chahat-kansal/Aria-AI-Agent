@@ -32,7 +32,12 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
     );
   }
 
-  if (!hasPermission(context.user, "can_access_update_monitor")) {
+  const canViewUpdates =
+    context.user.role === "COMPANY_OWNER" ||
+    context.user.role === "COMPANY_ADMIN" ||
+    hasPermission(context.user, "can_access_update_monitor");
+
+  if (!canViewUpdates) {
     return (
       <AppShell title="Migration intelligence">
         <div className="space-y-6">
@@ -75,7 +80,7 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
         <PageHeader
           eyebrow="INTEL"
           title={update.title}
-          description={`${update.source} · ${update.sourceType} · Published ${formatDate(update.publishedAt)} · Review required before policy or matter changes.`}
+          description={`${update.source || "Unknown source"} - ${update.sourceType} - Published ${formatDate(update.publishedAt)} - Review required before policy or matter changes.`}
           action={
             <div className="flex items-center gap-3">
               <StatusPill tone={update.severity === "CRITICAL" || update.severity === "HIGH" ? "danger" : update.severity === "MEDIUM" ? "warning" : "info"}>
@@ -92,8 +97,8 @@ export default async function UpdateDetailPage({ params }: { params: { updateId:
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.02] p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">Source</p>
-                <p className="mt-3 text-sm text-slate-300">{update.source}</p>
-                {/^https?:\/\//i.test(update.sourceUrl) ? (
+                <p className="mt-3 text-sm text-slate-300">{update.source || "Unknown source"}</p>
+                {typeof update.sourceUrl === "string" && /^https?:\/\//i.test(update.sourceUrl) ? (
                   <a href={update.sourceUrl} target="_blank" className="mt-3 inline-flex text-sm text-cyan-300 transition hover:text-white">
                     Open source publication
                   </a>
