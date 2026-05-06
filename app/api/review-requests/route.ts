@@ -20,7 +20,8 @@ export async function POST(req: Request) {
     draftId,
     recipientName: typeof body.recipientName === "string" ? body.recipientName : undefined,
     recipientEmail: typeof body.recipientEmail === "string" ? body.recipientEmail : undefined,
-    message: typeof body.message === "string" ? body.message : undefined
+    message: typeof body.message === "string" ? body.message : undefined,
+    requestOrigin: new URL(req.url).origin
   });
 
   return NextResponse.json({

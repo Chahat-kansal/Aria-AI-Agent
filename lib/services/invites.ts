@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { hash } from "bcryptjs";
 import { UserStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl, serverLog } from "@/lib/services/runtime-config";
+import { resolveBaseUrl, serverLog } from "@/lib/services/runtime-config";
 
 export function createInviteToken() {
   return crypto.randomBytes(32).toString("base64url");
@@ -19,7 +19,10 @@ export function inviteExpiresAt() {
 }
 
 export function buildInviteLink(token: string) {
-  const baseUrl = getBaseUrl() || "http://localhost:3000";
+  const baseUrl = resolveBaseUrl();
+  if (!baseUrl) {
+    throw new Error("Unable to determine the application base URL for invite links. Configure NEXTAUTH_URL.");
+  }
   return `${baseUrl.replace(/\/$/, "")}/invite/${token}`;
 }
 

@@ -33,7 +33,12 @@ export async function POST() {
       action: "migration_intel.sweep.started"
     });
 
-    const result = await sweepMigrationIntel(context.workspace.id);
+    const result = await Promise.race([
+      sweepMigrationIntel(context.workspace.id),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Migration intelligence sweep timed out before completion.")), 25000)
+      )
+    ]);
 
     await auditEvent({
       workspaceId: context.workspace.id,
@@ -61,7 +66,7 @@ export async function POST() {
       metadata: { error: message }
     });
 
-    const status = /not configured|unable to fetch google news rss/i.test(message) ? 400 : 500;
+    const status = /not configured|unable to fetch google news rss|timed out|network|fetch/i.test(message) ? 400 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

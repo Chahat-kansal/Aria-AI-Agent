@@ -6,7 +6,7 @@ import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { createAppointment, ensureClientPortalToken } from "@/lib/services/client-workflows";
 import { sendClientWorkflowEmail } from "@/lib/services/email";
-import { serverLog } from "@/lib/services/runtime-config";
+import { resolveBaseUrl, serverLog } from "@/lib/services/runtime-config";
 
 const schema = z.object({
   matterId: z.string().optional(),
@@ -66,7 +66,8 @@ export async function POST(req: Request) {
         workspaceId: context.workspace.id,
         clientId: parsed.data.clientId,
         matterId: parsed.data.matterId,
-        label: "Appointment confirmation"
+        label: "Appointment confirmation",
+        requestOrigin: new URL(req.url).origin
       })).url;
     }
 
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
           subject: `${context.workspace.name}: appointment ${appointment.status.toLowerCase()}`,
           intro: `Your ${parsed.data.meetingType.toLowerCase()} appointment is recorded for ${startsAt.toLocaleString("en-AU")}.`,
           actionLabel: portalLink ? "Review your secure client portal" : "Appointment recorded",
-          actionLink: portalLink || (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, ""),
+          actionLink: portalLink || resolveBaseUrl({ requestOrigin: new URL(req.url).origin }),
           footer: "Please contact your migration team if you need to reschedule."
         })
       : { delivered: false, reason: "No client email was supplied.", actionLink: portalLink };

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { auditEvent, auditMatterAction } from "@/lib/services/audit";
 import { createPathwayAnalysis, type PathwayProfileInput } from "@/lib/services/pathway-analysis";
+import { resolveBaseUrl } from "@/lib/services/runtime-config";
 import { encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken } from "@/lib/security/hash";
 
@@ -97,12 +98,16 @@ function addDays(days: number) {
   return date;
 }
 
-function baseUrl() {
-  return (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+function baseUrl(requestOrigin?: string | null) {
+  const resolved = resolveBaseUrl({ requestOrigin });
+  if (!resolved) {
+    throw new Error("Unable to determine the application base URL for secure portal links. Configure NEXTAUTH_URL or use a request-origin aware route.");
+  }
+  return resolved;
 }
 
-export function buildClientLink(path: string, token: string) {
-  return `${baseUrl()}${path}/${token}`;
+export function buildClientLink(path: string, token: string, requestOrigin?: string | null) {
+  return `${baseUrl(requestOrigin)}${path}/${token}`;
 }
 
 export async function addMatterTimelineEvent(input: {
@@ -155,6 +160,7 @@ export async function ensureClientPortalToken(input: {
   clientId: string;
   matterId?: string | null;
   label: string;
+  requestOrigin?: string | null;
 }) {
   const token = createToken();
   const record = await prisma.clientPortalAccessToken.create({
@@ -168,7 +174,7 @@ export async function ensureClientPortalToken(input: {
       expiresAt: addDays(PORTAL_TOKEN_DAYS)
     }
   });
-  return { record, token, url: buildClientLink("/client/portal", token) };
+  return { record, token, url: buildClientLink("/client/portal", token, input.requestOrigin) };
 }
 
 export async function getClientPortalByToken(token: string) {
@@ -190,6 +196,7 @@ export async function createClientIntakeRequest(input: {
   recipientName?: string;
   recipientEmail?: string;
   message?: string;
+  requestOrigin?: string | null;
 }) {
   const token = createToken();
   const request = await prisma.clientIntakeRequest.create({
@@ -239,7 +246,7 @@ export async function createClientIntakeRequest(input: {
     metadata: { recipientEmail: input.recipientEmail ?? null }
   });
 
-  return { request, token, url: buildClientLink("/client/intake", token) };
+  return { request, token, url: buildClientLink("/client/intake", token, input.requestOrigin) };
 }
 
 export async function getIntakeRequestByToken(token: string) {
@@ -401,6 +408,7 @@ export async function createDocumentRequest(input: {
   recipientName?: string;
   recipientEmail?: string;
   message?: string;
+  requestOrigin?: string | null;
 }) {
   const token = createToken();
   const request = await prisma.documentRequest.create({
@@ -457,7 +465,7 @@ export async function createDocumentRequest(input: {
     priority: TaskPriority.HIGH
   }).catch(() => null);
 
-  return { request, token, url: buildClientLink("/client/documents", token) };
+  return { request, token, url: buildClientLink("/client/documents", token, input.requestOrigin) };
 }
 
 export async function getDocumentRequestByToken(token: string) {
@@ -529,7 +537,7 @@ export async function sendDocumentRequestReminder(requestId: string, actorUserId
   return request;
 }
 
-export async function refreshDocumentRequestAccess(requestId: string) {
+export async function refreshDocumentRequestAccess(requestId: string, requestOrigin?: string | null) {
   const token = createToken();
   const request = await prisma.documentRequest.update({
     where: { id: requestId },
@@ -539,7 +547,7 @@ export async function refreshDocumentRequestAccess(requestId: string) {
       revokedAt: null
     }
   });
-  return { request, token, url: buildClientLink("/client/documents", token) };
+  return { request, token, url: buildClientLink("/client/documents", token, requestOrigin) };
 }
 
 export async function createAppointment(input: {

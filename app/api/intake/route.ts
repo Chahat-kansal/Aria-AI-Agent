@@ -59,7 +59,8 @@ export async function POST(req: Request) {
       title: parsed.data.title,
       recipientName,
       recipientEmail,
-      message: parsed.data.message
+      message: parsed.data.message,
+      requestOrigin: new URL(req.url).origin
     });
 
     const emailDelivery = recipientEmail

@@ -6,7 +6,7 @@ import { refreshDocumentRequestAccess, sendDocumentRequestReminder } from "@/lib
 import { sendClientWorkflowEmail } from "@/lib/services/email";
 import { serverLog } from "@/lib/services/runtime-config";
 
-export async function POST(_: Request, { params }: { params: { requestId: string } }) {
+export async function POST(req: Request, { params }: { params: { requestId: string } }) {
   try {
     const context = await requireCurrentWorkspaceContext();
     if (!hasPermission(context.user, "can_send_client_requests")) {
@@ -22,7 +22,7 @@ export async function POST(_: Request, { params }: { params: { requestId: string
     }
 
     const updated = await sendDocumentRequestReminder(request.id, context.user.id);
-    const refreshed = await refreshDocumentRequestAccess(request.id);
+    const refreshed = await refreshDocumentRequestAccess(request.id, new URL(req.url).origin);
     const emailDelivery = request.recipientEmail
       ? await sendClientWorkflowEmail({
           to: request.recipientEmail,

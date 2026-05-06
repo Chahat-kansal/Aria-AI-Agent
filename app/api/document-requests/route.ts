@@ -53,7 +53,8 @@ export async function POST(req: Request) {
       dueDate: dueDate && !Number.isNaN(dueDate.getTime()) ? dueDate : undefined,
       recipientName: parsed.data.recipientName || `${matter.client.firstName} ${matter.client.lastName}`,
       recipientEmail: parsed.data.recipientEmail || matter.client.email,
-      message: parsed.data.message
+      message: parsed.data.message,
+      requestOrigin: new URL(req.url).origin
     });
 
     const emailDelivery = (parsed.data.recipientEmail || matter.client.email)

@@ -517,6 +517,7 @@ export async function createClientReviewRequest(input: {
   recipientName?: string;
   recipientEmail?: string;
   message?: string;
+  requestOrigin?: string | null;
 }) {
   const publicToken = crypto.randomBytes(32).toString("base64url");
   const request = await prisma.matterReviewRequest.create({
@@ -535,7 +536,7 @@ export async function createClientReviewRequest(input: {
   });
   return {
     request,
-    reviewUrl: buildClientLink("/client-review", publicToken)
+    reviewUrl: buildClientLink("/client-review", publicToken, input.requestOrigin)
   };
 }
 

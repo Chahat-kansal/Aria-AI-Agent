@@ -463,6 +463,7 @@ export async function logManualMigrationIntel(input: {
 export async function sweepMigrationIntel(workspaceId?: string | null) {
   const aiConfigured = isAiConfigured();
   const sweepInput = await fetchMigrationNewsIntel();
+  const maxItems = Math.max(5, Number(process.env.MIGRATION_INTEL_MAX_ITEMS || 8));
 
   if (!sweepInput.items.length && sweepInput.errors.length) {
     throw new Error(sweepInput.errors[0] || "Unable to fetch Google News RSS migration intelligence.");
@@ -514,11 +515,12 @@ export async function sweepMigrationIntel(workspaceId?: string | null) {
       const key = `${item.sourceUrl}:${sha256(item.rawContent)}`;
       return array.findIndex((candidate) => `${candidate.sourceUrl}:${sha256(candidate.rawContent)}` === key) === index;
     });
+    const candidateItems = uniqueItems.slice(0, maxItems);
 
     let added = 0;
     let skipped = 0;
     const persisted = [];
-    for (const rawItem of uniqueItems) {
+    for (const rawItem of candidateItems) {
       const classification = await classifyMigrationIntel(rawItem);
       if (!classification.isRelevant) {
         skipped += 1;
@@ -564,7 +566,7 @@ export async function sweepMigrationIntel(workspaceId?: string | null) {
       where: { id: sweep.id },
       data: {
         status: MigrationIntelSweepStatus.COMPLETED,
-        resultCount: uniqueItems.length,
+        resultCount: candidateItems.length,
         addedCount: added,
         skippedCount: skipped,
         completedAt: new Date()
@@ -574,16 +576,17 @@ export async function sweepMigrationIntel(workspaceId?: string | null) {
     return {
       sweepId: sweep.id,
       provider: sweepInput.provider,
-      fetched: uniqueItems.length,
+      fetched: candidateItems.length,
       added,
       skipped,
+      failedFeeds: sweepInput.errors,
       stored: persisted.length,
       impactedMatters: impacted.length,
       aiConfigured,
       warning: warningParts.length ? warningParts.join(" ") : null,
       message: added
-        ? `Fetched ${uniqueItems.length} real migration update candidate(s) and stored ${added} new item(s).`
-        : `Fetched ${uniqueItems.length} real migration update candidate(s). No new items were added.`
+        ? `Fetched ${candidateItems.length} real migration update candidate(s) and stored ${added} new item(s).`
+        : `Fetched ${candidateItems.length} real migration update candidate(s). No new items were added.`
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

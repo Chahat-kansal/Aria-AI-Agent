@@ -44,6 +44,16 @@ export default async function SettingsSecurityPage() {
           <Card>
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
               Critical: APP_FIELD_ENCRYPTION_KEY is missing or invalid. Configure a 32 byte base64 key or 64 hex chars before allowing controlled production document uploads.
+              <div className="mt-3 space-y-2 text-xs leading-6 text-red-100/90">
+                <p>Generate APP_FIELD_ENCRYPTION_KEY:</p>
+                <code className="block rounded-xl border border-red-400/20 bg-black/20 px-3 py-2 text-[11px] text-red-50">
+                  {'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'}
+                </code>
+                <p>Generate CRON_SECRET:</p>
+                <code className="block rounded-xl border border-red-400/20 bg-black/20 px-3 py-2 text-[11px] text-red-50">
+                  {'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'}
+                </code>
+              </div>
             </div>
           </Card>
         ) : null}

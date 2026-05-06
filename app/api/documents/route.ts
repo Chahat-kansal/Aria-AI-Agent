@@ -85,7 +85,14 @@ export async function POST(req: Request) {
       document
     });
   } catch (error) {
-    serverLog("document.upload_error", { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Document upload failed. Please try again." }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Document upload failed. Please try again.";
+    serverLog("document.upload_error", { error: message });
+    const status =
+      /not allowed|unsupported file type|required|storage is not configured|blocked until APP_FIELD_ENCRYPTION_KEY/i.test(message)
+        ? 400
+        : /too large/i.test(message)
+          ? 413
+          : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

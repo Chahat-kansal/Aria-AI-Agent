@@ -35,7 +35,8 @@ export async function POST(req: Request) {
       workspaceId: context.workspace.id,
       clientId: parsed.data.clientId,
       matterId: parsed.data.matterId,
-      label: parsed.data.label
+      label: parsed.data.label,
+      requestOrigin: new URL(req.url).origin
     });
 
     await auditEvent({
@@ -47,7 +48,22 @@ export async function POST(req: Request) {
       metadata: { clientId: parsed.data.clientId, matterId: parsed.data.matterId ?? null }
     });
 
-    return NextResponse.json({ link: result.url, record: result.record }, { status: 201 });
+    return NextResponse.json(
+      {
+        link: result.url,
+        portalUrl: result.url,
+        record: {
+          id: result.record.id,
+          purpose: result.record.purpose,
+          createdAt: result.record.createdAt,
+          expiresAt: result.record.expiresAt,
+          revokedAt: result.record.revokedAt,
+          lastViewedAt: result.record.lastViewedAt,
+          label: result.record.label
+        }
+      },
+      { status: 201 }
+    );
   } catch (error) {
     serverLog("portal_link.create_error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Unable to create the client portal link right now." }, { status: 500 });

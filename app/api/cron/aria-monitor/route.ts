@@ -7,8 +7,8 @@ import { refreshRetrievalIndexForWorkspace } from "@/lib/services/retrieval";
 import { serverLog } from "@/lib/services/runtime-config";
 
 function isAuthorized(req: Request) {
-  const auth = req.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
+  const auth = req.headers.get("authorization")?.trim();
+  const secret = process.env.CRON_SECRET?.trim().replace(/^['"]|['"]$/g, "");
   if (secret && auth === `Bearer ${secret}`) return true;
   const userAgent = req.headers.get("user-agent") || "";
   return userAgent.includes("vercel-cron") && Boolean(secret);

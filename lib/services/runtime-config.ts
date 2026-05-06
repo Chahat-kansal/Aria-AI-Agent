@@ -40,6 +40,25 @@ export function getBaseUrl() {
   return (process.env.NEXTAUTH_URL || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}` || "").replace(/\/$/, "");
 }
 
+export function resolveBaseUrl(input?: { requestOrigin?: string | null }) {
+  const requestOrigin = input?.requestOrigin?.trim();
+  if (requestOrigin) {
+    return requestOrigin.replace(/\/$/, "");
+  }
+
+  const nextAuth = process.env.NEXTAUTH_URL?.trim();
+  if (nextAuth) {
+    return nextAuth.replace(/\/$/, "");
+  }
+
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return `https://${vercelUrl.replace(/^\w+:\/\//, "").replace(/\/$/, "")}`;
+  }
+
+  return "";
+}
+
 export function getAuthConfigStatus() {
   const missing = [];
   if (!process.env.NEXTAUTH_URL && !process.env.VERCEL_URL) missing.push("NEXTAUTH_URL");

@@ -2,6 +2,7 @@ import { MatterStage, MatterStatus, UserRole, UserVisibilityScope, WorkspacePlan
 import { prisma } from "@/lib/prisma";
 import { ensureSubclass500Template } from "@/lib/services/subclass-templates";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
+import { encryptString } from "@/lib/security/encryption";
 
 function slugify(value: string) {
   return value
@@ -72,7 +73,7 @@ export async function createMatter(input: {
       phone: input.clientPhone || "",
       dob: input.clientDob || new Date("1990-01-01T00:00:00.000Z"),
       nationality: input.nationality || "",
-      notes: "Created from matter intake"
+      notes: encryptString("Created from matter intake")
     }
   });
 
