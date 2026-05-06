@@ -1,6 +1,7 @@
 import { Prisma, type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
+import { decryptString, maybeDecryptJson } from "@/lib/security/encryption";
 
 type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
 
@@ -157,10 +158,29 @@ export async function getDocumentsData(workspaceId: string, user?: ScopedUser) {
 }
 
 export async function getDocumentDetailData(workspaceId: string, documentId: string, user?: ScopedUser) {
-  return prisma.document.findFirst({
+  const document = await prisma.document.findFirst({
     where: { id: documentId, workspaceId, ...(user ? { matter: scopedMatterWhere(user) } : {}) },
     include: documentDetailInclude
   });
+  if (!document) return null;
+  return {
+    ...document,
+    extractionResults: document.extractionResults.map((result) => ({
+      ...result,
+      extractedJson: maybeDecryptJson(result.extractedJson)
+    })),
+    extractedFields: document.extractedFields.map((field) => ({
+      ...field,
+      fieldValue: field.fieldValue ? decryptString(field.fieldValue) : field.fieldValue,
+      sourceSnippet: field.sourceSnippet ? decryptString(field.sourceSnippet) : field.sourceSnippet,
+      sourcePageRef: field.sourcePageRef ? decryptString(field.sourcePageRef) : field.sourcePageRef
+    })),
+    draftEvidenceLinks: document.draftEvidenceLinks.map((link) => ({
+      ...link,
+      sourceSnippet: link.sourceSnippet ? decryptString(link.sourceSnippet) : link.sourceSnippet,
+      sourcePageRef: link.sourcePageRef ? decryptString(link.sourcePageRef) : link.sourcePageRef
+    }))
+  };
 }
 
 export async function getTasksData(workspaceId: string, user?: ScopedUser) {

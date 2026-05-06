@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { createOrGetSubclass500Draft, getDraftReviewData } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterDetailData } from "@/lib/data/workspace-repository";
@@ -62,7 +63,9 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
           title="Source-linked draft review remains required"
           summary={`Aria is keeping this draft in an assisted state with ${openIssues.length} open validation issue${openIssues.length === 1 ? "" : "s"} and ${needsReviewCount} field${needsReviewCount === 1 ? "" : "s"} needing review. Every mapped value still requires registered migration agent verification before client confirmation or submission preparation.`}
           statusLabel="Review required"
-        />
+        >
+          <AIReviewNotice />
+        </AIInsightPanel>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Readiness" value={`${draft.readinessScore}%`} hint="Current draft readiness score." accent={draft.readinessScore >= 85 ? "emerald" : draft.readinessScore >= 65 ? "amber" : "red"} />
@@ -188,6 +191,12 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                       <p className="text-sm font-medium text-white">{request.recipientEmail ?? "Client review link"}</p>
                       <p className="mt-1 text-xs text-slate-400">{request.status.replaceAll("_", " ").toLowerCase()}</p>
                     </Link>
+                  ) : request.publicTokenPreview ? (
+                    <div key={request.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-sm font-medium text-white">{request.recipientEmail ?? "Client review link"}</p>
+                      <p className="mt-1 text-xs text-slate-400">{request.status.replaceAll("_", " ").toLowerCase()}</p>
+                      <p className="mt-2 text-xs text-cyan-300">Secure review token issued. Raw link is shown only at send time for safety.</p>
+                    </div>
                   ) : (
                     <div key={request.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
                       <p className="text-sm font-medium text-white">{request.recipientEmail ?? "Legacy review request"}</p>

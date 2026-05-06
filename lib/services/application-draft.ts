@@ -13,6 +13,8 @@ import { prisma } from "@/lib/prisma";
 import { getSubclass500Template } from "@/lib/services/subclass-templates";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { buildClientLink } from "@/lib/services/client-workflows";
+import { decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
+import { hashPortalToken, shortHashPreview } from "@/lib/security/hash";
 
 const packageFolders = [
   "Identity",
@@ -193,7 +195,7 @@ export async function uploadDocumentToMatter(input: {
       documentId: document.id,
       provider: input.extractionMetadata?.provider ?? "aria-ai-assisted-extraction",
       model: input.extractionMetadata?.model ?? "configured-provider",
-      extractedJson: {
+      extractedJson: encryptJson({
         category,
         fields: extractedFields,
         extractedTextPreview: input.extractionMetadata?.extractedTextPreview ?? input.extractedText?.slice(0, 1000) ?? "",
@@ -202,7 +204,7 @@ export async function uploadDocumentToMatter(input: {
         extractionConfigured: input.extractionMetadata?.configured ?? true,
         keyValues: input.extractionMetadata?.keyValues ?? [],
         reviewRequired: true
-      }
+      })
     }
   });
 
@@ -213,10 +215,10 @@ export async function uploadDocumentToMatter(input: {
         documentId: document.id,
         fieldKey: field.key,
         fieldLabel: field.key.split(".").slice(-1)[0].replace(/_/g, " "),
-        fieldValue: field.value,
+        fieldValue: encryptString(field.value),
         confidence: field.confidence,
-        sourceSnippet: field.snippet,
-        sourcePageRef: "document metadata",
+        sourceSnippet: encryptString(field.snippet),
+        sourcePageRef: encryptString("document metadata"),
         status: field.confidence >= 0.75 ? FieldStatus.SUPPORTED : FieldStatus.NEEDS_REVIEW,
         needsReview: true
       }
@@ -241,20 +243,26 @@ export async function mapDocumentsToDraft(matterId: string) {
     include: { document: true },
     orderBy: { createdAt: "desc" }
   });
+  const decryptedExtractedFields = extractedFields.map((field) => ({
+    ...field,
+    fieldValue: readSensitive(field.fieldValue) ?? "",
+    sourceSnippet: readSensitive(field.sourceSnippet) ?? "",
+    sourcePageRef: readSensitive(field.sourcePageRef) ?? ""
+  }));
 
   for (const draftField of draft.fields) {
     const templateField = draftField.templateField;
-    const supporting = extractedFields.find((field) => field.fieldKey === templateField.fieldKey);
+    const supporting = decryptedExtractedFields.find((field) => field.fieldKey === templateField.fieldKey);
     if (!supporting) continue;
     if (draftField.status === DraftFieldStatus.VERIFIED) continue;
 
     const updated = await prisma.matterDraftField.update({
       where: { id: draftField.id },
       data: {
-        value: supporting.fieldValue,
+        value: encryptString(supporting.fieldValue),
         confidence: supporting.confidence,
-        sourceSnippet: supporting.sourceSnippet,
-        sourcePageRef: supporting.sourcePageRef,
+        sourceSnippet: encryptString(supporting.sourceSnippet),
+        sourcePageRef: encryptString(supporting.sourcePageRef),
         status: draftStatusForConfidence(supporting.confidence)
       }
     });
@@ -263,8 +271,8 @@ export async function mapDocumentsToDraft(matterId: string) {
       data: {
         draftFieldId: updated.id,
         documentId: supporting.documentId,
-        sourceSnippet: supporting.sourceSnippet,
-        sourcePageRef: supporting.sourcePageRef,
+        sourceSnippet: encryptString(supporting.sourceSnippet),
+        sourcePageRef: encryptString(supporting.sourcePageRef),
         confidence: supporting.confidence
       }
     }).catch(() => null);
@@ -305,7 +313,7 @@ Rules:
         currentValue: field.value,
         currentStatus: field.status
       })),
-      extractedFields: extractedFields.map((field) => ({
+      extractedFields: decryptedExtractedFields.map((field) => ({
         documentId: field.documentId,
         documentName: field.document.fileName,
         fieldKey: field.fieldKey,
@@ -333,10 +341,10 @@ Rules:
       const updated = await prisma.matterDraftField.update({
         where: { id: draftField.id },
         data: {
-          value: String(suggestion.value),
+          value: encryptString(String(suggestion.value)),
           confidence,
-          sourceSnippet: String(suggestion.sourceSnippet || ""),
-          sourcePageRef: "AI-assisted evidence mapping",
+          sourceSnippet: encryptString(String(suggestion.sourceSnippet || "")),
+          sourcePageRef: encryptString("AI-assisted evidence mapping"),
           status: draftStatusForConfidence(confidence)
         }
       });
@@ -346,8 +354,8 @@ Rules:
           data: {
             draftFieldId: updated.id,
             documentId: String(suggestion.sourceDocumentId),
-            sourceSnippet: String(suggestion.sourceSnippet || ""),
-            sourcePageRef: "AI-assisted evidence mapping",
+            sourceSnippet: encryptString(String(suggestion.sourceSnippet || "")),
+            sourcePageRef: encryptString("AI-assisted evidence mapping"),
             confidence
           }
         }).catch(() => null);
@@ -410,7 +418,12 @@ export async function validateSubclass500Draft(matterId: string) {
   const byKey = new Map<string, typeof extractedFields>();
 
   for (const field of extractedFields) {
-    byKey.set(field.fieldKey, [...(byKey.get(field.fieldKey) ?? []), field]);
+    const hydratedField = {
+      ...field,
+      fieldValue: readSensitive(field.fieldValue) ?? "",
+      sourceSnippet: readSensitive(field.sourceSnippet) ?? ""
+    };
+    byKey.set(field.fieldKey, [...(byKey.get(field.fieldKey) ?? []), hydratedField as typeof field]);
 
     if (!templateFieldKeys.has(field.fieldKey)) {
       openIssues.push({
@@ -486,8 +499,8 @@ export async function updateDraftFieldReview(input: {
     where: { id: input.draftFieldId },
     data: {
       status: input.status,
-      manualOverride: input.manualOverride,
-      notes: input.notes,
+      manualOverride: input.manualOverride ? encryptString(input.manualOverride) : undefined,
+      notes: input.notes ? encryptString(input.notes) : undefined,
       reviewedAt: new Date(),
       verifiedAt: input.status === DraftFieldStatus.VERIFIED ? new Date() : undefined
     },
@@ -512,8 +525,9 @@ export async function createClientReviewRequest(input: {
       draftId: input.draftId,
       recipientName: input.recipientName,
       recipientEmail: input.recipientEmail,
-      message: input.message,
-      publicToken,
+      message: input.message ? encryptString(input.message) : undefined,
+      publicTokenHash: hashPortalToken(publicToken),
+      publicTokenPreview: shortHashPreview(publicToken),
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14),
       status: ReviewRequestStatus.SENT_TO_CLIENT,
       sentAt: new Date()
@@ -523,6 +537,10 @@ export async function createClientReviewRequest(input: {
     request,
     reviewUrl: buildClientLink("/client-review", publicToken)
   };
+}
+
+function readSensitive(value: string | null | undefined) {
+  return value ? decryptString(value) : value;
 }
 
 export function buildPackageFolders(documents: Array<{ id: string; fileName: string; category: string; reviewStatus: ReviewStatus }>) {
@@ -563,10 +581,31 @@ export async function getDraftReviewData(matterId: string): Promise<any> {
     return createOrGetSubclass500Draft(matterId);
   }
 
+  const hydratedDraft = {
+    ...draft,
+    fields: draft.fields.map((field) => ({
+      ...field,
+      value: readSensitive(field.value),
+      sourceSnippet: readSensitive(field.sourceSnippet),
+      sourcePageRef: readSensitive(field.sourcePageRef),
+      manualOverride: readSensitive(field.manualOverride),
+      notes: readSensitive(field.notes),
+      evidenceLinks: field.evidenceLinks.map((link) => ({
+        ...link,
+        sourceSnippet: readSensitive(link.sourceSnippet),
+        sourcePageRef: readSensitive(link.sourcePageRef)
+      }))
+    })),
+    reviewRequests: draft.reviewRequests.map((request) => ({
+      ...request,
+      message: readSensitive(request.message)
+    }))
+  };
+
   return {
     matter,
     template,
-    draft,
+    draft: hydratedDraft,
     packageFolders: buildPackageFolders(matter.documents),
     openIssues: matter.validationIssues.filter((issue) => issue.resolutionStatus !== ResolutionStatus.RESOLVED)
   };

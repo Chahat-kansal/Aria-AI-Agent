@@ -307,6 +307,7 @@ model Workspace {
   invoiceServices       InvoiceService[]
   invoices              Invoice[]
   invoiceAssets         InvoiceAsset[]
+  securityIncidents     SecurityIncident[]
 }
 
 model User {
@@ -349,6 +350,7 @@ model User {
   timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
   invoicesCreated   Invoice[]             @relation("InvoiceCreator")
   invoiceTemplatesCreated InvoiceTemplate[] @relation("InvoiceTemplateCreator")
+  securityIncidents     SecurityIncident[]
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -728,7 +730,10 @@ model MatterReviewRequest {
   recipientName  String?
   message        String?
   publicToken    String?                @unique
+  publicTokenHash String?               @unique
+  publicTokenPreview String?
   expiresAt      DateTime?
+  revokedAt      DateTime?
   sentAt         DateTime?
   viewedAt       DateTime?
   confirmedAt    DateTime?
@@ -754,6 +759,7 @@ model ClientIntakeRequest {
   status          IntakeRequestStatus @default(DRAFT)
   tokenHash       String              @unique
   expiresAt       DateTime
+  revokedAt       DateTime?
   viewedAt        DateTime?
   submittedAt     DateTime?
   reviewedAt      DateTime?
@@ -772,7 +778,9 @@ model ClientPortalAccessToken {
   matter          Matter?  @relation(fields: [matterId], references: [id], onDelete: SetNull)
   tokenHash       String   @unique
   label           String
+  purpose         String?
   expiresAt       DateTime
+  revokedAt       DateTime?
   lastViewedAt    DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -795,6 +803,7 @@ model DocumentRequest {
   status          DocumentRequestStatus @default(DRAFT)
   tokenHash       String                @unique
   expiresAt       DateTime
+  revokedAt       DateTime?
   viewedAt        DateTime?
   completedAt     DateTime?
   reminderSentAt  DateTime?
@@ -1032,6 +1041,29 @@ model AuditEvent {
   action       String
   metadataJson Json?
   createdAt    DateTime  @default(now())
+}
+
+model SecurityIncident {
+  id                 String    @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reportedByUserId   String
+  reportedByUser     User      @relation(fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  title              String
+  category           String
+  severity           String
+  affectedEntityType String?
+  affectedEntityId   String?
+  containmentSteps   String?
+  assessmentNotes    String?
+  notificationStatus String?
+  resolvedAt         DateTime?
+  metadataJson       Json?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([severity, createdAt])
 }
 
 model KnowledgeEmbedding {

@@ -90,6 +90,7 @@ export default async function SettingsPage() {
                   <div className="flex flex-wrap gap-3">
                     <Link href="/app/company" className="inline-flex text-cyan-300 transition hover:text-white">Edit company profile</Link>
                     <Link href={"/app/settings/data" as any} className="inline-flex text-cyan-300 transition hover:text-white">Data export & privacy controls</Link>
+                    <Link href={"/app/settings/security" as any} className="inline-flex text-cyan-300 transition hover:text-white">Security vault</Link>
                   </div>
                 </>
               ) : (

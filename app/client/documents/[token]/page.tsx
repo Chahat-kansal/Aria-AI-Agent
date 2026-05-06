@@ -4,6 +4,7 @@ import { attachDocumentToChecklistItem, markDocumentRequestViewed } from "@/lib/
 import { prepareMatterDocumentUpload, persistDocumentStorageObject } from "@/lib/services/storage";
 import { extractReadableText } from "@/lib/services/document-extraction";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 
 export default async function ClientDocumentsPage({ params, searchParams }: { params: { token: string }; searchParams?: { uploaded?: string } }) {
   const request = await markDocumentRequestViewed(params.token);
@@ -24,7 +25,11 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
     "use server";
     const checklistItemId = String(formData.get("checklistItemId") || "");
     const file = formData.get("file");
+    const consentAccepted = String(formData.get("consent") || "") === "on";
     if (!(file instanceof File) || !checklistItemId) {
+      redirect(`/client/documents/${params.token}`);
+    }
+    if (!consentAccepted) {
       redirect(`/client/documents/${params.token}`);
     }
     const allowedChecklistItem = activeRequest.items.find((item) => item.checklistItemId === checklistItemId);
@@ -32,7 +37,7 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
       redirect(`/client/documents/${params.token}`);
     }
     const bytes = Buffer.from(await file.arrayBuffer());
-    const upload = await prepareMatterDocumentUpload({ matterId: activeRequest.matterId, fileName: file.name, bytes });
+    const upload = await prepareMatterDocumentUpload({ matterId: activeRequest.matterId, fileName: file.name, bytes, mimeType: file.type || "application/octet-stream" });
     const extractedText = await extractReadableText(bytes, file.type || "application/octet-stream");
     const document = await uploadDocumentToMatter({
       matterId: activeRequest.matterId,
@@ -55,6 +60,9 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria Client Portal</p>
         <h1 className="mt-2 text-2xl font-semibold">Requested documents</h1>
         <p className="mt-3 text-sm text-muted">Upload documents through this secure portal. Your migration team will review the files before using them in any application workflow.</p>
+        <div className="mt-4">
+          <AIReviewNotice variant="client" />
+        </div>
         {searchParams?.uploaded === "1" ? (
           <div className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
             Document uploaded. Your migration team can now review it against the checklist.
@@ -75,6 +83,10 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
                 <form action={handleUpload} className="mt-4 flex flex-wrap items-center gap-3">
                   <input type="hidden" name="checklistItemId" value={item.checklistItemId} />
                   <input required type="file" name="file" className="max-w-full rounded-lg border border-border bg-white/80 p-2 text-sm" />
+                  <label className="flex min-w-full items-start gap-2 text-xs text-slate-600">
+                    <input type="checkbox" name="consent" required className="mt-0.5" />
+                    <span>I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting.</span>
+                  </label>
                   <button className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white">Upload document</button>
                 </form>
               ) : null}

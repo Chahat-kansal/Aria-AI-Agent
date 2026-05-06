@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { auditEvent, auditMatterAction } from "@/lib/services/audit";
 import { createPathwayAnalysis, type PathwayProfileInput } from "@/lib/services/pathway-analysis";
+import { encryptJson, encryptString } from "@/lib/security/encryption";
+import { hashPortalToken } from "@/lib/security/hash";
 
 const PORTAL_TOKEN_DAYS = 30;
 const REQUEST_TOKEN_DAYS = 14;
@@ -86,7 +88,7 @@ function createToken() {
 }
 
 function hashToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+  return hashPortalToken(token);
 }
 
 function addDays(days: number) {
@@ -161,6 +163,7 @@ export async function ensureClientPortalToken(input: {
       clientId: input.clientId,
       matterId: input.matterId ?? undefined,
       label: input.label,
+      purpose: "CLIENT_PORTAL",
       tokenHash: hashToken(token),
       expiresAt: addDays(PORTAL_TOKEN_DAYS)
     }
@@ -170,7 +173,7 @@ export async function ensureClientPortalToken(input: {
 
 export async function getClientPortalByToken(token: string) {
   const record = await prisma.clientPortalAccessToken.findFirst({
-    where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() } },
+    where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() }, revokedAt: null },
     include: clientPortalInclude
   });
   if (!record) return null;
@@ -201,7 +204,8 @@ export async function createClientIntakeRequest(input: {
       message: input.message,
       status: IntakeRequestStatus.SENT,
       tokenHash: hashToken(token),
-      expiresAt: addDays(REQUEST_TOKEN_DAYS)
+      expiresAt: addDays(REQUEST_TOKEN_DAYS),
+      revokedAt: null
     }
   });
 
@@ -240,7 +244,7 @@ export async function createClientIntakeRequest(input: {
 
 export async function getIntakeRequestByToken(token: string) {
   return prisma.clientIntakeRequest.findFirst({
-    where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() } },
+    where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() }, revokedAt: null },
     include: { client: true, matter: true }
   });
 }
@@ -264,7 +268,7 @@ export async function submitIntake(token: string, questionnaireJson: Prisma.Inpu
   const updated = await prisma.clientIntakeRequest.update({
     where: { id: request.id },
     data: {
-      questionnaireJson,
+      questionnaireJson: encryptJson(questionnaireJson),
       submittedAt: new Date(),
       status: IntakeRequestStatus.SUBMITTED
     },
@@ -279,7 +283,7 @@ export async function submitIntake(token: string, questionnaireJson: Prisma.Inpu
         currentVisaStatus: typeof payload.currentVisaStatus === "string" ? payload.currentVisaStatus : undefined,
         currentVisaExpiry: typeof payload.currentVisaExpiry === "string" && payload.currentVisaExpiry ? new Date(payload.currentVisaExpiry) : undefined,
         nationality: typeof payload.nationality === "string" ? payload.nationality : undefined,
-        notes: typeof payload.notes === "string" ? payload.notes : undefined
+        notes: typeof payload.notes === "string" ? encryptString(payload.notes) : undefined
       }
     }).catch(() => null);
   }
@@ -412,6 +416,7 @@ export async function createDocumentRequest(input: {
       status: DocumentRequestStatus.SENT,
       tokenHash: hashToken(token),
       expiresAt: addDays(REQUEST_TOKEN_DAYS),
+      revokedAt: null,
       items: {
         create: input.checklistItemIds.map((id) => ({
           checklistItemId: id,
@@ -457,7 +462,7 @@ export async function createDocumentRequest(input: {
 
 export async function getDocumentRequestByToken(token: string) {
   return prisma.documentRequest.findFirst({
-    where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() } },
+    where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() }, revokedAt: null },
     include: documentRequestInclude
   });
 }
@@ -530,7 +535,8 @@ export async function refreshDocumentRequestAccess(requestId: string) {
     where: { id: requestId },
     data: {
       tokenHash: hashToken(token),
-      expiresAt: addDays(REQUEST_TOKEN_DAYS)
+      expiresAt: addDays(REQUEST_TOKEN_DAYS),
+      revokedAt: null
     }
   });
   return { request, token, url: buildClientLink("/client/documents", token) };

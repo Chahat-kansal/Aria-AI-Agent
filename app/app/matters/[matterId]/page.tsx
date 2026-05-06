@@ -276,6 +276,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                 <p className="text-sm text-slate-300">Create secure intake, checklist, and portal actions without exposing public matter data.</p>
                 {canManageClients ? <ClientPortalLinkButton clientId={matter.clientId} matterId={matter.id} /> : null}
                 <div className="grid gap-2">
+                  <a href={`/api/settings/data/export-folder?matterId=${matter.id}`}><SubtleButton className="w-full justify-start">Export secure client folder</SubtleButton></a>
                   <Link href="/app/intake"><SubtleButton className="w-full justify-start">Send or review intake request</SubtleButton></Link>
                   <Link href={`/app/matters/${matter.id}/checklist`}><SubtleButton className="w-full justify-start">Open visa checklist</SubtleButton></Link>
                   <Link href={`/app/matters/${matter.id}/generated-documents`}><SubtleButton className="w-full justify-start">Generate migration documents</SubtleButton></Link>

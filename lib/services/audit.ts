@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { redactAuditMetadata } from "@/lib/security/redaction";
 
 type AuditMetadata = Prisma.InputJsonObject;
 export async function auditEvent(input: {
@@ -27,7 +28,7 @@ export async function auditEvent(input: {
         entityType: input.entityType,
         entityId: input.entityId ?? "system",
         action: input.action,
-        metadataJson: input.metadata ?? {}
+        metadataJson: redactAuditMetadata(input.metadata ?? {}) as Prisma.InputJsonObject
       }
     });
   } catch (error) {
@@ -102,6 +103,39 @@ export async function auditDocumentUploaded(input: {
       mimeType: input.mimeType,
       fileSize: input.fileSize
     }
+  });
+}
+
+export async function auditDocumentDownloaded(input: {
+  workspaceId: string;
+  userId?: string;
+  documentId: string;
+  matterId?: string;
+}) {
+  return auditEvent({
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+    entityType: "Document",
+    entityId: input.documentId,
+    action: "document.downloaded",
+    metadata: { matterId: input.matterId ?? null }
+  });
+}
+
+export async function auditSecurityIncident(input: {
+  workspaceId: string;
+  userId?: string;
+  incidentId: string;
+  action: string;
+  metadata?: AuditMetadata;
+}) {
+  return auditEvent({
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+    entityType: "SecurityIncident",
+    entityId: input.incidentId,
+    action: input.action,
+    metadata: input.metadata
   });
 }
 

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { markIntakeViewed, submitIntake } from "@/lib/services/client-workflows";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 
 export default async function ClientIntakePage({ params, searchParams }: { params: { token: string }; searchParams?: { submitted?: string } }) {
   const request = await markIntakeViewed(params.token);
@@ -32,6 +33,10 @@ export default async function ClientIntakePage({ params, searchParams }: { param
       preferredVisaGoal: String(formData.get("preferredVisaGoal") || ""),
       notes: String(formData.get("notes") || "")
     };
+    const consentAccepted = String(formData.get("consent") || "") === "on";
+    if (!consentAccepted) {
+      redirect(`/client/intake/${params.token}`);
+    }
 
     await submitIntake(params.token, payload);
     redirect(`/client/intake/${params.token}?submitted=1`);
@@ -43,6 +48,9 @@ export default async function ClientIntakePage({ params, searchParams }: { param
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria Client Portal</p>
         <h1 className="mt-2 text-2xl font-semibold">{request.title}</h1>
         <p className="mt-3 text-sm text-muted">Provide accurate information for your migration team. This is an AI-assisted intake workflow and will be reviewed by a registered migration agent.</p>
+        <div className="mt-4">
+          <AIReviewNotice variant="client" />
+        </div>
         {searchParams?.submitted === "1" ? (
           <div className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
             Your intake has been submitted. Your migration team will review it and follow up with any next steps.
@@ -61,6 +69,10 @@ export default async function ClientIntakePage({ params, searchParams }: { param
           <textarea name="constraints" placeholder="Refusals, cancellations, health, character, timing constraints" className="min-h-24 rounded-lg border border-border bg-white/80 p-3 text-sm" />
           <input name="preferredVisaGoal" placeholder="Preferred visa goal" className="rounded-lg border border-border bg-white/80 p-3 text-sm md:col-span-2" />
           <textarea name="notes" placeholder="Anything else your migration team should know" className="min-h-32 rounded-lg border border-border bg-white/80 p-3 text-sm md:col-span-2" />
+          <label className="md:col-span-2 flex items-start gap-3 rounded-lg border border-border bg-white/80 p-3 text-sm text-slate-700">
+            <input type="checkbox" name="consent" required className="mt-1" />
+            <span>I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting.</span>
+          </label>
           <button className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white md:col-span-2">Submit intake</button>
         </form>
       </Card>

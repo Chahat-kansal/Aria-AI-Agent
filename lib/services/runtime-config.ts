@@ -17,8 +17,23 @@ function hasConfiguredSecret(value?: string | null) {
     "sk_test_replace_me",
     "pk_test_replace_me",
     "whsec_replace_me",
-    "vercel_blob_replace_me"
+    "vercel_blob_replace_me",
+    "change-me",
+    "placeholder",
+    "test-placeholder",
+    "your-key-here"
   ].some((placeholder) => normalized.includes(placeholder));
+}
+
+function isValidEncryptionKey(value?: string | null) {
+  if (!hasConfiguredSecret(value)) return false;
+  const trimmed = (value ?? "").trim();
+  if (/^[a-f0-9]{64}$/i.test(trimmed)) return true;
+  try {
+    return Buffer.from(trimmed, "base64").length === 32;
+  } catch {
+    return false;
+  }
 }
 
 export function getBaseUrl() {
@@ -127,11 +142,11 @@ export function getCronConfigStatus() {
 }
 
 export function getEncryptionConfigStatus() {
-  const configured = hasConfiguredSecret(process.env.APP_FIELD_ENCRYPTION_KEY);
+  const configured = isValidEncryptionKey(process.env.APP_FIELD_ENCRYPTION_KEY);
   return {
     configured,
-    provider: configured ? "application field encryption" : "not configured",
-    missing: configured ? [] : ["APP_FIELD_ENCRYPTION_KEY"]
+    provider: configured ? "application field encryption (AES-256-GCM)" : "not configured",
+    missing: configured ? [] : ["APP_FIELD_ENCRYPTION_KEY (32 bytes base64 or 64 hex chars)"]
   };
 }
 

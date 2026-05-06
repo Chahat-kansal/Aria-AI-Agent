@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getClientPortalByToken } from "@/lib/services/client-workflows";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 
 export default async function ClientPortalPage({ params }: { params: { token: string } }) {
   const portal = await getClientPortalByToken(params.token);
@@ -43,6 +44,7 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Aria Client Portal</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">{portal.client.firstName} {portal.client.lastName}</h1>
           <p className="mt-3 text-sm leading-6 text-slate-300">This secure portal shows your active matter timeline, requested documents, review requests, and appointment context. All outputs remain subject to registered migration agent review.</p>
+          <AIReviewNotice variant="client" className="mt-4" />
 
           {portal.matter ? (
             <>

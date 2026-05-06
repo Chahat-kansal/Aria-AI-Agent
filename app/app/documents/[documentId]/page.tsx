@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { formatDate, formatEnum, getDocumentDetailData } from "@/lib/data/workspace-repository";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getDocumentIntelligence } from "@/lib/services/aria-intelligence";
@@ -53,6 +54,7 @@ export default async function DocumentDetailPage({ params }: { params: { documen
           statusLabel={intelligence.weakOcr ? "Weak OCR" : "Review required"}
           action={<Link href={`/api/documents/${document.id}/download`} className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Secure download</Link>}
         >
+          <AIReviewNotice />
           <div className="grid gap-3 md:grid-cols-3">
             <SectionCard className="p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Extracted fields</p>

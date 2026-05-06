@@ -3,10 +3,17 @@ import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/prisma";
 import { ClientReviewActions } from "@/components/app/client-review-actions";
 import { serverLog } from "@/lib/services/runtime-config";
+import { decryptString } from "@/lib/security/encryption";
+import { hashPortalToken } from "@/lib/security/hash";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 
 export default async function ClientReviewPage({ params }: { params: { requestId: string } }) {
   const request = await prisma.matterReviewRequest.findFirst({
-    where: { publicToken: params.requestId, expiresAt: { gt: new Date() } },
+    where: {
+      expiresAt: { gt: new Date() },
+      revokedAt: null,
+      OR: [{ publicTokenHash: hashPortalToken(params.requestId) }, { publicToken: params.requestId }]
+    },
     include: {
       matter: { include: { client: true } },
       draft: { include: { fields: { include: { templateField: true } } } }
@@ -14,7 +21,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
   });
 
   if (!request) {
-    serverLog("client.review.invalid_or_expired", { token: params.requestId });
+    serverLog("client.review.invalid_or_expired", { tokenPreview: params.requestId.slice(0, 6) });
     return <main className="min-h-screen p-8 text-[#182033]">Review request not found.</main>;
   }
 
@@ -35,6 +42,9 @@ export default async function ClientReviewPage({ params }: { params: { requestId
           <p className="mt-2 text-sm text-muted">
             This is a client confirmation workflow foundation. The draft remains AI-assisted and requires registered migration agent review before final submission preparation.
           </p>
+          <div className="mt-4">
+            <AIReviewNotice variant="client" />
+          </div>
           <p className="mt-3 text-sm">{request.matter.client.firstName} {request.matter.client.lastName} - {request.matter.title}</p>
           <p className="mt-2 text-sm text-muted">Current status: {request.status.replaceAll("_", " ").toLowerCase()}</p>
         </Card>
@@ -45,7 +55,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
             {request.draft.fields.slice(0, 12).map((field) => (
               <div key={field.id} className="rounded-lg border border-border bg-white/50 p-3 text-sm">
                 <p className="font-medium">{field.templateField.label}</p>
-                <p className="text-muted">{field.manualOverride || field.value || "Missing / requires agent follow-up"}</p>
+                <p className="text-muted">{decryptString(field.manualOverride || field.value || "") || "Missing / requires agent follow-up"}</p>
               </div>
             ))}
           </div>

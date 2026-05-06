@@ -7,6 +7,7 @@ import { extractDocumentResult } from "@/lib/services/document-extraction";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { getUploadLimits, serverLog } from "@/lib/services/runtime-config";
+import { auditDocumentUploaded } from "@/lib/services/audit";
 
 export async function POST(req: Request) {
   try {
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     });
     if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
 
-    const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes });
+    const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes, mimeType });
 
     const document = await uploadDocumentToMatter({
       matterId,
@@ -60,6 +61,15 @@ export async function POST(req: Request) {
     });
 
     await persistDocumentStorageObject({ documentId: document.id, upload });
+    await auditDocumentUploaded({
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      documentId: document.id,
+      matterId,
+      fileName,
+      mimeType,
+      fileSize: upload.fileSize
+    });
     if (checklistItemId) {
       await attachDocumentToChecklistItem(checklistItemId, document.id).catch(() => null);
     }
