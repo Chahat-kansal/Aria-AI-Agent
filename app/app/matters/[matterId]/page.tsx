@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
-import { ClientPortalLinkButton } from "@/components/app/client-portal-link-button";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
+import { PortalAccessManager } from "@/components/app/portal-access-manager";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -16,6 +16,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterIntelligence } from "@/lib/services/aria-intelligence";
 import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
+import { getEmailConfigStatus } from "@/lib/services/runtime-config";
+import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -42,20 +44,110 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   const latestDraft = matter.applicationDrafts[0];
   const canReassign = canManageTeam(context.user) || hasFirmWideAccess(context.user) || hasTeamOversight(context.user);
   const canManageClients = hasPermission(context.user, "can_manage_clients");
+  const canEditMatter = hasPermission(context.user, "can_edit_matters");
+  const canUseAi = hasPermission(context.user, "can_access_ai");
+  const canManageAppointments = hasPermission(context.user, "can_manage_appointments");
+  const canRunCrossCheck = hasPermission(context.user, "can_run_cross_check");
   const assignableUsers = canReassign
     ? await prisma.user.findMany({
       where: { workspaceId: context.workspace.id, status: { not: "DISABLED" } },
       orderBy: { name: "asc" }
     })
     : [];
-
-  const actionLinks = [
-    { label: "Draft review", href: matter.visaSubclass === "500" ? `/app/matters/${matter.id}/draft` : "/app/forms" },
-    { label: "Checklist", href: `/app/matters/${matter.id}/checklist` },
-    { label: "Documents", href: "/app/documents" },
-    { label: "Validation", href: "/app/validation" },
-    { label: "Generated docs", href: `/app/matters/${matter.id}/generated-documents` },
-    { label: "Ask Aria", href: "/app/assistant" }
+  const [portalLinks, relatedForms, appointmentCount, documentRequestCount, intakeCount, settingsView] = await Promise.all([
+    canManageClients
+      ? prisma.clientPortalAccessToken.findMany({
+          where: { workspaceId: context.workspace.id, matterId: matter.id },
+          include: { createdByUser: { select: { name: true, email: true } } },
+          orderBy: { createdAt: "desc" }
+        })
+      : Promise.resolve([]),
+    prisma.officialFormTemplate.findMany({
+      where: {
+        OR: [{ workspaceId: context.workspace.id }, { workspaceId: null }],
+        subclassCodes: { has: matter.visaSubclass }
+      },
+      orderBy: { formNumber: "asc" }
+    }),
+    prisma.appointment.count({ where: { workspaceId: context.workspace.id, matterId: matter.id } }),
+    prisma.documentRequest.count({ where: { workspaceId: context.workspace.id, matterId: matter.id } }),
+    prisma.clientIntakeRequest.count({ where: { workspaceId: context.workspace.id, matterId: matter.id } }),
+    getWorkspaceOperationalSettingsView(context.workspace.id)
+  ]);
+  const emailConfigured = getEmailConfigStatus().configured;
+  const workflowItems = [
+    {
+      label: "Upload documents for this matter",
+      href: `/app/documents?matterId=${matter.id}`,
+      status: matter.documents.length ? "completed" : canEditMatter ? "ready" : "blocked",
+      reason: matter.documents.length ? `${matter.documents.length} document(s) uploaded.` : canEditMatter ? "Secure upload is available." : "You do not have permission to upload matter documents."
+    },
+    {
+      label: "Review extracted evidence",
+      href: `/app/documents?matterId=${matter.id}`,
+      status: matter.documents.some((document) => document.extractionStatus === "EXTRACTED") ? "ready" : "blocked",
+      reason: matter.documents.some((document) => document.extractionStatus === "EXTRACTED") ? "Open document intelligence and linked evidence fields." : "Upload a secure document first to review extracted evidence."
+    },
+    {
+      label: "Run AI Draft Autofill",
+      href: `/app/matters/${matter.id}/draft`,
+      status: matter.visaSubclass === "500" && canUseAi ? "ready" : "blocked",
+      reason: matter.visaSubclass !== "500" ? "Field-level draft autofill is currently configured for Subclass 500." : canUseAi ? "Run source-backed mapping from uploaded documents." : "AI draft autofill requires Aria AI access."
+    },
+    {
+      label: "Review application draft",
+      href: `/app/matters/${matter.id}/draft`,
+      status: latestDraft ? "ready" : matter.visaSubclass === "500" ? "ready" : "blocked",
+      reason: latestDraft ? `Latest draft status: ${formatEnum(latestDraft.status)}.` : matter.visaSubclass === "500" ? "Open the draft workspace to create or review the matter draft." : "This matter uses knowledge/checklist review until an official form template is configured."
+    },
+    {
+      label: "Open checklist",
+      href: `/app/matters/${matter.id}/checklist`,
+      status: "ready",
+      reason: `${matter.checklistItems.length} checklist item(s) recorded.`
+    },
+    {
+      label: "Open official forms",
+      href: `/app/matters/${matter.id}/forms`,
+      status: relatedForms.length ? "ready" : "blocked",
+      reason: relatedForms.length ? `${relatedForms.length} relevant template(s) found for Subclass ${matter.visaSubclass}.` : "No official or firm-provided form template is mapped to this subclass yet."
+    },
+    {
+      label: "Generate client portal link",
+      href: `#client-portal-access`,
+      status: canManageClients ? "ready" : "blocked",
+      reason: canManageClients ? `${portalLinks.length} portal link(s) already issued.` : "You do not have permission to manage client portal links."
+    },
+    {
+      label: "Send document request",
+      href: `/app/document-requests?matterId=${matter.id}`,
+      status: hasPermission(context.user, "can_send_client_requests") ? "ready" : "blocked",
+      reason: hasPermission(context.user, "can_send_client_requests") ? `${documentRequestCount} document request record(s) exist for this matter.` : "You do not have permission to send client requests."
+    },
+    {
+      label: "Send intake request",
+      href: `/app/intake?matterId=${matter.id}`,
+      status: hasPermission(context.user, "can_send_client_requests") ? "ready" : "blocked",
+      reason: hasPermission(context.user, "can_send_client_requests") ? `${intakeCount} intake request record(s) exist for this matter.` : "You do not have permission to send intake requests."
+    },
+    {
+      label: "Book appointment / view appointments",
+      href: `/app/appointments?matterId=${matter.id}`,
+      status: canManageAppointments ? "ready" : "blocked",
+      reason: canManageAppointments ? `${appointmentCount} appointment record(s) linked to this matter.${settingsView.appointmentAvailability.length ? " Availability windows are configured." : " Availability is not configured; request fallback applies."}` : "You do not have permission to manage appointments."
+    },
+    {
+      label: "Export secure client folder",
+      href: `/api/settings/data/export-folder?matterId=${matter.id}`,
+      status: hasPermission(context.user, "can_export_data") ? "ready" : "blocked",
+      reason: hasPermission(context.user, "can_export_data") ? "Streams a secure ZIP export through the app." : "You do not have permission to export secure client folders."
+    },
+    {
+      label: "Final cross-check",
+      href: `/app/matters/${matter.id}/draft`,
+      status: canRunCrossCheck ? "ready" : "blocked",
+      reason: canRunCrossCheck ? "Open the draft workspace to run the final submission-readiness cross-check." : "You do not have permission to run final cross-checks."
+    }
   ];
 
   return (
@@ -118,13 +210,16 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_360px]">
           <div className="space-y-6">
-            <PageSection eyebrow="WORKFLOW" title="Continue the matter" description="Use the existing live workflows below to move the matter forward without leaving the review trail.">
+            <PageSection eyebrow="WORKFLOW" title="Matter workflow" description="Every step below either performs a real action, opens a real route, or tells you honestly why it is blocked.">
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {actionLinks.map((action) => (
-                  <Link key={action.label} href={action.href as any}>
-                    <SectionCard className="h-full p-4 transition hover:bg-white/[0.05]">
-                      <p className="text-sm font-semibold text-white">{action.label}</p>
-                      <p className="mt-2 text-sm text-slate-400">Open the linked workspace for this matter.</p>
+                {workflowItems.map((item) => (
+                  <Link key={item.label} href={item.href as any} className={item.status === "blocked" ? "pointer-events-none" : ""}>
+                    <SectionCard className={`h-full p-4 transition ${item.status === "blocked" ? "opacity-70" : "hover:bg-white/[0.05]"}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-white">{item.label}</p>
+                        <StatusPill tone={item.status === "completed" ? "success" : item.status === "ready" ? "info" : "warning"}>{item.status}</StatusPill>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-slate-400">{item.reason}</p>
                     </SectionCard>
                   </Link>
                 ))}
@@ -271,37 +366,42 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
               </SectionCard>
             </PageSection>
 
-            <PageSection title="Client-facing workflows">
+            <PageSection title="Client portal access" description="Share only scoped portal links. Raw links are shown only once at generation time.">
               <SectionCard className="space-y-3">
-                <p className="text-sm text-slate-300">Create secure intake, checklist, and portal actions without exposing public matter data.</p>
-                {canManageClients ? <ClientPortalLinkButton clientId={matter.clientId} matterId={matter.id} /> : null}
-                <div className="grid gap-2">
-                  <a href={`/api/settings/data/export-folder?matterId=${matter.id}`}><SubtleButton className="w-full justify-start">Export secure client folder</SubtleButton></a>
-                  <Link href="/app/intake"><SubtleButton className="w-full justify-start">Send or review intake request</SubtleButton></Link>
-                  <Link href={`/app/matters/${matter.id}/checklist`}><SubtleButton className="w-full justify-start">Open visa checklist</SubtleButton></Link>
-                  <Link href={`/app/matters/${matter.id}/generated-documents`}><SubtleButton className="w-full justify-start">Generate migration documents</SubtleButton></Link>
-                </div>
+                <p id="client-portal-access" className="text-sm text-slate-300">Clients use secure links sent by their migration agent. Email delivery is {emailConfigured ? "configured" : "not configured, so links must be copied manually"}.</p>
+                {canManageClients ? (
+                  <PortalAccessManager
+                    clientId={matter.clientId}
+                    matterId={matter.id}
+                    clientEmail={matter.client.email}
+                    emailConfigured={emailConfigured}
+                    initialLinks={portalLinks.map((link) => ({
+                      id: link.id,
+                      label: link.label,
+                      purpose: link.purpose,
+                      createdAt: link.createdAt,
+                      expiresAt: link.expiresAt,
+                      revokedAt: link.revokedAt,
+                      lastViewedAt: link.lastViewedAt,
+                      status: link.revokedAt ? "revoked" : link.expiresAt < new Date() ? "expired" : "active",
+                      createdBy: link.createdByUser ? { name: link.createdByUser.name, email: link.createdByUser.email } : null
+                    }))}
+                  />
+                ) : <p className="text-xs text-slate-500">You do not have permission to manage client portal access for this matter.</p>}
               </SectionCard>
             </PageSection>
 
-            <PageSection title="Draft workflow">
+            <PageSection title="Documents, forms, and exports">
               <SectionCard className="space-y-3">
-                {matter.visaSubclass === "500" ? (
-                  <>
-                    <p className="text-sm text-slate-300">The Subclass 500 draft workspace is ready for source-linked field review, validation, evidence packaging, and final cross-check.</p>
-                    <Link href={`/app/matters/${matter.id}/draft`}>
-                      <GradientButton className="w-full">Open draft workflow</GradientButton>
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-slate-300">Field-level draft filling is currently configured only for Subclass 500. Other subclasses continue to use live knowledge and review workflows without fabricated fields.</p>
-                    <Link href="/app/knowledge">
-                      <SubtleButton className="w-full">Review visa knowledge</SubtleButton>
-                    </Link>
-                  </>
-                )}
-                {latestDraft ? <p className="text-xs text-slate-500">Latest draft status: {formatEnum(latestDraft.status)}</p> : null}
+                <p className="text-sm text-slate-300">Use the matter-specific routes below for secure evidence, official forms, generated documents, and export tasks.</p>
+                <div className="grid gap-2">
+                  <Link href={`/app/documents?matterId=${matter.id}` as any}><SubtleButton className="w-full justify-start">Upload documents for this matter</SubtleButton></Link>
+                  <Link href={`/app/matters/${matter.id}/forms` as any}><SubtleButton className="w-full justify-start">Open official forms</SubtleButton></Link>
+                  <Link href={`/app/matters/${matter.id}/generated-documents` as any}><SubtleButton className="w-full justify-start">Generate migration documents</SubtleButton></Link>
+                  <a href={`/api/settings/data/export-folder?matterId=${matter.id}`}><SubtleButton className="w-full justify-start">Export secure client folder</SubtleButton></a>
+                </div>
+                {matter.visaSubclass === "500" ? <Link href={`/app/matters/${matter.id}/draft`}><GradientButton className="w-full">Run AI Draft Autofill</GradientButton></Link> : null}
+                {latestDraft ? <p className="text-xs text-slate-500">Latest draft status: {formatEnum(latestDraft.status)}</p> : <p className="text-xs text-slate-500">No matter draft exists yet. Open the draft workspace to start review.</p>}
               </SectionCard>
             </PageSection>
           </div>

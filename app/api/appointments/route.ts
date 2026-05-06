@@ -67,6 +67,7 @@ export async function POST(req: Request) {
         clientId: parsed.data.clientId,
         matterId: parsed.data.matterId,
         label: "Appointment confirmation",
+        createdByUserId: context.user.id,
         requestOrigin: new URL(req.url).origin
       })).url;
     }

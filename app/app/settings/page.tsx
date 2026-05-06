@@ -91,6 +91,12 @@ export default async function SettingsPage() {
                     <Link href="/app/company" className="inline-flex text-cyan-300 transition hover:text-white">Edit company profile</Link>
                     <Link href={"/app/settings/data" as any} className="inline-flex text-cyan-300 transition hover:text-white">Data export & privacy controls</Link>
                     <Link href={"/app/settings/security" as any} className="inline-flex text-cyan-300 transition hover:text-white">Security vault</Link>
+                    <Link href={"/app/settings/appointments" as any} className="inline-flex text-cyan-300 transition hover:text-white">Appointment settings</Link>
+                    <Link href={"/app/settings/client-portal" as any} className="inline-flex text-cyan-300 transition hover:text-white">Client portal settings</Link>
+                    <Link href={"/app/settings/forms" as any} className="inline-flex text-cyan-300 transition hover:text-white">Form library settings</Link>
+                    <Link href={"/app/settings/ai" as any} className="inline-flex text-cyan-300 transition hover:text-white">AI settings</Link>
+                    <Link href={"/app/settings/documents" as any} className="inline-flex text-cyan-300 transition hover:text-white">Document settings</Link>
+                    <Link href={"/app/invoices/setup" as any} className="inline-flex text-cyan-300 transition hover:text-white">Invoice setup</Link>
                   </div>
                 </>
               ) : (

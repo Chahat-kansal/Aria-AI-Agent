@@ -6,6 +6,7 @@ import { CompanyProfileForm } from "@/components/app/company-profile-form";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getCompanyProfileData } from "@/lib/data/workspace-repository";
 import { canAccessCompanyWorkspace, canManageTeam, roleLabel } from "@/lib/services/roles";
+import { getBaseUrl } from "@/lib/services/runtime-config";
 
 export default async function CompanyPage() {
   const context = await getCurrentWorkspaceContext();
@@ -19,6 +20,7 @@ export default async function CompanyPage() {
   }
   const workspace = context ? await getCompanyProfileData(context.workspace.id) : null;
   const canManageCompany = context ? canManageTeam(context.user) : false;
+  const staffPortalUrl = workspace ? `${getBaseUrl()}/w/${workspace.slug}/login` : null;
 
   return (
     <AppShell title="Company">
@@ -53,6 +55,15 @@ export default async function CompanyPage() {
                 <p><span className="text-muted">Documents:</span> {workspace._count.documents}</p>
               </div>
             </Card>
+            {canManageCompany && staffPortalUrl ? <Card>
+              <h3 className="font-semibold">Staff portal</h3>
+              <div className="mt-3 space-y-2 text-sm text-muted">
+                <p>Send this workspace portal to invited staff and agents after their invite is ready.</p>
+                <a href={staffPortalUrl} className="inline-flex break-all rounded-lg border border-border bg-white/50 px-3 py-2 text-sm text-accent">
+                  {staffPortalUrl}
+                </a>
+              </div>
+            </Card> : null}
             {canManageCompany ? <Card>
               <h3 className="font-semibold">Team overview</h3>
               <div className="mt-3 space-y-2">

@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     });
     if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
 
-    const upload = await prepareMatterDocumentUpload({ matterId, fileName, bytes, mimeType });
+    const upload = await prepareMatterDocumentUpload({ workspaceId: context.workspace.id, matterId, fileName, bytes, mimeType });
 
     const document = await uploadDocumentToMatter({
       matterId,

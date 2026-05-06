@@ -7,6 +7,7 @@ import { createPathwayAnalysis, type PathwayProfileInput } from "@/lib/services/
 import { resolveBaseUrl } from "@/lib/services/runtime-config";
 import { encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken } from "@/lib/security/hash";
+import { getOrCreateWorkspaceOperationalSettings } from "@/lib/services/workspace-operational-settings";
 
 const PORTAL_TOKEN_DAYS = 30;
 const REQUEST_TOKEN_DAYS = 14;
@@ -18,6 +19,7 @@ const clientPortalInclude = Prisma.validator<Prisma.ClientPortalAccessTokenInclu
       checklistItems: { include: { document: true }, orderBy: { label: "asc" } },
       documents: { orderBy: { createdAt: "desc" } },
       reviewRequests: { orderBy: { createdAt: "desc" } },
+      officialFormDrafts: { where: { status: { in: ["APPROVED", "PUBLISHED"] as any } }, orderBy: { updatedAt: "desc" } },
       timelineEvents: { orderBy: { createdAt: "desc" }, take: 20 },
       tasks: { where: { status: { not: "DONE" } }, orderBy: { dueDate: "asc" }, take: 10 }
     }
@@ -160,18 +162,21 @@ export async function ensureClientPortalToken(input: {
   clientId: string;
   matterId?: string | null;
   label: string;
+  createdByUserId?: string | null;
   requestOrigin?: string | null;
 }) {
+  const settings = await getOrCreateWorkspaceOperationalSettings(input.workspaceId);
   const token = createToken();
   const record = await prisma.clientPortalAccessToken.create({
     data: {
       workspaceId: input.workspaceId,
       clientId: input.clientId,
       matterId: input.matterId ?? undefined,
+      createdByUserId: input.createdByUserId ?? undefined,
       label: input.label,
       purpose: "CLIENT_PORTAL",
       tokenHash: hashToken(token),
-      expiresAt: addDays(PORTAL_TOKEN_DAYS)
+      expiresAt: addDays(settings.clientPortalExpiryDays || PORTAL_TOKEN_DAYS)
     }
   });
   return { record, token, url: buildClientLink("/client/portal", token, input.requestOrigin) };

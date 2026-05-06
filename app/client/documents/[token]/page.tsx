@@ -37,7 +37,7 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
       redirect(`/client/documents/${params.token}`);
     }
     const bytes = Buffer.from(await file.arrayBuffer());
-    const upload = await prepareMatterDocumentUpload({ matterId: activeRequest.matterId, fileName: file.name, bytes, mimeType: file.type || "application/octet-stream" });
+    const upload = await prepareMatterDocumentUpload({ workspaceId: activeRequest.workspaceId, matterId: activeRequest.matterId, fileName: file.name, bytes, mimeType: file.type || "application/octet-stream" });
     const extractedText = await extractReadableText(bytes, file.type || "application/octet-stream");
     const document = await uploadDocumentToMatter({
       matterId: activeRequest.matterId,

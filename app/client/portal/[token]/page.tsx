@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getClientPortalByToken } from "@/lib/services/client-workflows";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
+import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 
 export default async function ClientPortalPage({ params }: { params: { token: string } }) {
   const portal = await getClientPortalByToken(params.token);
@@ -19,6 +20,8 @@ export default async function ClientPortalPage({ params }: { params: { token: st
       </div>
     );
   }
+
+  const settings = await getWorkspaceOperationalSettingsView(portal.workspaceId);
 
   const visibleTimelineEvents = (portal.matter?.timelineEvents ?? []).filter((event) =>
     [
@@ -44,6 +47,7 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Aria Client Portal</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">{portal.client.firstName} {portal.client.lastName}</h1>
           <p className="mt-3 text-sm leading-6 text-slate-300">This secure portal shows your active matter timeline, requested documents, review requests, and appointment context. All outputs remain subject to registered migration agent review.</p>
+          <p className="mt-2 text-xs text-slate-500">{settings.clientPortalHelpText}</p>
           <AIReviewNotice variant="client" className="mt-4" />
 
           {portal.matter ? (
@@ -98,17 +102,47 @@ export default async function ClientPortalPage({ params }: { params: { token: st
 
               <Card className="mt-6">
                 <h3 className="text-sm font-semibold text-slate-100">Next secure actions</h3>
-                <div className="mt-4 space-y-2 text-sm text-slate-300">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="font-medium text-white">Upload requested documents</p>
-                    <p className="text-xs text-slate-500">Use your secure checklist upload link for anything still marked missing.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="font-medium text-white">Check review requests</p>
-                    <p className="text-xs text-slate-500">Your migration team will send separate secure review links when confirmation is needed.</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-slate-300">
+                  <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]">
+                    <p className="font-medium text-white">Upload documents</p>
+                    <p className="mt-1 text-xs text-slate-500">Securely upload requested documents for this matter.</p>
+                  </Link>
+                  <Link href={`/client/intake/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]">
+                    <p className="font-medium text-white">Complete intake</p>
+                    <p className="mt-1 text-xs text-slate-500">Update your details for agent review before use.</p>
+                  </Link>
+                  <Link href={`/client/checklist/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]">
+                    <p className="font-medium text-white">View checklist</p>
+                    <p className="mt-1 text-xs text-slate-500">See outstanding evidence and upload requirements.</p>
+                  </Link>
+                  <Link href={`/client/book/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]">
+                    <p className="font-medium text-white">Book appointment</p>
+                    <p className="mt-1 text-xs text-slate-500">Request a consultation or use configured appointment availability.</p>
+                  </Link>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 md:col-span-2">
+                    <p className="font-medium text-white">Review requests</p>
+                    <p className="mt-1 text-xs text-slate-500">Your migration team will send separate secure review links when confirmation is needed.</p>
                   </div>
                 </div>
               </Card>
+
+              {portal.matter.officialFormDrafts.length ? (
+                <Card className="mt-6">
+                  <h3 className="text-sm font-semibold text-slate-100">Approved forms</h3>
+                  <div className="mt-4 space-y-3">
+                    {portal.matter.officialFormDrafts.map((draft) => (
+                      <a
+                        key={draft.id}
+                        href={`/api/forms/drafts/${draft.id}/download?portalToken=${params.token}`}
+                        className="block rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]"
+                      >
+                        <p className="font-medium text-white">{draft.generatedFileName ?? "Approved PDF draft"}</p>
+                        <p className="mt-1 text-xs text-slate-500">Approved by agent for client record/review. This system does not lodge applications.</p>
+                      </a>
+                    ))}
+                  </div>
+                </Card>
+              ) : null}
             </>
           ) : (
             <div className="mt-6">

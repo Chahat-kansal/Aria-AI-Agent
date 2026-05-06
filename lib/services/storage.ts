@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getStorageConfigStatus, getUploadLimits } from "@/lib/services/runtime-config";
 import { encryptBuffer, isEncryptionConfigured } from "@/lib/security/encryption";
+import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 
 export type StoredUpload = {
   storageKey: string;
@@ -15,19 +16,9 @@ function safeFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "document";
 }
 
-const allowedMimeTypes = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "text/plain",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-]);
-
 const blockedExtensions = [".exe", ".bat", ".cmd", ".js", ".msi", ".com", ".ps1", ".sh", ".php", ".html", ".svg"];
 
-function assertSafeUpload(fileName: string, mimeType?: string) {
+function assertSafeUpload(fileName: string, mimeType: string | undefined, allowedMimeTypes: Set<string>) {
   const lower = fileName.toLowerCase();
   if (blockedExtensions.some((extension) => lower.endsWith(extension))) {
     throw new Error("This file type is not allowed for secure migration document storage.");
@@ -38,6 +29,7 @@ function assertSafeUpload(fileName: string, mimeType?: string) {
 }
 
 export async function prepareMatterDocumentUpload(input: {
+  workspaceId: string;
   matterId: string;
   fileName: string;
   bytes: Buffer;
@@ -51,10 +43,12 @@ export async function prepareMatterDocumentUpload(input: {
     throw new Error("Sensitive document upload is blocked until APP_FIELD_ENCRYPTION_KEY is configured correctly.");
   }
   const limits = getUploadLimits();
-  if (input.bytes.length > limits.maxBytes) {
-    throw new Error(`File is too large. Maximum upload size is ${limits.maxMb} MB.`);
+  const settings = await getWorkspaceOperationalSettingsView(input.workspaceId);
+  const effectiveMaxBytes = Math.min(limits.maxBytes, settings.documentMaxUploadBytes || limits.maxBytes);
+  if (input.bytes.length > effectiveMaxBytes) {
+    throw new Error(`File is too large. Maximum upload size is ${Math.round(effectiveMaxBytes / (1024 * 1024))} MB.`);
   }
-  assertSafeUpload(input.fileName, input.mimeType);
+  assertSafeUpload(input.fileName, input.mimeType, new Set(settings.documentAllowedMimeTypes));
 
   const contentHash = crypto.createHash("sha256").update(input.bytes).digest("hex");
   const provider = status.provider;

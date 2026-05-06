@@ -34,6 +34,7 @@ const nav: Array<{
   { label: "Pathway Analysis", href: "/app/pathways", icon: "pathways", permission: "can_run_pathway_analysis" },
   { label: "Visa Knowledge", href: "/app/knowledge", icon: "knowledge", permission: "can_access_visa_knowledge" },
   { label: "Documents", href: "/app/documents", icon: "documents" },
+  { label: "Application Drafts", href: "/app/application-drafts", icon: "forms", permission: "can_edit_matters" },
   { label: "Forms & Field Review", href: "/app/forms", icon: "forms" },
   { label: "Validation", href: "/app/validation", icon: "validation" },
   { label: "Invoices", href: "/app/invoices", icon: "invoices", permission: "can_view_invoices" },

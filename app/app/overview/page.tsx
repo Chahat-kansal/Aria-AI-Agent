@@ -129,6 +129,19 @@ export default async function OverviewPage() {
           {canAccessUpdates ? <MetricCard label="Official updates" value={updates.length} hint="Stored source-linked alerts" accent={updates.length ? "violet" : "emerald"} /> : null}
         </div>
 
+        <PageSection title="Quick actions" description="Use real workflow entry points to start or continue client work.">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <Link href="/app/matters" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">New matter</p><p className="mt-2 text-sm text-slate-400">Create a client and matter record.</p></SectionCard></Link>
+            <Link href="/app/documents" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Upload document</p><p className="mt-2 text-sm text-slate-400">Securely upload matter evidence.</p></SectionCard></Link>
+            <Link href={"/app/application-drafts" as any} className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Run draft review</p><p className="mt-2 text-sm text-slate-400">Open real matter draft workspaces.</p></SectionCard></Link>
+            <Link href="/app/forms" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Open official forms</p><p className="mt-2 text-sm text-slate-400">Inspect templates and supported PDF drafts.</p></SectionCard></Link>
+            <Link href="/app/updates" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Check migration intel</p><p className="mt-2 text-sm text-slate-400">Review news, official updates, and workspace notes.</p></SectionCard></Link>
+            <Link href="/app/appointments" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">View appointments</p><p className="mt-2 text-sm text-slate-400">Confirm or record consultations.</p></SectionCard></Link>
+            <Link href="/app/document-requests" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Review pending client uploads</p><p className="mt-2 text-sm text-slate-400">Track document requests and reminders.</p></SectionCard></Link>
+            <Link href="/app/settings/security" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Open security health</p><p className="mt-2 text-sm text-slate-400">Review encryption, cron, and storage safety.</p></SectionCard></Link>
+          </div>
+        </PageSection>
+
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <PageSection title="Urgent actions" description="Aria is ranking the work that most affects readiness, client follow-up, and operational risk.">
             {briefing.urgentActions.length ? (

@@ -259,6 +259,27 @@ enum ReviewRequestStatus {
   REQUIRES_FOLLOW_UP
 }
 
+enum OfficialFormLifecycleStatus {
+  CURRENT
+  NEEDS_REVIEW
+  SUPERSEDED
+}
+
+enum OfficialFormSupportStatus {
+  ONLINE_ONLY
+  MANUAL_ONLY
+  FILLABLE_PDF
+  MAPPING_REQUIRED
+}
+
+enum MatterOfficialFormDraftStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  PUBLISHED
+  UNSUPPORTED
+}
+
 model Workspace {
   id                    String                 @id @default(cuid())
   name                  String
@@ -308,6 +329,9 @@ model Workspace {
   invoices              Invoice[]
   invoiceAssets         InvoiceAsset[]
   securityIncidents     SecurityIncident[]
+  operationalSettings   WorkspaceOperationalSettings?
+  officialFormTemplates OfficialFormTemplate[]
+  officialFormDrafts    MatterOfficialFormDraft[]
 }
 
 model User {
@@ -351,6 +375,10 @@ model User {
   invoicesCreated   Invoice[]             @relation("InvoiceCreator")
   invoiceTemplatesCreated InvoiceTemplate[] @relation("InvoiceTemplateCreator")
   securityIncidents     SecurityIncident[]
+  createdPortalTokens   ClientPortalAccessToken[] @relation("PortalTokenCreator")
+  approvedFormDrafts    MatterOfficialFormDraft[] @relation("OfficialFormDraftApprover")
+  createdOfficialFormTemplates OfficialFormTemplate[] @relation("OfficialFormTemplateCreator")
+  createdOfficialFormDrafts MatterOfficialFormDraft[] @relation("OfficialFormDraftCreator")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -428,6 +456,7 @@ model Matter {
   portalAccessTokens  ClientPortalAccessToken[]
   timelineEvents      MatterTimelineEvent[]
   invoices            Invoice[]
+  officialFormDrafts  MatterOfficialFormDraft[]
 }
 
 model PathwayAnalysis {
@@ -776,6 +805,8 @@ model ClientPortalAccessToken {
   client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   matterId        String?
   matter          Matter?  @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  createdByUserId String?
+  createdByUser   User?    @relation("PortalTokenCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   tokenHash       String   @unique
   label           String
   purpose         String?
@@ -784,6 +815,98 @@ model ClientPortalAccessToken {
   lastViewedAt    DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model WorkspaceOperationalSettings {
+  id                             String    @id @default(cuid())
+  workspaceId                    String    @unique
+  workspace                      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientPortalExpiryDays         Int       @default(30)
+  clientPortalConsentNotice      String?
+  clientPortalHelpText           String?
+  clientPortalEmailTemplate      String?
+  aiDraftAutofillEnabled         Boolean   @default(true)
+  aiReviewRequiredDefault        Boolean   @default(true)
+  aiNoticeText                   String?
+  documentAllowedMimeTypesJson   Json?
+  documentMaxUploadBytes         Int       @default(10485760)
+  documentCategoriesJson         Json?
+  appointmentTimezone            String    @default("Australia/Sydney")
+  appointmentTypesJson           Json?
+  appointmentAvailabilityJson    Json?
+  appointmentMeetingMethodsJson  Json?
+  appointmentBufferBeforeMinutes Int       @default(0)
+  appointmentBufferAfterMinutes  Int       @default(0)
+  appointmentMaxBookingsPerDay   Int?
+  appointmentMinNoticeHours      Int       @default(24)
+  appointmentCutoffHours         Int       @default(24)
+  appointmentRequestFallback     Boolean   @default(true)
+  formsDefaultSettingsJson       Json?
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime  @updatedAt
+}
+
+model OfficialFormTemplate {
+  id                  String                     @id @default(cuid())
+  workspaceId         String?
+  workspace           Workspace?                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUserId     String?
+  createdByUser       User?                      @relation("OfficialFormTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sourceType          String
+  formNumber          String
+  title               String
+  category            String
+  sourceUrl           String?
+  sourceName          String?
+  versionLabel        String?
+  designDate          String?
+  subclassCodes       String[]
+  lifecycleStatus     OfficialFormLifecycleStatus @default(CURRENT)
+  supportStatus       OfficialFormSupportStatus  @default(MAPPING_REQUIRED)
+  isFirmProvided      Boolean                    @default(false)
+  downloadedAt        DateTime?
+  lastCheckedAt       DateTime?
+  syncError           String?
+  checksum            String?
+  fileName            String?
+  mimeType            String?
+  fileData            Bytes?
+  fieldSchemaJson     Json?
+  fieldMappingsJson   Json?
+  mappingNotes        String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  matterDrafts        MatterOfficialFormDraft[]
+
+  @@unique([workspaceId, formNumber, sourceUrl])
+  @@index([workspaceId, formNumber])
+  @@index([supportStatus, lifecycleStatus])
+}
+
+model MatterOfficialFormDraft {
+  id                 String                      @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId           String
+  matter             Matter                      @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  templateId         String
+  template           OfficialFormTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdByUserId    String?
+  createdByUser      User?                       @relation("OfficialFormDraftCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId   String?
+  approvedByUser     User?                       @relation("OfficialFormDraftApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  status             MatterOfficialFormDraftStatus @default(DRAFT)
+  generatedFileName  String?
+  generatedPdfData   Bytes?
+  fieldValuesJson    Json?
+  warningsJson       Json?
+  publishedToClientAt DateTime?
+  approvedAt         DateTime?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  @@unique([matterId, templateId])
+  @@index([workspaceId, status])
 }
 
 model DocumentRequest {

@@ -36,6 +36,7 @@ export async function POST(req: Request) {
       clientId: parsed.data.clientId,
       matterId: parsed.data.matterId,
       label: parsed.data.label,
+      createdByUserId: context.user.id,
       requestOrigin: new URL(req.url).origin
     });
 
@@ -68,4 +69,43 @@ export async function POST(req: Request) {
     serverLog("portal_link.create_error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Unable to create the client portal link right now." }, { status: 500 });
   }
+}
+
+export async function GET(req: Request) {
+  const context = await requireCurrentWorkspaceContext();
+  if (!hasPermission(context.user, "can_manage_clients")) {
+    return NextResponse.json({ error: "You do not have permission to view client portal links." }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const matterId = searchParams.get("matterId");
+  if (!matterId) return NextResponse.json({ error: "matterId is required." }, { status: 400 });
+
+  const matter = await prisma.matter.findFirst({
+    where: { id: matterId, workspaceId: context.workspace.id },
+    include: { assignedToUser: true }
+  });
+  if (!matter || !canAccessMatter(context.user, matter)) {
+    return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+  }
+
+  const links = await prisma.clientPortalAccessToken.findMany({
+    where: { workspaceId: context.workspace.id, matterId },
+    include: { createdByUser: { select: { id: true, name: true, email: true } } },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return NextResponse.json({
+    links: links.map((link) => ({
+      id: link.id,
+      label: link.label,
+      purpose: link.purpose,
+      createdAt: link.createdAt,
+      expiresAt: link.expiresAt,
+      revokedAt: link.revokedAt,
+      lastViewedAt: link.lastViewedAt,
+      status: link.revokedAt ? "revoked" : link.expiresAt < new Date() ? "expired" : "active",
+      createdBy: link.createdByUser ? { name: link.createdByUser.name, email: link.createdByUser.email } : null
+    }))
+  });
 }
