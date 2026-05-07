@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -53,6 +54,7 @@ export default async function MatterChecklistPage({ params }: { params: { matter
             ) : null
           }
         />
+        <AIReviewNotice />
 
         {matter.checklistItems.length ? (
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -74,6 +76,7 @@ export default async function MatterChecklistPage({ params }: { params: { matter
                         <p className="text-sm font-semibold text-white">{item.label}</p>
                         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-300">{item.category}</p>
                         {item.description ? <p className="mt-3 text-sm leading-6 text-slate-300">{item.description}</p> : null}
+                        <p className="mt-3 text-xs text-slate-500">Requirement source: Stored subclass checklist guidance. Agent review is required before treating this item as complete.</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusPill tone="warning">Required</StatusPill>
@@ -104,6 +107,7 @@ export default async function MatterChecklistPage({ params }: { params: { matter
                         <p className="text-sm font-semibold text-white">{item.label}</p>
                         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-300">{item.category}</p>
                         {item.description ? <p className="mt-3 text-sm leading-6 text-slate-300">{item.description}</p> : null}
+                        <p className="mt-3 text-xs text-slate-500">Requirement source: Stored subclass checklist guidance. Supporting evidence may still strengthen the matter.</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusPill>Optional</StatusPill>

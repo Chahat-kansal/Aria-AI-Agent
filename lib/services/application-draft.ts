@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { getSubclass500Template } from "@/lib/services/subclass-templates";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { buildClientLink } from "@/lib/services/client-workflows";
+import { detectExtractionSchema } from "@/lib/services/document-extraction-schemas";
 import { decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken, shortHashPreview } from "@/lib/security/hash";
 
@@ -171,6 +172,7 @@ export async function uploadDocumentToMatter(input: {
 }) {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
   const category = classifyDocument(input.fileName, input.extractedText);
+  const extractionSchema = detectExtractionSchema(input.fileName, input.extractedText);
   const extractedFields = inferredFields(input.fileName, category, input.extractedText);
 
   const document = await prisma.document.create({
@@ -200,7 +202,12 @@ export async function uploadDocumentToMatter(input: {
         fields: extractedFields,
         extractedTextPreview: input.extractionMetadata?.extractedTextPreview ?? input.extractedText?.slice(0, 1000) ?? "",
         extractionConfidence: input.extractionMetadata?.confidence ?? null,
-        extractionWarnings: input.extractionMetadata?.warnings ?? [],
+        extractionWarnings: [
+          ...(input.extractionMetadata?.warnings ?? []),
+          ...(extractionSchema.supported ? [] : [extractionSchema.manualReviewReason ?? "Manual review required."])
+        ],
+        extractionSchema: extractionSchema.schema,
+        extractionSchemaSupported: extractionSchema.supported,
         extractionConfigured: input.extractionMetadata?.configured ?? true,
         keyValues: input.extractionMetadata?.keyValues ?? [],
         reviewRequired: true

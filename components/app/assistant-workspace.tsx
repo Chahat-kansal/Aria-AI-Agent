@@ -12,11 +12,13 @@ import {
   X
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { SectionCard } from "@/components/ui/section-card";
+import { SourceReliabilityBadge } from "@/components/ui/source-reliability-badge";
 import { StatusPill } from "@/components/ui/status-pill";
-import { SubtleButton } from "@/components/ui/subtle-button";
 import { cn } from "@/lib/utils";
+import type { AriaEvidenceSource } from "@/lib/services/aria-evidence";
 
 type MatterOption = {
   id: string;
@@ -25,6 +27,11 @@ type MatterOption = {
 
 export type AssistantReply = {
   content: string;
+  evidence?: AriaEvidenceSource[];
+  assumptions?: string[];
+  missingInformation?: string[];
+  confidence?: number;
+  warnings?: string[];
   groundedFacts?: string[];
   reasoning?: string[];
   citations?: { label: string; href: string }[];
@@ -162,6 +169,34 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 {payload.error}
               </div>
             ) : null}
+            {typeof payload.confidence === "number" ? (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-300">
+                <span className="font-medium text-white">Confidence:</span> {Math.round(payload.confidence * 100)}%
+              </div>
+            ) : null}
+            {payload.evidence?.length ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Evidence used</p>
+                <div className="mt-2 space-y-2">
+                  {payload.evidence.map((item, index) => (
+                    <div key={`${item.title}-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-white">{item.title}</p>
+                          {item.snippet ? <p className="mt-2 text-sm text-slate-300">{item.snippet}</p> : null}
+                        </div>
+                        <SourceReliabilityBadge reliability={item.reliability} />
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                        <span>{String(item.sourceType).replace(/_/g, " ")}</span>
+                        {typeof item.confidence === "number" ? <span>{Math.round(item.confidence * 100)}% source confidence</span> : null}
+                        {item.url ? <a href={item.url} className="text-cyan-300 transition hover:text-white">Open source</a> : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {payload.groundedFacts?.length ? (
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Grounded facts</p>
@@ -186,6 +221,30 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 </ul>
               </div>
             ) : null}
+            {payload.assumptions?.length ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Assumptions</p>
+                <ul className="mt-2 space-y-2">
+                  {payload.assumptions.map((item) => (
+                    <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-300">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {payload.missingInformation?.length ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Missing information</p>
+                <ul className="mt-2 space-y-2">
+                  {payload.missingInformation.map((item) => (
+                    <li key={item} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {payload.recommendedActions?.length ? (
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Recommended actions</p>
@@ -193,6 +252,18 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                   {payload.recommendedActions.map((action) => (
                     <li key={action} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-200">
                       {action}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {payload.warnings?.length ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Warnings</p>
+                <ul className="mt-2 space-y-2">
+                  {payload.warnings.map((warning) => (
+                    <li key={warning} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">
+                      {warning}
                     </li>
                   ))}
                 </ul>
@@ -227,9 +298,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
               </div>
             ) : null}
             {payload.reviewRequired ? (
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-xs text-slate-400">
-                Aria is AI-assisted. Review required before actioning important migration advice.
-              </div>
+              <AIReviewNotice className="text-xs" />
             ) : null}
           </div>
         ) : null}

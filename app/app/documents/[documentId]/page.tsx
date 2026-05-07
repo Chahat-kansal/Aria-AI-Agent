@@ -5,6 +5,7 @@ import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
+import { SourceReliabilityBadge } from "@/components/ui/source-reliability-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { formatDate, formatEnum, getDocumentDetailData } from "@/lib/data/workspace-repository";
@@ -28,6 +29,8 @@ export default async function DocumentDetailPage({ params }: { params: { documen
 
   const extraction = document.extractionResults[0]?.extractedJson as any;
   const intelligence = await getDocumentIntelligence(document);
+  const extractionSchema = typeof extraction?.extractionSchema === "string" ? extraction.extractionSchema : "OTHER";
+  const extractionSchemaSupported = extraction?.extractionSchemaSupported !== false;
 
   return (
     <AppShell title="Documents">
@@ -68,6 +71,15 @@ export default async function DocumentDetailPage({ params }: { params: { documen
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Category suggestion</p>
               <p className="mt-2 text-sm text-white">{intelligence.categorySuggestion ?? "Current category looks reasonable"}</p>
             </SectionCard>
+            <SectionCard className="p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Extraction schema</p>
+              <p className="mt-2 text-sm text-white">{String(extractionSchema).replace(/_/g, " ")}</p>
+            </SectionCard>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <SourceReliabilityBadge reliability="CLIENT_SUPPLIED" />
+            <SourceReliabilityBadge reliability="AI_EXTRACTED" />
+            <SourceReliabilityBadge reliability="SYSTEM_DERIVED" />
           </div>
         </AIInsightPanel>
 
@@ -110,6 +122,7 @@ export default async function DocumentDetailPage({ params }: { params: { documen
                   </p>
                 </div>
                 {intelligence.weakOcr ? <p className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">The stored preview is weak, so Aria is intentionally not overstating what this file contains. Confirm the original upload manually before using it as evidence.</p> : null}
+                {!extractionSchemaSupported ? <p className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">No document-specific extraction schema matched this upload. Aria is treating this file as manual-review evidence rather than pretending schema-backed extraction succeeded.</p> : null}
               </SectionCard>
             </PageSection>
 
@@ -122,9 +135,12 @@ export default async function DocumentDetailPage({ params }: { params: { documen
                         <p className="text-sm font-semibold text-white">{field.fieldLabel}</p>
                         <p className="mt-2 text-sm text-slate-200">{field.fieldValue}</p>
                       </div>
-                      <StatusPill tone={field.status === "VERIFIED" ? "success" : field.status === "CONFLICTING" ? "danger" : "warning"}>
-                        {formatEnum(field.status)}
-                      </StatusPill>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusPill tone={field.status === "VERIFIED" ? "success" : field.status === "CONFLICTING" ? "danger" : "warning"}>
+                          {formatEnum(field.status)}
+                        </StatusPill>
+                        <SourceReliabilityBadge reliability="AI_EXTRACTED" />
+                      </div>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -101,11 +102,26 @@ export default async function OverviewPage() {
             </Link>
           )}
         >
+          <AIReviewNotice />
           {briefing.status === "not_configured" && briefing.configMessage ? (
             <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
               {briefing.configMessage}
             </div>
           ) : null}
+          <div className="grid gap-3 md:grid-cols-2">
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Evidence used</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                {briefing.groundedFacts.slice(0, 6).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </SectionCard>
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Warnings</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                {(briefing.securityWarnings.length ? briefing.securityWarnings : ["No additional security warning is currently visible in your scope."]).slice(0, 6).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </SectionCard>
+          </div>
           {briefing.recommendedOrder.length ? (
             <div className="mt-6 grid gap-3 md:grid-cols-3">
               {briefing.recommendedOrder.slice(0, 3).map((item, index) => (

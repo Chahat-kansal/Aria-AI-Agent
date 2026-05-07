@@ -4,12 +4,15 @@ import { AppShell } from "@/components/app/app-shell";
 import { MigrationIntelActions } from "@/components/app/migration-intel-actions";
 import { MigrationIntelReviewButton } from "@/components/app/migration-intel-review-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
+import { SourceReliabilityBadge } from "@/components/ui/source-reliability-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { prisma } from "@/lib/prisma";
 import { getAiConfigStatus, getCronConfigStatus } from "@/lib/services/runtime-config";
+import { sourceTypeToReliability } from "@/lib/services/aria-evidence";
 import { hasFirmWideAccess, hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 
 function formatDate(value: Date | null | undefined) {
@@ -201,6 +204,7 @@ export default async function UpdatesPage({
           description="Aria monitors Australian visa news and official updates, classifies severity, and highlights affected matters."
           action={<MigrationIntelActions canSweep={canSweep} canLog={canLog} />}
         />
+        <AIReviewNotice variant="intel" />
 
         {configWarnings.length ? (
           <SectionCard className="border-amber-400/20 bg-amber-400/10">
@@ -294,6 +298,7 @@ export default async function UpdatesPage({
                           {item.severity}
                         </StatusPill>
                         <StatusPill>{String(item.sourceType || "NEWS").replace(/_/g, " ")}</StatusPill>
+                        <SourceReliabilityBadge reliability={sourceTypeToReliability(item.sourceType)} />
                         <p className="text-sm text-slate-400">
                           {(item.source || "Unknown source")} - {formatDate(item.publishedAt ?? item.fetchedAt)}
                         </p>
@@ -313,6 +318,11 @@ export default async function UpdatesPage({
                         {item.title}
                       </Link>
                       <p className="mt-3 max-w-5xl text-base leading-8 text-slate-300">{item.summary}</p>
+                      <p className="mt-3 text-xs text-slate-500">
+                        {item.sourceType === "OFFICIAL"
+                          ? "Official source material remains the highest-trust reference for policy checks."
+                          : "This item may reflect news/reporting or internal intelligence and is not a substitute for checking official Department sources."}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">

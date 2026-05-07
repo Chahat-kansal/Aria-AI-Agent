@@ -6,6 +6,8 @@ import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-confi
 import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { serverLog } from "@/lib/services/runtime-config";
 import { canAccessMatter, scopedMatterWhere } from "@/lib/services/roles";
+import { groundedResponseToAssistantPayload, buildFallbackGroundedAssistantPayload, type AssistantGroundedPayload } from "@/lib/services/aria-grounding";
+import { type AriaEvidenceSource, sourceTypeToReliability } from "@/lib/services/aria-evidence";
 
 type ThreadUser = AssistantScopedUser;
 
@@ -32,42 +34,67 @@ Rules:
 
 Return strict JSON only:
 {
-  "content": string,
+  "answer": string,
+  "evidence": [{
+    "sourceType": string,
+    "sourceId": string,
+    "title": string,
+    "snippet": string,
+    "url": string,
+    "confidence": number,
+    "reliability": string
+  }],
+  "assumptions": string[],
+  "missingInformation": string[],
+  "confidence": number,
+  "reviewRequired": true,
+  "recommendedActions": string[],
+  "warnings": string[],
   "groundedFacts": string[],
   "reasoning": string[],
   "recommendedActions": string[],
   "citations": [{"label": string, "href": string}],
-  "riskWarnings": string[],
-  "reviewRequired": true
+  "riskWarnings": string[]
 }
 `.trim();
 
-type NormalizedAssistantPayload = {
-  content: string;
-  groundedFacts: string[];
-  reasoning: string[];
-  recommendedActions: string[];
-  citations: Array<{ label: string; href: string }>;
-  riskWarnings: string[];
-  reviewRequired: true;
-  configured?: boolean;
-  setup?: string;
-  error?: string;
-};
+type NormalizedAssistantPayload = AssistantGroundedPayload;
 
 function normalizeReply(value: any, fallback: NormalizedAssistantPayload): NormalizedAssistantPayload {
-  return {
-    content: typeof value?.content === "string" && value.content.trim() ? value.content.trim() : fallback.content,
+  const grounded = groundedResponseToAssistantPayload({
+    answer: typeof value?.answer === "string" && value.answer.trim() ? value.answer.trim() : fallback.content,
+    evidence: Array.isArray(value?.evidence)
+      ? value.evidence
+          .filter((item: any) => item && typeof item.title === "string" && typeof item.reliability === "string")
+          .slice(0, 12)
+          .map((item: any) => ({
+            sourceType: String(item.sourceType || "SYSTEM"),
+            sourceId: typeof item.sourceId === "string" ? item.sourceId : undefined,
+            title: String(item.title),
+            snippet: typeof item.snippet === "string" ? item.snippet : undefined,
+            url: typeof item.url === "string" ? item.url : undefined,
+            confidence: Number.isFinite(Number(item.confidence)) ? Number(item.confidence) : undefined,
+            reliability: item.reliability
+          }))
+      : fallback.evidence,
+    assumptions: Array.isArray(value?.assumptions) ? value.assumptions.map(String).slice(0, 12) : fallback.assumptions,
+    missingInformation: Array.isArray(value?.missingInformation) ? value.missingInformation.map(String).slice(0, 12) : fallback.missingInformation,
+    confidence: Number.isFinite(Number(value?.confidence)) ? Number(value.confidence) : fallback.confidence,
+    reviewRequired: true,
+    recommendedActions: Array.isArray(value?.recommendedActions) ? value.recommendedActions.map(String).slice(0, 12) : fallback.recommendedActions,
+    warnings: Array.isArray(value?.warnings) ? value.warnings.map(String).slice(0, 12) : fallback.warnings
+  }, {
     groundedFacts: Array.isArray(value?.groundedFacts) ? value.groundedFacts.map(String).slice(0, 12) : fallback.groundedFacts,
     reasoning: Array.isArray(value?.reasoning) ? value.reasoning.map(String).slice(0, 12) : fallback.reasoning,
-    recommendedActions: Array.isArray(value?.recommendedActions) ? value.recommendedActions.map(String).slice(0, 12) : fallback.recommendedActions,
     citations: Array.isArray(value?.citations)
       ? value.citations
           .filter((citation: any) => citation && typeof citation.label === "string" && typeof citation.href === "string")
           .slice(0, 12)
       : fallback.citations,
-    riskWarnings: Array.isArray(value?.riskWarnings) ? value.riskWarnings.map(String).slice(0, 12) : fallback.riskWarnings,
-    reviewRequired: true,
+    riskWarnings: Array.isArray(value?.riskWarnings) ? value.riskWarnings.map(String).slice(0, 12) : fallback.riskWarnings
+  });
+  return {
+    ...grounded,
     configured: typeof value?.configured === "boolean" ? value.configured : fallback.configured,
     setup: typeof value?.setup === "string" ? value.setup : fallback.setup,
     error: typeof value?.error === "string" ? value.error : fallback.error
@@ -80,6 +107,9 @@ function summarizeContextForFallback(contextPack: any): NormalizedAssistantPaylo
   const recommendedActions: string[] = [];
   const citations: Array<{ label: string; href: string }> = [];
   const riskWarnings: string[] = [];
+  const evidence: AriaEvidenceSource[] = [];
+  const assumptions: string[] = [];
+  const missingInformation: string[] = [];
 
   if (contextPack.scope === "matter" && contextPack.contextStatus === "ok") {
     groundedFacts.push(
@@ -104,6 +134,37 @@ function summarizeContextForFallback(contextPack: any): NormalizedAssistantPaylo
     recommendedActions.push(
       ...contextPack.matterIntelligence.recommendedActions.map((action: any) => action.title ?? action.reason ?? String(action)).slice(0, 5)
     );
+    evidence.push(
+      {
+        sourceType: "MATTER",
+        sourceId: contextPack.matter.id,
+        title: `${contextPack.matter.client.name} - ${contextPack.matter.title}`,
+        snippet: `Stage ${String(contextPack.matter.stage).toLowerCase().replace(/_/g, " ")}, readiness ${contextPack.matter.readinessScore}%.`,
+        url: `/app/matters/${contextPack.matter.id}`,
+        confidence: 1,
+        reliability: "AGENT_ENTERED"
+      },
+      ...contextPack.documents.slice(0, 4).map((document: any) => ({
+        sourceType: "DOCUMENT" as const,
+        sourceId: document.id,
+        title: document.name,
+        snippet: `${document.category} · ${String(document.extractionStatus).toLowerCase()}`,
+        url: `/app/documents/${document.id}`,
+        confidence: 0.72,
+        reliability: "AI_EXTRACTED" as const
+      })),
+      ...contextPack.updateImpacts.slice(0, 3).map((impact: any) => ({
+        sourceType: "OFFICIAL_UPDATE" as const,
+        sourceId: impact.id,
+        title: impact.title,
+        snippet: impact.summary ?? impact.reason,
+        url: impact.sourceUrl || "/app/updates",
+        confidence: 0.82,
+        reliability: sourceTypeToReliability("OFFICIAL")
+      }))
+    );
+    missingInformation.push(...(contextPack.checklistGaps ?? []).slice(0, 6).map((item: any) => item.label));
+    assumptions.push("Only the currently visible matter, document, draft, and update records in your access scope were used.");
     citations.push(
       { label: "Matter", href: `/app/matters/${contextPack.matter.id}` },
       { label: "Draft review", href: `/app/matters/${contextPack.matter.id}/draft` },
@@ -127,6 +188,28 @@ function summarizeContextForFallback(contextPack: any): NormalizedAssistantPaylo
     recommendedActions.push(
       ...contextPack.workspace.nextActions.map((action: any) => action.title ?? action.reason ?? String(action)).slice(0, 6)
     );
+    evidence.push(
+      ...contextPack.matters.slice(0, 5).map((matter: any) => ({
+        sourceType: "MATTER" as const,
+        sourceId: matter.id,
+        title: `${matter.clientName} - ${matter.title}`,
+        snippet: `Subclass ${matter.visaSubclass}, stage ${String(matter.stage).toLowerCase().replace(/_/g, " ")}, readiness ${matter.readinessScore}%.`,
+        url: `/app/matters/${matter.id}`,
+        confidence: 1,
+        reliability: "AGENT_ENTERED" as const
+      })),
+      ...contextPack.updates.slice(0, 4).map((update: any) => ({
+        sourceType: update.sourceType === "OFFICIAL" ? "OFFICIAL_UPDATE" as const : "MIGRATION_INTEL" as const,
+        sourceId: update.id,
+        title: update.title,
+        snippet: update.summary,
+        url: "/app/updates",
+        confidence: 0.78,
+        reliability: sourceTypeToReliability(update.sourceType)
+      }))
+    );
+    missingInformation.push(...(contextPack.checklistGaps ?? []).slice(0, 6));
+    assumptions.push("This response is limited to workspace records visible inside your current role and assignment scope.");
     citations.push(
       { label: "Overview", href: "/app/overview" },
       { label: "Updates", href: "/app/updates" },
@@ -136,17 +219,21 @@ function summarizeContextForFallback(contextPack: any): NormalizedAssistantPaylo
   } else {
     groundedFacts.push("The selected context is not currently available within your workspace scope.");
     reasoning.push("Aria cannot safely infer missing workspace data.");
+    assumptions.push("No additional inaccessible records were used.");
   }
 
-  return {
-    content: "Aria prepared a grounded workspace summary from the currently accessible records. Review required before acting on any migration advice or client-facing wording.",
+  return buildFallbackGroundedAssistantPayload({
+    answer: "Aria prepared a grounded workspace summary from the currently accessible records. Review required before acting on any migration advice or client-facing wording.",
+    evidence,
+    assumptions,
+    missingInformation,
+    confidence: 0.76,
+    recommendedActions,
+    warnings: riskWarnings.length ? riskWarnings : ["Aria is AI-assisted. Registered migration agent review remains required."],
     groundedFacts,
     reasoning,
-    recommendedActions,
-    citations,
-    riskWarnings: riskWarnings.length ? riskWarnings : ["Aria is AI-assisted. Registered migration agent review remains required."],
-    reviewRequired: true
-  };
+    citations
+  });
 }
 
 async function assertThreadAccess(threadId: string, user: ThreadUser) {
@@ -380,6 +467,18 @@ export async function sendAssistantThreadMessage(input: {
     contextId: thread.contextId,
     matterId: thread.matterId
   });
+  await auditEvent({
+    workspaceId: input.user.workspaceId,
+    userId: input.user.id,
+    entityType: "AssistantThread",
+    entityId: thread.id,
+    action: "assistant.context.created",
+    metadata: {
+      runId: run.id,
+      scope: contextPack.scope,
+      contextStatus: contextPack.contextStatus
+    }
+  });
 
   const fallback = summarizeContextForFallback(contextPack);
   let normalized: NormalizedAssistantPayload = fallback;
@@ -389,12 +488,23 @@ export async function sendAssistantThreadMessage(input: {
     if (!isAiConfigured()) {
       normalized = {
         ...fallback,
-        content: "AI is not configured. Add API key in environment variables to enable Aria responses.",
+        content: "AI is not configured. Add OPENAI_API_KEY to enable Aria responses.",
         configured: false,
         setup: aiNotConfiguredResponse().setup,
         citations: []
       };
     } else {
+      await auditEvent({
+        workspaceId: input.user.workspaceId,
+        userId: input.user.id,
+        entityType: "AssistantThread",
+        entityId: thread.id,
+        action: "assistant.prompt.generated",
+        metadata: {
+          runId: run.id,
+          contextType: thread.contextType ?? "WORKSPACE"
+        }
+      });
       const ai = await generateAriaAiResponse({
         system: ASSISTANT_SYSTEM_PROMPT,
         user: prompt,
@@ -454,7 +564,22 @@ export async function sendAssistantThreadMessage(input: {
       action: "assistant.response.generated",
       metadata: {
         runId: run.id,
-        configured: normalized.configured ?? true
+        configured: normalized.configured ?? true,
+        confidence: normalized.confidence,
+        evidenceCount: normalized.evidence.length
+      }
+    });
+
+    await auditEvent({
+      workspaceId: input.user.workspaceId,
+      userId: input.user.id,
+      entityType: "AssistantThread",
+      entityId: thread.id,
+      action: "assistant.evidence.used",
+      metadata: {
+        runId: run.id,
+        evidenceTitles: normalized.evidence.slice(0, 8).map((item) => item.title),
+        evidenceCount: normalized.evidence.length
       }
     });
 

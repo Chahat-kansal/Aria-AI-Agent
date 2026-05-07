@@ -6,9 +6,9 @@ export function AIReviewNotice({
   className?: string;
 }) {
   const message = variant === "client"
-    ? "Your migration agent will review all information before use. Aria may assist with document review and drafting, but it does not automatically lodge applications."
+    ? "Your migration agent will review all information before it is used. Aria does not lodge applications."
     : variant === "intel"
-      ? "Migration intelligence may include news and reporting. It is not a substitute for checking official Department sources."
+      ? "Migration intelligence may include news/reporting and is not a substitute for checking official Department sources."
       : "AI-assisted output. Registered migration agent review required before use. Aria does not provide final migration advice, does not guarantee visa outcomes, and does not lodge applications.";
 
   return (

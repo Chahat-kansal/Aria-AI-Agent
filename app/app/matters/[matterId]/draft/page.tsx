@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
+import { SourceReliabilityBadge } from "@/components/ui/source-reliability-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { createOrGetSubclass500Draft, getDraftReviewData } from "@/lib/services/application-draft";
@@ -123,6 +124,10 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Evidence link</p>
                               <p className="mt-2 text-sm text-slate-200">{source ? "Linked to uploaded evidence" : "No evidence link yet"}</p>
                             </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <SourceReliabilityBadge reliability={source ? "AI_EXTRACTED" : "SYSTEM_DERIVED"} />
+                            {field.status === "VERIFIED" ? <SourceReliabilityBadge reliability="AGENT_ENTERED" /> : null}
                           </div>
 
                           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">

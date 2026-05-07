@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/blocks/page-header";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { Card } from "@/components/ui/card";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getPathwayAnalysisDetail } from "@/lib/services/pathway-analysis";
+import { calculateIndicativeSkilledPoints } from "@/lib/services/skilled-points";
 import { hasPermission } from "@/lib/services/roles";
 
 function asList(value: unknown): string[] {
@@ -45,10 +47,14 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
   if (!analysis) notFound();
 
   const profile = analysis.profileJson as Record<string, unknown>;
+  const points = calculateIndicativeSkilledPoints(profile);
 
   return (
     <AppShell title="Pathway Analysis">
       <PageHeader title={analysis.title} subtitle="AI-assisted scenario analysis. Registered migration agent review is required before client advice or application strategy." />
+      <div className="mb-4">
+        <AIReviewNotice />
+      </div>
 
       <div className="mb-4 grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
         <Card>
@@ -81,6 +87,22 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
         <Card><JsonList title="Blockers / risks to clarify" value={analysis.blockersJson} /></Card>
         <Card><JsonList title="Evidence gaps" value={analysis.evidenceGapsJson} /></Card>
       </div>
+
+      <Card className="mb-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Indicative skilled points snapshot</p>
+        <h3 className="mt-2 text-lg font-semibold">{points.total} points recorded from currently supplied profile evidence</h3>
+        <p className="mt-2 text-sm text-muted">This does not guarantee invitation or final eligibility. Any missing evidence below should be treated as unverified.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {points.breakdown.map((item) => (
+            <div key={item.key} className="rounded-xl border border-border p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted">{item.label}</p>
+              <p className="mt-2 text-lg font-semibold">{item.points}</p>
+              <JsonList title="Evidence" value={item.evidence} />
+              <JsonList title="Missing evidence" value={item.missingEvidence} />
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <div className="space-y-4">
         {analysis.options.map((option) => (

@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { PortalAccessManager } from "@/components/app/portal-access-manager";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
+import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { MetricCard } from "@/components/ui/metric-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -185,6 +186,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
             )
           }
         >
+          <AIReviewNotice />
           <div className="grid gap-3 md:grid-cols-3">
             <SectionCard className="p-4">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Next best action</p>
@@ -197,6 +199,24 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
             <SectionCard className="p-4">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Final review note</p>
               <p className="mt-3 text-sm leading-6 text-slate-200">{intelligence.finalReviewNote}</p>
+            </SectionCard>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Evidence used</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                {intelligence.groundedFacts.length
+                  ? intelligence.groundedFacts.slice(0, 6).map((fact) => <li key={fact}>{fact}</li>)
+                  : <li>No matter evidence summary is available yet.</li>}
+              </ul>
+            </SectionCard>
+            <SectionCard className="p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Recommended next actions</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                {intelligence.recommendedActions.length
+                  ? intelligence.recommendedActions.slice(0, 6).map((action) => <li key={`${action.entityId}-${action.title}`}>{action.title}</li>)
+                  : <li>No recommended action is stored yet.</li>}
+              </ul>
             </SectionCard>
           </div>
         </AIInsightPanel>
