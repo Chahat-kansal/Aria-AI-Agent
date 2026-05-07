@@ -60,38 +60,52 @@ Return strict JSON only:
 
 type NormalizedAssistantPayload = AssistantGroundedPayload;
 
+function fallbackArray<T>(value: T[] | undefined, fallback: T[]) {
+  return value && value.length ? value : fallback;
+}
+
 function normalizeReply(value: any, fallback: NormalizedAssistantPayload): NormalizedAssistantPayload {
+  const normalizedEvidence = Array.isArray(value?.evidence)
+    ? value.evidence
+        .filter((item: any) => item && typeof item.title === "string" && typeof item.reliability === "string")
+        .slice(0, 12)
+        .map((item: any) => ({
+          sourceType: String(item.sourceType || "SYSTEM"),
+          sourceId: typeof item.sourceId === "string" ? item.sourceId : undefined,
+          title: String(item.title),
+          snippet: typeof item.snippet === "string" ? item.snippet : undefined,
+          url: typeof item.url === "string" ? item.url : undefined,
+          confidence: Number.isFinite(Number(item.confidence)) ? Number(item.confidence) : undefined,
+          reliability: item.reliability
+        }))
+    : undefined;
+  const normalizedAssumptions = Array.isArray(value?.assumptions) ? value.assumptions.map(String).slice(0, 12) : undefined;
+  const normalizedMissingInformation = Array.isArray(value?.missingInformation) ? value.missingInformation.map(String).slice(0, 12) : undefined;
+  const normalizedRecommendedActions = Array.isArray(value?.recommendedActions) ? value.recommendedActions.map(String).slice(0, 12) : undefined;
+  const normalizedWarnings = Array.isArray(value?.warnings) ? value.warnings.map(String).slice(0, 12) : undefined;
+  const normalizedGroundedFacts = Array.isArray(value?.groundedFacts) ? value.groundedFacts.map(String).slice(0, 12) : undefined;
+  const normalizedReasoning = Array.isArray(value?.reasoning) ? value.reasoning.map(String).slice(0, 12) : undefined;
+  const normalizedCitations = Array.isArray(value?.citations)
+    ? value.citations
+        .filter((citation: any) => citation && typeof citation.label === "string" && typeof citation.href === "string")
+        .slice(0, 12)
+    : undefined;
+  const normalizedRiskWarnings = Array.isArray(value?.riskWarnings) ? value.riskWarnings.map(String).slice(0, 12) : undefined;
+
   const grounded = groundedResponseToAssistantPayload({
     answer: typeof value?.answer === "string" && value.answer.trim() ? value.answer.trim() : fallback.content,
-    evidence: Array.isArray(value?.evidence)
-      ? value.evidence
-          .filter((item: any) => item && typeof item.title === "string" && typeof item.reliability === "string")
-          .slice(0, 12)
-          .map((item: any) => ({
-            sourceType: String(item.sourceType || "SYSTEM"),
-            sourceId: typeof item.sourceId === "string" ? item.sourceId : undefined,
-            title: String(item.title),
-            snippet: typeof item.snippet === "string" ? item.snippet : undefined,
-            url: typeof item.url === "string" ? item.url : undefined,
-            confidence: Number.isFinite(Number(item.confidence)) ? Number(item.confidence) : undefined,
-            reliability: item.reliability
-          }))
-      : fallback.evidence,
-    assumptions: Array.isArray(value?.assumptions) ? value.assumptions.map(String).slice(0, 12) : fallback.assumptions,
-    missingInformation: Array.isArray(value?.missingInformation) ? value.missingInformation.map(String).slice(0, 12) : fallback.missingInformation,
+    evidence: fallbackArray(normalizedEvidence, fallback.evidence),
+    assumptions: fallbackArray(normalizedAssumptions, fallback.assumptions),
+    missingInformation: fallbackArray(normalizedMissingInformation, fallback.missingInformation),
     confidence: Number.isFinite(Number(value?.confidence)) ? Number(value.confidence) : fallback.confidence,
     reviewRequired: true,
-    recommendedActions: Array.isArray(value?.recommendedActions) ? value.recommendedActions.map(String).slice(0, 12) : fallback.recommendedActions,
-    warnings: Array.isArray(value?.warnings) ? value.warnings.map(String).slice(0, 12) : fallback.warnings
+    recommendedActions: fallbackArray(normalizedRecommendedActions, fallback.recommendedActions),
+    warnings: fallbackArray(normalizedWarnings, fallback.warnings)
   }, {
-    groundedFacts: Array.isArray(value?.groundedFacts) ? value.groundedFacts.map(String).slice(0, 12) : fallback.groundedFacts,
-    reasoning: Array.isArray(value?.reasoning) ? value.reasoning.map(String).slice(0, 12) : fallback.reasoning,
-    citations: Array.isArray(value?.citations)
-      ? value.citations
-          .filter((citation: any) => citation && typeof citation.label === "string" && typeof citation.href === "string")
-          .slice(0, 12)
-      : fallback.citations,
-    riskWarnings: Array.isArray(value?.riskWarnings) ? value.riskWarnings.map(String).slice(0, 12) : fallback.riskWarnings
+    groundedFacts: fallbackArray(normalizedGroundedFacts, fallback.groundedFacts),
+    reasoning: fallbackArray(normalizedReasoning, fallback.reasoning),
+    citations: fallbackArray(normalizedCitations, fallback.citations),
+    riskWarnings: fallbackArray(normalizedRiskWarnings, fallback.riskWarnings)
   });
   return {
     ...grounded,

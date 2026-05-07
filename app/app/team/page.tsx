@@ -5,7 +5,7 @@ import { StatusChip } from "@/components/app/blocks/status-chip";
 import { TeamUserForm } from "@/components/app/team-user-form";
 import { TeamUserActions } from "@/components/app/team-user-actions";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { canManageTeam, getUserPermissions, permissionDefinitions, roleDefinitions, roleDescription, roleLabel } from "@/lib/services/roles";
+import { canManageTeam, defaultPermissionsForRole, defaultVisibilityScope, getUserPermissions, permissionDefinitions, roleDefinitions, roleDescription, roleLabel } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { generateSecurityIntelligence, generateTeamIntelligence } from "@/lib/services/aria-intelligence";
 
@@ -54,7 +54,13 @@ export default async function TeamPage() {
                 Staff accounts are real login users inside this company workspace. Access is limited by role, visibility scope, and per-user feature permissions.
               </p>
             </div>
-            <TeamUserForm roles={roleDefinitions} supervisors={users.map((user) => ({ id: user.id, name: user.name, email: user.email }))} permissions={permissionDefinitions} />
+            <TeamUserForm
+              roles={roleDefinitions}
+              supervisors={users.map((user) => ({ id: user.id, name: user.name, email: user.email }))}
+              permissions={permissionDefinitions}
+              permissionDefaultsByRole={Object.fromEntries(roleDefinitions.map((role) => [role.role, defaultPermissionsForRole(role.role)]))}
+              visibilityDefaultsByRole={Object.fromEntries(roleDefinitions.map((role) => [role.role, defaultVisibilityScope(role.role)]))}
+            />
           </Card>
 
           <Card>

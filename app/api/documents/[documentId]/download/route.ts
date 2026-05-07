@@ -3,7 +3,7 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessMatter } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { decryptBuffer, isEncrypted } from "@/lib/security/encryption";
-import { auditDocumentDownloaded } from "@/lib/services/audit";
+import { auditAccessDenied, auditDocumentDownloaded } from "@/lib/services/audit";
 import { getClientPortalByToken, getDocumentRequestByToken } from "@/lib/services/client-workflows";
 
 function safeDownloadName(fileName: string) {
@@ -45,6 +45,14 @@ export async function GET(req: Request, { params }: { params: { documentId: stri
   }
 
   if (context && !canAccessMatter(context.user, document.matter)) {
+    await auditAccessDenied({
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      entityType: "Document",
+      entityId: document.id,
+      reason: "User tried to download a document outside their matter scope.",
+      metadata: { matterId: document.matterId }
+    });
     return NextResponse.json({ error: "You do not have access to this document." }, { status: 403 });
   }
   if (!context && !clientTokenAllowed) {

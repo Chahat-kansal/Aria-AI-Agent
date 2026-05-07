@@ -1,18 +1,44 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type RoleDefinition = { role: string; label: string; category: string; description: string };
 type PermissionDefinition = { key: string; label: string; description: string };
 type UserOption = { id: string; name: string; email: string };
 
-export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleDefinition[]; supervisors: UserOption[]; permissions: PermissionDefinition[] }) {
+export function TeamUserForm({
+  roles,
+  supervisors,
+  permissions,
+  permissionDefaultsByRole,
+  visibilityDefaultsByRole
+}: {
+  roles: RoleDefinition[];
+  supervisors: UserOption[];
+  permissions: PermissionDefinition[];
+  permissionDefaultsByRole: Record<string, Record<string, boolean>>;
+  visibilityDefaultsByRole: Record<string, string>;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const initialRole = roles[0]?.role ?? "";
+  const initialPermissions = useMemo(
+    () => ({ ...(permissionDefaultsByRole[initialRole] ?? {}) }),
+    [initialRole, permissionDefaultsByRole]
+  );
+  const [selectedRole, setSelectedRole] = useState(initialRole);
+  const [selectedVisibilityScope, setSelectedVisibilityScope] = useState(visibilityDefaultsByRole[initialRole] ?? "ASSIGNED_ONLY");
+  const [selectedPermissions, setSelectedPermissions] = useState<Record<string, boolean>>(initialPermissions);
+
+  function resetRoleState(role: string) {
+    setSelectedRole(role);
+    setSelectedVisibilityScope(visibilityDefaultsByRole[role] ?? "ASSIGNED_ONLY");
+    setSelectedPermissions({ ...(permissionDefaultsByRole[role] ?? {}) });
+  }
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,9 +49,10 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
     const form = new FormData(formElement);
     const payload: Record<string, unknown> = Object.fromEntries(form.entries());
     payload.permissions = permissions.reduce<Record<string, boolean>>((acc, permission) => {
-      acc[permission.key] = form.has(permission.key);
+      acc[permission.key] = selectedPermissions[permission.key] === true;
       return acc;
     }, {});
+    payload.visibilityScope = selectedVisibilityScope;
     if (!payload.supervisorId) delete payload.supervisorId;
 
     const response = await fetch("/api/team", {
@@ -44,6 +71,7 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
     setMessage(result?.emailDelivery?.delivered ? "Invite sent to staff member." : (result?.emailDelivery?.reason ?? "Invite created. Share the invite link with the staff member."));
     setInviteLink(result?.inviteLink ?? null);
     formElement.reset();
+    resetRoleState(initialRole);
     setIsOpen(false);
     router.refresh();
   }
@@ -87,10 +115,10 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
       </div>
       <input name="name" required placeholder="Full name" />
       <input name="email" required type="email" placeholder="Work email" />
-      <select name="role" required>
+      <select name="role" required value={selectedRole} onChange={(event) => resetRoleState(event.target.value)}>
         {roles.map((role) => <option key={role.role} value={role.role}>{role.label}</option>)}
       </select>
-      <select name="visibilityScope" defaultValue="ASSIGNED_ONLY">
+      <select name="visibilityScope" value={selectedVisibilityScope} onChange={(event) => setSelectedVisibilityScope(event.target.value)}>
         <option value="ASSIGNED_ONLY">Assigned work only</option>
         <option value="TEAM_OVERSIGHT">Team oversight</option>
         <option value="FIRM_WIDE">Firm-wide visibility</option>
@@ -110,7 +138,13 @@ export function TeamUserForm({ roles, supervisors, permissions }: { roles: RoleD
         <div className="grid gap-2 md:grid-cols-2">
           {permissions.map((permission) => (
             <label key={permission.key} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
-              <input name={permission.key} type="checkbox" defaultChecked={permission.key === "can_access_ai"} className="mt-1" />
+              <input
+                name={permission.key}
+                type="checkbox"
+                checked={selectedPermissions[permission.key] === true}
+                onChange={(event) => setSelectedPermissions((current) => ({ ...current, [permission.key]: event.target.checked }))}
+                className="mt-1"
+              />
               <span>
                 <span className="block font-medium text-white">{permission.label}</span>
                 <span className="text-xs text-slate-400">{permission.description}</span>

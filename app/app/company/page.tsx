@@ -3,10 +3,11 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { Card } from "@/components/ui/card";
 import { StatusChip } from "@/components/app/blocks/status-chip";
 import { CompanyProfileForm } from "@/components/app/company-profile-form";
+import { headers } from "next/headers";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatEnum, getCompanyProfileData } from "@/lib/data/workspace-repository";
 import { canAccessCompanyWorkspace, canManageTeam, roleLabel } from "@/lib/services/roles";
-import { getBaseUrl } from "@/lib/services/runtime-config";
+import { resolveBaseUrl } from "@/lib/services/runtime-config";
 
 export default async function CompanyPage() {
   const context = await getCurrentWorkspaceContext();
@@ -20,7 +21,11 @@ export default async function CompanyPage() {
   }
   const workspace = context ? await getCompanyProfileData(context.workspace.id) : null;
   const canManageCompany = context ? canManageTeam(context.user) : false;
-  const staffPortalUrl = workspace ? `${getBaseUrl()}/w/${workspace.slug}/login` : null;
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+  const proto = headerStore.get("x-forwarded-proto") || "http";
+  const requestOrigin = host ? `${proto}://${host}` : null;
+  const staffPortalUrl = workspace ? `${resolveBaseUrl({ requestOrigin })}/w/${workspace.slug}/login` : null;
 
   return (
     <AppShell title="Company">

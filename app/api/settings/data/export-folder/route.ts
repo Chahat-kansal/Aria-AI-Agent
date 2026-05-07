@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
-import { auditEvent } from "@/lib/services/audit";
+import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { decryptBuffer, isEncrypted } from "@/lib/security/encryption";
 import { buildStoredZip } from "@/lib/services/zip";
 
@@ -29,6 +29,12 @@ function categoryFolder(category: string) {
 export async function GET(req: Request) {
   const context = await requireCurrentWorkspaceContext();
   if (!hasPermission(context.user, "can_export_data")) {
+    await auditAccessDenied({
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      entityType: "Matter",
+      reason: "User tried to export a secure client folder without export permission."
+    });
     return NextResponse.json({ error: "You do not have permission to export secure client folders." }, { status: 403 });
   }
 
@@ -51,6 +57,13 @@ export async function GET(req: Request) {
   });
 
   if (!matter || !canAccessMatter(context.user, matter)) {
+    await auditAccessDenied({
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      entityType: "Matter",
+      entityId: matterId,
+      reason: "User tried to export a matter outside their access scope."
+    });
     return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
   }
 
