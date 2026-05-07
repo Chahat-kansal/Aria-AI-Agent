@@ -17,7 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterIntelligence } from "@/lib/services/aria-intelligence";
 import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
-import { getEmailConfigStatus } from "@/lib/services/runtime-config";
+import { getAiConfigStatus, getEmailConfigStatus, getEncryptionConfigStatus } from "@/lib/services/runtime-config";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
@@ -49,6 +49,9 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   const canUseAi = hasPermission(context.user, "can_access_ai");
   const canManageAppointments = hasPermission(context.user, "can_manage_appointments");
   const canRunCrossCheck = hasPermission(context.user, "can_run_cross_check");
+  const aiConfigured = getAiConfigStatus().configured;
+  const encryptionConfigured = getEncryptionConfigStatus().configured;
+  const hasExtractedDocuments = matter.documents.some((document) => document.extractionStatus === "EXTRACTED");
   const assignableUsers = canReassign
     ? await prisma.user.findMany({
       where: { workspaceId: context.workspace.id, status: { not: "DISABLED" } },
@@ -80,20 +83,34 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     {
       label: "Upload documents for this matter",
       href: `/app/documents?matterId=${matter.id}`,
-      status: matter.documents.length ? "completed" : canEditMatter ? "ready" : "blocked",
-      reason: matter.documents.length ? `${matter.documents.length} document(s) uploaded.` : canEditMatter ? "Secure upload is available." : "You do not have permission to upload matter documents."
+      status: matter.documents.length ? "completed" : canEditMatter && encryptionConfigured ? "ready" : "blocked",
+      reason: matter.documents.length
+        ? `${matter.documents.length} document(s) uploaded.`
+        : !canEditMatter
+          ? "You do not have permission to upload matter documents."
+          : !encryptionConfigured
+            ? "Document upload is blocked until APP_FIELD_ENCRYPTION_KEY is configured."
+            : "Secure upload is available."
     },
     {
       label: "Review extracted evidence",
-      href: `/app/documents?matterId=${matter.id}`,
-      status: matter.documents.some((document) => document.extractionStatus === "EXTRACTED") ? "ready" : "blocked",
-      reason: matter.documents.some((document) => document.extractionStatus === "EXTRACTED") ? "Open document intelligence and linked evidence fields." : "Upload a secure document first to review extracted evidence."
+      href: `/app/matters/${matter.id}/review`,
+      status: hasExtractedDocuments ? "ready" : "blocked",
+      reason: hasExtractedDocuments ? "Open the evidence-backed extraction dashboard." : "Upload documents or run extraction to build the review dashboard."
     },
     {
       label: "Run AI Draft Autofill",
       href: `/app/matters/${matter.id}/draft`,
-      status: matter.visaSubclass === "500" && canUseAi ? "ready" : "blocked",
-      reason: matter.visaSubclass !== "500" ? "Field-level draft autofill is currently configured for Subclass 500." : canUseAi ? "Run source-backed mapping from uploaded documents." : "AI draft autofill requires Aria AI access."
+      status: matter.visaSubclass === "500" && canUseAi && aiConfigured && matter.documents.length ? "ready" : "blocked",
+      reason: matter.visaSubclass !== "500"
+        ? "Field-level draft autofill is currently configured for Subclass 500."
+        : !matter.documents.length
+          ? "Upload documents before running draft autofill."
+          : !canUseAi
+            ? "AI draft autofill requires Aria AI access."
+            : !aiConfigured
+              ? "AI is not configured. Add OPENAI_API_KEY to enable draft autofill."
+              : "Run source-backed mapping from uploaded documents."
     },
     {
       label: "Review application draft",
@@ -176,8 +193,8 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           statusLabel="Review required"
           action={
             matter.visaSubclass === "500" ? (
-              <Link href={`/app/matters/${matter.id}/draft`}>
-                <GradientButton>Open draft review</GradientButton>
+              <Link href={`/app/matters/${matter.id}/review` as any}>
+                <GradientButton>Review extracted evidence</GradientButton>
               </Link>
             ) : (
               <Link href={`/app/matters/${matter.id}/checklist`}>
@@ -416,6 +433,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                 <p className="text-sm text-slate-300">Use the matter-specific routes below for secure evidence, official forms, generated documents, and export tasks.</p>
                 <div className="grid gap-2">
                   <Link href={`/app/documents?matterId=${matter.id}` as any}><SubtleButton className="w-full justify-start">Upload documents for this matter</SubtleButton></Link>
+                  <Link href={`/app/matters/${matter.id}/review` as any}><SubtleButton className="w-full justify-start">Review extracted evidence</SubtleButton></Link>
                   <Link href={`/app/matters/${matter.id}/forms` as any}><SubtleButton className="w-full justify-start">Open official forms</SubtleButton></Link>
                   <Link href={`/app/matters/${matter.id}/generated-documents` as any}><SubtleButton className="w-full justify-start">Generate migration documents</SubtleButton></Link>
                   <a href={`/api/settings/data/export-folder?matterId=${matter.id}`}><SubtleButton className="w-full justify-start">Export secure client folder</SubtleButton></a>

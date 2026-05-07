@@ -235,8 +235,8 @@ export default async function OverviewPage() {
             {matters.length ? (
               <div className="space-y-3">
                 {matters.slice(0, 5).map((matter) => (
-                  <Link key={matter.id} href={`/app/matters/${matter.id}` as any} className="block">
-                    <SectionCard className="p-4 transition hover:bg-white/[0.05]">
+                  <SectionCard key={matter.id} className="p-4 transition hover:bg-white/[0.05]">
+                    <Link href={`/app/matters/${matter.id}` as any} className="block">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-base font-semibold text-white">{matter.client.firstName} {matter.client.lastName}</p>
@@ -251,8 +251,16 @@ export default async function OverviewPage() {
                           <p className="mt-2 text-xs text-slate-500">{matter.validationIssues.length} validation issue(s)</p>
                         </div>
                       </div>
-                    </SectionCard>
-                  </Link>
+                    </Link>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Link href={`/app/matters/${matter.id}/review` as any} className="inline-flex h-9 items-center justify-center rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:bg-white/[0.08]">
+                        Review extracted evidence
+                      </Link>
+                      <Link href={`/app/matters/${matter.id}/draft` as any} className="inline-flex h-9 items-center justify-center rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-100 transition hover:bg-white/[0.08]">
+                        Review application draft
+                      </Link>
+                    </div>
+                  </SectionCard>
                 ))}
               </div>
             ) : (

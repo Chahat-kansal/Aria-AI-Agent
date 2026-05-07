@@ -55,7 +55,12 @@ export default async function DocumentDetailPage({ params }: { params: { documen
           title="Readable evidence, secure handling, and review-required extraction"
           summary={intelligence.summary}
           statusLabel={intelligence.weakOcr ? "Weak OCR" : "Review required"}
-          action={<Link href={`/api/documents/${document.id}/download`} className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Secure download</Link>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/app/matters/${document.matterId}/review` as any} className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Open matter review dashboard</Link>
+              <Link href={`/api/documents/${document.id}/download`} className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Secure download</Link>
+            </div>
+          }
         >
           <AIReviewNotice />
           <div className="grid gap-3 md:grid-cols-3">
@@ -207,6 +212,9 @@ export default async function DocumentDetailPage({ params }: { params: { documen
                 <p className="text-sm text-slate-300">Secure download is served through the application. No public file URL is exposed for this document.</p>
                 <Link href={`/api/documents/${document.id}/download`} className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">
                   Download original securely
+                </Link>
+                <Link href={`/app/matters/${document.matterId}/review` as any} className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">
+                  Review extracted evidence
                 </Link>
               </SectionCard>
             </PageSection>

@@ -180,6 +180,9 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                       : <li>No major draft field gaps detected. Registered migration agent review is still required.</li>}
                   </ul>
                 </div>
+                <Link href={`/app/matters/${matter.id}/review` as any} className="inline-flex text-sm text-cyan-300 transition hover:text-white">
+                  Review source evidence
+                </Link>
                 <Link href={`/app/matters/${matter.id}/generated-documents` as any} className="inline-flex text-sm text-cyan-300 transition hover:text-white">
                   Open generated document workspace
                 </Link>
