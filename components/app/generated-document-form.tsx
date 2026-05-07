@@ -45,7 +45,7 @@ export function GeneratedDocumentForm({ matterId }: { matterId: string }) {
       })
     });
 
-    const result = await response.json().catch(() => null) as { error?: string } | null;
+    const result = await response.json().catch(() => null) as { error?: string; groundedDraftPack?: { grounded?: { answer?: string } } } | null;
     setIsSubmitting(false);
 
     if (!response.ok) {
@@ -53,7 +53,7 @@ export function GeneratedDocumentForm({ matterId }: { matterId: string }) {
       return;
     }
 
-    setMessage("Generated document created. Review required before client use.");
+    setMessage(result?.groundedDraftPack?.grounded?.answer ?? "Generated document created. Review required before client use.");
     router.refresh();
   }
 

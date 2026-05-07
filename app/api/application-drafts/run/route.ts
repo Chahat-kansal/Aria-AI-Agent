@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mapDocumentsToDraft } from "@/lib/services/application-draft";
+import { buildDraftAutofillGroundedResponse, mapDocumentsToDraft } from "@/lib/services/application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
@@ -26,11 +26,13 @@ export async function POST(req: Request) {
     }
 
     const result = await mapDocumentsToDraft(matterId);
+    const grounded = await buildDraftAutofillGroundedResponse(matterId);
     await auditAiUsed({ workspaceId: context.workspace.id, userId: context.user.id, feature: "draft_autofill", matterId });
     await auditMatterAction({ workspaceId: context.workspace.id, userId: context.user.id, matterId, action: "draft.autofill.run" });
     return NextResponse.json({
       status: "mapped",
-      message: "AI-assisted extraction and mapping completed. Agent review required.",
+      message: grounded.answer,
+      grounded,
       result
     });
   } catch (error) {

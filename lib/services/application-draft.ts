@@ -14,6 +14,7 @@ import { getSubclass500Template } from "@/lib/services/subclass-templates";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { buildClientLink } from "@/lib/services/client-workflows";
 import { detectExtractionSchema } from "@/lib/services/document-extraction-schemas";
+import { buildGroundedResponse, type AriaGroundedResponse } from "@/lib/services/aria-evidence";
 import { decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken, shortHashPreview } from "@/lib/security/hash";
 
@@ -371,6 +372,38 @@ Rules:
   }
 
   return validateSubclass500Draft(matterId);
+}
+
+export async function buildDraftAutofillGroundedResponse(matterId: string): Promise<AriaGroundedResponse> {
+  const reviewData = await getDraftReviewData(matterId);
+  const fieldsNeedingReview = reviewData.draft.fields.filter((field: any) =>
+    [DraftFieldStatus.NEEDS_REVIEW, DraftFieldStatus.CONFLICTING, DraftFieldStatus.MISSING].includes(field.status)
+  );
+  const supportedFields = reviewData.draft.fields.filter((field: any) => field.value || field.manualOverride);
+
+  return buildGroundedResponse({
+    answer: `Draft autofill reviewed ${supportedFields.length} mapped field(s) for this matter. Registered migration agent review is still required before any field is used in client-facing or submission-preparation work.`,
+    evidence: supportedFields.slice(0, 8).map((field: any) => ({
+      sourceType: "DRAFT_FIELD",
+      sourceId: field.id,
+      title: field.templateField.label,
+      snippet: field.sourceSnippet || field.evidenceLinks[0]?.sourceSnippet || "No stored source snippet.",
+      confidence: field.confidence ?? undefined,
+      reliability: field.evidenceLinks.length ? "AI_EXTRACTED" : "SYSTEM_DERIVED"
+    })),
+    assumptions: ["Only currently accessible matter, extracted field, and evidence-link records were used."],
+    missingInformation: fieldsNeedingReview.slice(0, 10).map((field: any) => field.templateField.label),
+    confidence: 0.74,
+    recommendedActions: [
+      "Verify all identifiers, dates, and declarations against the original uploaded evidence.",
+      "Resolve missing or conflicting fields before treating the draft as complete.",
+      "Run the final cross-check before client review or submission preparation."
+    ],
+    warnings: [
+      "Declaration, health, criminal, and signature fields should never be guessed.",
+      "Verified fields are preserved, but agent review is still required for every suggested value."
+    ]
+  });
 }
 
 export async function validateSubclass500Draft(matterId: string) {

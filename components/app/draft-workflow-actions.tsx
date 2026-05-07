@@ -46,7 +46,7 @@ export function DraftWorkflowActions({
       body: JSON.stringify({ matterId })
     });
     const data = await res.json();
-    setMessage(data.message ?? data.error);
+    setMessage(data.grounded?.answer ?? data.message ?? data.error);
     startTransition(() => router.refresh());
   }
 

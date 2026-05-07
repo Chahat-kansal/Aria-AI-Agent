@@ -5,6 +5,7 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { generateMatterDocument } from "@/lib/services/client-workflows";
+import { generateVisaDraftPack } from "@/lib/services/visa-draft-pack";
 import { serverLog } from "@/lib/services/runtime-config";
 
 const schema = z.object({
@@ -32,14 +33,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
     }
 
-    const generatedDocument = await generateMatterDocument({
-      workspaceId: context.workspace.id,
-      matterId: parsed.data.matterId,
-      createdByUserId: context.user.id,
-      type: parsed.data.type
-    });
+    const [generatedDocument, groundedDraftPack] = await Promise.all([
+      generateMatterDocument({
+        workspaceId: context.workspace.id,
+        matterId: parsed.data.matterId,
+        createdByUserId: context.user.id,
+        type: parsed.data.type
+      }),
+      generateVisaDraftPack(parsed.data.matterId).catch(() => null)
+    ]);
 
-    return NextResponse.json({ generatedDocument }, { status: 201 });
+    return NextResponse.json({ generatedDocument, groundedDraftPack }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("AI is not configured")) {

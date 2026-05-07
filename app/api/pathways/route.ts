@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { createPathwayAnalysis } from "@/lib/services/pathway-analysis";
+import { buildPathwayGroundedResponse, createPathwayAnalysis } from "@/lib/services/pathway-analysis";
 import { prisma } from "@/lib/prisma";
 import { canAccessMatter, hasPermission, scopedClientWhere } from "@/lib/services/roles";
 import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       createdByUserId: context.user.id
     });
 
-    return NextResponse.json({ analysis });
+    return NextResponse.json({ analysis, grounded: buildPathwayGroundedResponse(analysis) });
   } catch (error) {
     serverLog("pathway.create_error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Pathway analysis failed. Review input facts and try again." }, { status: 500 });

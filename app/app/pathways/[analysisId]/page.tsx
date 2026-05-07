@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/app/blocks/page-header";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { Card } from "@/components/ui/card";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { getPathwayAnalysisDetail } from "@/lib/services/pathway-analysis";
+import { buildPathwayGroundedResponse, getPathwayAnalysisDetail } from "@/lib/services/pathway-analysis";
 import { calculateIndicativeSkilledPoints } from "@/lib/services/skilled-points";
 import { hasPermission } from "@/lib/services/roles";
 
@@ -48,6 +48,7 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
 
   const profile = analysis.profileJson as Record<string, unknown>;
   const points = calculateIndicativeSkilledPoints(profile);
+  const grounded = buildPathwayGroundedResponse(analysis);
 
   return (
     <AppShell title="Pathway Analysis">
@@ -87,6 +88,14 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
         <Card><JsonList title="Blockers / risks to clarify" value={analysis.blockersJson} /></Card>
         <Card><JsonList title="Evidence gaps" value={analysis.evidenceGapsJson} /></Card>
       </div>
+
+      <Card className="mb-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Grounded pathway summary</p>
+        <h3 className="mt-2 text-lg font-semibold">{grounded.answer}</h3>
+        <JsonList title="Evidence used" value={grounded.evidence.map((item) => `${item.title}: ${item.snippet ?? "No snippet recorded."}`)} />
+        <JsonList title="Missing information" value={grounded.missingInformation} />
+        <JsonList title="Warnings" value={grounded.warnings} />
+      </Card>
 
       <Card className="mb-4">
         <p className="text-xs uppercase tracking-[0.18em] text-muted">Indicative skilled points snapshot</p>

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { scopedClientWhere, scopedMatterWhere } from "@/lib/services/roles";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
+import { buildGroundedResponse, type AriaGroundedResponse } from "@/lib/services/aria-evidence";
 import type { User } from "@prisma/client";
 
 type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
@@ -295,6 +296,44 @@ Rules:
       matter: true,
       options: { orderBy: { rank: "asc" } }
     }
+  });
+}
+
+export function buildPathwayGroundedResponse(analysis: {
+  id: string;
+  summary: string;
+  assumptionsJson: unknown;
+  blockersJson: unknown;
+  evidenceGapsJson: unknown;
+  options: Array<{
+    id: string;
+    title: string;
+    confidence: number;
+    relevance: string;
+    missingJson: unknown;
+  }>;
+}): AriaGroundedResponse {
+  const assumptions = Array.isArray(analysis.assumptionsJson) ? analysis.assumptionsJson.map(String) : [];
+  const blockers = Array.isArray(analysis.blockersJson) ? analysis.blockersJson.map(String) : [];
+  const evidenceGaps = Array.isArray(analysis.evidenceGapsJson) ? analysis.evidenceGapsJson.map(String) : [];
+
+  return buildGroundedResponse({
+    answer: analysis.summary,
+    evidence: analysis.options.slice(0, 4).map((option) => ({
+      sourceType: "SYSTEM",
+      sourceId: option.id,
+      title: option.title,
+      snippet: option.relevance,
+      confidence: option.confidence,
+      reliability: "SYSTEM_DERIVED"
+    })),
+    assumptions,
+    missingInformation: evidenceGaps,
+    confidence: analysis.options[0]?.confidence ?? 0.55,
+    recommendedActions: analysis.options[0] && Array.isArray(analysis.options[0].missingJson)
+      ? analysis.options[0].missingJson.map(String).slice(0, 4).map((item) => `Obtain evidence for: ${item}`)
+      : [],
+    warnings: blockers
   });
 }
 

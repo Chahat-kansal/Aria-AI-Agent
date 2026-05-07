@@ -10,6 +10,7 @@ import { encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken } from "@/lib/security/hash";
 import { getOrCreateWorkspaceOperationalSettings } from "@/lib/services/workspace-operational-settings";
 import { buildGeneratedDocumentForMatter } from "@/lib/services/draft-generation";
+import { generateVisaDraftPack } from "@/lib/services/visa-draft-pack";
 
 const PORTAL_TOKEN_DAYS = 30;
 const REQUEST_TOKEN_DAYS = 14;
@@ -617,6 +618,10 @@ export async function generateMatterDocument(input: {
 }) {
   const deterministic = await buildGeneratedDocumentForMatter(input.matterId, input.type);
   if (deterministic.supported) {
+    const draftPack = await generateVisaDraftPack(input.matterId).catch(() => null);
+    const combinedContent = draftPack
+      ? `${deterministic.content}\n\n---\n\n${draftPack.content}`
+      : deterministic.content;
     const generated = await prisma.generatedDocument.create({
       data: {
         workspaceId: input.workspaceId,
@@ -624,7 +629,7 @@ export async function generateMatterDocument(input: {
         createdByUserId: input.createdByUserId,
         type: input.type,
         title: deterministic.title,
-        content: deterministic.content
+        content: combinedContent
       }
     });
 
@@ -640,8 +645,14 @@ export async function generateMatterDocument(input: {
       workspaceId: input.workspaceId,
       userId: input.createdByUserId,
       matterId: input.matterId,
-      action: "generated_document.created",
-      metadata: { type: input.type, mode: "deterministic_draft_engine", ...deterministic.metadata }
+      action: "draft_pack.generated",
+      metadata: {
+        type: input.type,
+        mode: "deterministic_draft_engine",
+        supportedPack: draftPack?.supportedPack ?? null,
+        draftPackWarnings: draftPack?.grounded.warnings.slice(0, 6) ?? [],
+        ...deterministic.metadata
+      }
     });
 
     return generated;
