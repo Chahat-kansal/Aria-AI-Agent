@@ -5,6 +5,7 @@ export async function GET() {
   return NextResponse.json({
     app: "Aria Migration SaaS",
     root: "next-prisma-app",
+    buildLabel: "auto-deploy-check",
     commit: process.env.VERCEL_GIT_COMMIT_SHA || "local",
     environment: process.env.VERCEL_ENV || "local",
     runtime: {

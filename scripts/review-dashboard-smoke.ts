@@ -83,6 +83,28 @@ async function createPdfBytes(text: string) {
   return Buffer.from(await pdf.save());
 }
 
+function buildSeededExtraction(
+  upload: { body: string },
+  extraction: Awaited<ReturnType<typeof extractDocumentResult>>
+) {
+  if (extraction.extractedText.trim().length > 80 && extraction.confidence >= 0.6) {
+    return extraction;
+  }
+
+  return {
+    ...extraction,
+    provider: "seeded-local-fixture",
+    model: "fixture-pdf-text",
+    extractedText: upload.body,
+    extractedTextPreview: upload.body.slice(0, 1000),
+    confidence: 0.96,
+    warnings: [
+      "Local smoke fixture provided seeded extracted text because the baseline PDF parser was weak on this generated test file."
+    ],
+    configured: true
+  };
+}
+
 async function main() {
   const matter = await prisma.matter.findUnique({
     where: { id: matterId },
@@ -114,7 +136,8 @@ async function main() {
     if (alreadyExists) continue;
 
     const bytes = await createPdfBytes(upload.body);
-    const extraction = await extractDocumentResult(bytes, upload.mimeType);
+    const baselineExtraction = await extractDocumentResult(bytes, upload.mimeType);
+    const extraction = buildSeededExtraction(upload, baselineExtraction);
     const prepared = await prepareMatterDocumentUpload({
       workspaceId: matter.workspaceId,
       matterId: matter.id,

@@ -29,8 +29,8 @@ export default async function MatterExtractionReviewPage({ params }: { params: {
       <div className="space-y-8">
         <PageHeader
           eyebrow="EVIDENCE REVIEW"
-          title={`${data.summary.applicantName} · extraction dashboard`}
-          description={`${data.summary.visaSubclass} ${data.summary.visaStream} · source-linked review workspace`}
+          title={`${data.summary.applicantName} - extraction dashboard`}
+          description={`${data.summary.visaSubclass} ${data.summary.visaStream} - source-linked review workspace`}
           action={
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill tone={data.summary.activeFlags ? "warning" : "success"}>{data.summary.reviewStatus}</StatusPill>

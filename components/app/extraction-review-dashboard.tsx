@@ -17,7 +17,7 @@ import type { ExtractionReviewDashboardData } from "@/lib/services/extraction-re
 
 export function ExtractionReviewDashboard({ data }: { data: ExtractionReviewDashboardData }) {
   const [privacyMode, setPrivacyMode] = useState(true);
-  const [activeTab, setActiveTab] = useState(data.summary.currentTabId);
+  const [activeTab, setActiveTab] = useState(data.people[0]?.tabId ?? data.summary.currentTabId);
 
   const activePerson = data.people.find((person) => person.tabId === activeTab) ?? data.people[0] ?? null;
   const visibleSections = useMemo(() => {
@@ -93,7 +93,7 @@ export function ExtractionReviewDashboard({ data }: { data: ExtractionReviewDash
             >
               <p className="text-sm font-semibold">{tab.label}</p>
               <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">{tab.role}</p>
-              <p className="mt-2 text-xs text-slate-400">{tab.status} · {tab.flagCount} flag(s)</p>
+              <p className="mt-2 text-xs text-slate-400">{tab.status} - {tab.flagCount} flag(s)</p>
             </button>
           ))}
         </div>
@@ -149,7 +149,7 @@ export function ExtractionReviewDashboard({ data }: { data: ExtractionReviewDash
               <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.035] p-4">
                 <p className="text-sm font-semibold text-white">Next actions</p>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-                  {data.nextActions.map((item) => <li key={item}>• {item}</li>)}
+                  {data.nextActions.map((item) => <li key={item}>- {item}</li>)}
                 </ul>
               </div>
             </div>
