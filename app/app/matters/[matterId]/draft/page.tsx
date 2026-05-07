@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { createOrGetSubclass500Draft, getDraftReviewData } from "@/lib/services/application-draft";
+import { buildMatterDraftBriefing } from "@/lib/services/draft-generation";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterDetailData } from "@/lib/data/workspace-repository";
 import { hasPermission } from "@/lib/services/roles";
@@ -35,6 +36,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
 
   await createOrGetSubclass500Draft(params.matterId);
   const { matter, template, draft, packageFolders, openIssues } = await getDraftReviewData(params.matterId);
+  const draftBriefing = await buildMatterDraftBriefing(params.matterId);
   const sections = template.sections;
   const needsReviewCount = draft.fields.filter((field: any) => field.status === "NEEDS_REVIEW").length;
   const verifiedCount = draft.fields.filter((field: any) => field.status === "VERIFIED").length;
@@ -150,6 +152,32 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                   canUseAi={canUseAi}
                   canRunCrossCheck={canRunCrossCheck}
                 />
+              </SectionCard>
+            </PageSection>
+
+            <PageSection title="Draft briefing">
+              <SectionCard className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-white">{draftBriefing.title}</p>
+                  <ul className="mt-3 space-y-1 text-sm text-slate-300">
+                    {draftBriefing.summary.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Current gaps</p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                    {draftBriefing.missingFields.length
+                      ? draftBriefing.missingFields.map((field) => (
+                        <li key={field.label}>
+                          {field.label} - {field.status}{field.source ? ` (${field.source})` : ""}
+                        </li>
+                      ))
+                      : <li>No major draft field gaps detected. Registered migration agent review is still required.</li>}
+                  </ul>
+                </div>
+                <Link href={`/app/matters/${matter.id}/generated-documents` as any} className="inline-flex text-sm text-cyan-300 transition hover:text-white">
+                  Open generated document workspace
+                </Link>
               </SectionCard>
             </PageSection>
 

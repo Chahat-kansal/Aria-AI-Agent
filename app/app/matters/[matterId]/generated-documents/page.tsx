@@ -22,7 +22,7 @@ export default async function GeneratedDocumentsPage({ params }: { params: { mat
       {hasPermission(context.user, "can_generate_documents") ? (
         <Card className="mb-6">
           <h3 className="text-xl font-semibold tracking-tight text-white">Generate a document</h3>
-          <p className="mb-3 mt-1 text-sm text-slate-300">Use the live AI provider to draft a document or checklist from the current matter, evidence, and validation context.</p>
+          <p className="mb-3 mt-1 text-sm text-slate-300">Use Aria&apos;s source-backed draft engine to prepare working documents from the current matter, evidence, and validation context. When AI is configured, Aria can refine wording, but all outputs remain review required.</p>
           <GeneratedDocumentForm matterId={matter.id} />
         </Card>
       ) : (

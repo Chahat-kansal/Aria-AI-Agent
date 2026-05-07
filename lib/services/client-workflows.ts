@@ -2,12 +2,14 @@ import crypto from "crypto";
 import { AppointmentStatus, DocumentRequestItemStatus, DocumentRequestStatus, GeneratedDocumentType, IntakeRequestStatus, MatterStage, MatterStatus, Prisma, TaskPriority, TaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
+import { isAiConfigured } from "@/lib/services/ai-config";
 import { auditEvent, auditMatterAction } from "@/lib/services/audit";
 import { createPathwayAnalysis, type PathwayProfileInput } from "@/lib/services/pathway-analysis";
 import { resolveBaseUrl } from "@/lib/services/runtime-config";
 import { encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken } from "@/lib/security/hash";
 import { getOrCreateWorkspaceOperationalSettings } from "@/lib/services/workspace-operational-settings";
+import { buildGeneratedDocumentForMatter } from "@/lib/services/draft-generation";
 
 const PORTAL_TOKEN_DAYS = 30;
 const REQUEST_TOKEN_DAYS = 14;
@@ -613,6 +615,42 @@ export async function generateMatterDocument(input: {
   createdByUserId: string;
   type: GeneratedDocumentType;
 }) {
+  const deterministic = await buildGeneratedDocumentForMatter(input.matterId, input.type);
+  if (deterministic.supported) {
+    const generated = await prisma.generatedDocument.create({
+      data: {
+        workspaceId: input.workspaceId,
+        matterId: input.matterId,
+        createdByUserId: input.createdByUserId,
+        type: input.type,
+        title: deterministic.title,
+        content: deterministic.content
+      }
+    });
+
+    await addMatterTimelineEvent({
+      workspaceId: input.workspaceId,
+      matterId: input.matterId,
+      actorUserId: input.createdByUserId,
+      eventType: "generated_document.created",
+      title: "Generated document created",
+      description: deterministic.title
+    });
+    await auditMatterAction({
+      workspaceId: input.workspaceId,
+      userId: input.createdByUserId,
+      matterId: input.matterId,
+      action: "generated_document.created",
+      metadata: { type: input.type, mode: "deterministic_draft_engine", ...deterministic.metadata }
+    });
+
+    return generated;
+  }
+
+  if (!isAiConfigured()) {
+    throw new Error("AI is not configured. Add OPENAI_API_KEY.");
+  }
+
   const matter = await prisma.matter.findUniqueOrThrow({
     where: { id: input.matterId },
     include: { client: true, documents: true, validationIssues: true }

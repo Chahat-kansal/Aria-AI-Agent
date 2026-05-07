@@ -5,7 +5,6 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { generateMatterDocument } from "@/lib/services/client-workflows";
-import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
 import { serverLog } from "@/lib/services/runtime-config";
 
 const schema = z.object({
@@ -19,7 +18,6 @@ export async function POST(req: Request) {
     if (!hasPermission(context.user, "can_generate_documents")) {
       return NextResponse.json({ error: "You do not have permission to generate matter documents." }, { status: 403 });
     }
-    if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
@@ -43,6 +41,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ generatedDocument }, { status: 201 });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("AI is not configured")) {
+      return NextResponse.json({
+        error: "AI is not configured. Add OPENAI_API_KEY to enable AI-enhanced generated documents.",
+        configured: false,
+        reviewRequired: true
+      }, { status: 503 });
+    }
     serverLog("generated_document.create_error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Unable to generate the document right now." }, { status: 500 });
   }
