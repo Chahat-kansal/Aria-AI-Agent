@@ -61,7 +61,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <AppPage contentClassName="flex min-h-screen items-center justify-center py-10">
+    <AppPage contentClassName="flex min-h-full items-center justify-center py-10">
       <Card className="w-full max-w-3xl p-8 sm:p-10">
         <div className="themed-logo-mark flex h-12 w-12 items-center justify-center rounded-[1rem] text-white">A</div>
         <p className="mt-5 text-xs font-medium uppercase tracking-[0.24em] text-[color:var(--accent)]">Company onboarding</p>

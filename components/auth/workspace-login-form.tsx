@@ -58,10 +58,10 @@ export function WorkspaceLoginForm({ workspaceSlug }: { workspaceSlug: string })
         <input name="password" required placeholder="Password" type="password" />
       </FormField>
       {error ? <p className="rounded-[1rem] border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">{error}</p> : null}
-      <GradientButton className="w-full" disabled={isSubmitting}>
+      <GradientButton className="w-full" disabled={isSubmitting} type="submit">
         {isSubmitting ? "Signing in..." : "Sign in to workspace"}
       </GradientButton>
-      <p className="text-xs text-slate-500">Staff and agents sign in through your firm workspace portal. Company owners create and manage workspaces through the public owner portal.</p>
+      <p className="text-xs text-[color:var(--text-tertiary)]">Staff and agents sign in through your firm workspace portal. Company owners create and manage workspaces through the public owner portal.</p>
     </form>
   );
 }

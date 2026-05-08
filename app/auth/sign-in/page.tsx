@@ -72,7 +72,7 @@ export default function SignInPage() {
   }
 
   return (
-    <AppPage contentClassName="flex min-h-screen items-center justify-center py-10">
+    <AppPage contentClassName="flex min-h-full items-center justify-center py-10">
       <Card className="w-full max-w-md p-8 sm:p-10">
         <div className="themed-logo-mark flex h-12 w-12 items-center justify-center rounded-[1rem] text-white">A</div>
         <p className="mt-5 text-xs font-medium uppercase tracking-[0.24em] text-[color:var(--accent)]">Aria Migration</p>
@@ -90,7 +90,7 @@ export default function SignInPage() {
           {workspacePortal ? (
             <Link
               href={`/w/${workspacePortal}/login` as any}
-              className="inline-flex rounded-[1rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-200 transition hover:bg-cyan-400/15"
+              className="inline-flex rounded-[1rem] bg-[color:var(--info-bg)] px-4 py-3 text-sm text-[color:var(--info)] shadow-[var(--shadow-sm)] transition hover:opacity-90"
             >
               Go to your workspace portal
             </Link>
