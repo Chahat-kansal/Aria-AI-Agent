@@ -44,6 +44,14 @@ export const checklistTemplates: Record<string, Array<{ key: string; category: s
     { key: "oshc", category: "Health / Insurance", label: "OSHC / health insurance", description: "Health insurance evidence for the required study period.", required: true },
     { key: "genuine_student", category: "Statements / Declarations", label: "Genuine student statement", description: "Statement and supporting evidence for genuine student factors.", required: true }
   ],
+  "485": [
+    { key: "passport", category: "Identity", label: "Passport bio page", description: "Current passport biodata page and any recent passport changes.", required: true },
+    { key: "current_visa", category: "Travel", label: "Current visa / VEVO / grant notice", description: "Current visa evidence, grant notice, or VEVO outcome for the applicant.", required: true },
+    { key: "completion", category: "Education", label: "Australian study completion evidence", description: "Completion letter, transcript, or provider evidence showing the qualifying study has been completed.", required: true },
+    { key: "english", category: "Education", label: "English evidence", description: "English test or exemption evidence where relevant to the selected stream.", required: true },
+    { key: "afp", category: "Statements / Declarations", label: "AFP / police clearance", description: "Australian Federal Police check or other police evidence where required.", required: true },
+    { key: "insurance", category: "Health / Insurance", label: "Health insurance evidence", description: "OVHC or other relevant health insurance evidence for the intended stay period.", required: true }
+  ],
   "482": [
     { key: "passport", category: "Identity", label: "Passport bio page", description: "Current passport biodata page.", required: true },
     { key: "cv", category: "Employment", label: "Resume / CV", description: "Current CV with role chronology.", required: true },
@@ -56,6 +64,14 @@ export const checklistTemplates: Record<string, Array<{ key: string; category: s
     { key: "skills", category: "Employment", label: "Skills assessment / occupation evidence", description: "Assessment or equivalent eligibility evidence.", required: true },
     { key: "employment_refs", category: "Employment", label: "Employment references", description: "Detailed employment references and contract history.", required: true },
     { key: "nomination", category: "Employment", label: "Employer nomination documents", description: "Nomination approval and business support evidence.", required: true }
+  ],
+  "309/100": [
+    { key: "applicant_passport", category: "Identity", label: "Applicant passport bio page", description: "Current passport biodata page for the applicant.", required: true },
+    { key: "sponsor_identity", category: "Relationship", label: "Sponsor identity and status evidence", description: "Sponsor passport/citizenship/permanent residence identity evidence.", required: true },
+    { key: "relationship_evidence", category: "Relationship", label: "Relationship evidence", description: "Joint finances, household, social, commitment, and communication evidence.", required: true },
+    { key: "relationship_timeline", category: "Statements / Declarations", label: "Relationship timeline statement", description: "Chronology of the relationship, key milestones, and periods together/apart.", required: true },
+    { key: "witness_statements", category: "Relationship", label: "Witness / Form 888 evidence", description: "Form 888 or equivalent supporting witness statements where relevant.", required: true },
+    { key: "health_character", category: "Statements / Declarations", label: "Health and character evidence", description: "Police, health, and declaration evidence for both applicant and any relevant family members.", required: true }
   ],
   "189": [
     { key: "passport", category: "Identity", label: "Passport bio page", description: "Current passport biodata page.", required: true },

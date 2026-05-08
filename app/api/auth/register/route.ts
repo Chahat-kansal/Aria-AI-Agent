@@ -46,6 +46,11 @@ async function uniqueWorkspaceSlug(name: string) {
 
 export async function POST(request: Request) {
   try {
+    if (process.env.ARIA_ALLOW_PUBLIC_SIGNUP !== "true") {
+      return NextResponse.json({
+        error: "Public signup is disabled by default. An authorised operator must enable it before broad public launch."
+      }, { status: 403 });
+    }
     const dbStatus = getDatabaseConfigStatus();
     const authStatus = getAuthConfigStatus();
     if (!dbStatus.configured || !authStatus.configured) {

@@ -8,6 +8,7 @@ import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { getUploadLimits, serverLog } from "@/lib/services/runtime-config";
 import { auditDocumentUploaded, auditEvent } from "@/lib/services/audit";
+import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 
 export async function POST(req: Request) {
   try {
@@ -27,7 +28,6 @@ export async function POST(req: Request) {
     const limits = getUploadLimits();
     if (file.size > limits.maxBytes) return NextResponse.json({ error: `File is too large. Maximum upload size is ${limits.maxMb} MB.` }, { status: 413 });
     const bytes = Buffer.from(await file.arrayBuffer());
-    const extraction = await extractDocumentResult(bytes, mimeType);
 
     const context = await getCurrentWorkspaceContext();
     if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
@@ -37,6 +37,20 @@ export async function POST(req: Request) {
       include: { assignedToUser: true }
     });
     if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
+    const launchControls = await getWorkspaceLaunchControls(context.workspace.id);
+    if (!launchControls.allowRealClientUploads) {
+      return NextResponse.json({ error: "Document upload is disabled by launch controls until the owner explicitly enables real-client uploads." }, { status: 409 });
+    }
+    if (!isSubclassAllowedByLaunchControls(launchControls, matter.visaSubclass)) {
+      return NextResponse.json({ error: `Document upload is disabled for Subclass ${matter.visaSubclass} by current launch controls.` }, { status: 409 });
+    }
+    if (!launchControls.allowedFileTypes.includes(mimeType)) {
+      return NextResponse.json({ error: `Uploads of type ${mimeType} are disabled by launch controls.` }, { status: 415 });
+    }
+    if (file.size > launchControls.maxFileSizeMb * 1024 * 1024) {
+      return NextResponse.json({ error: `File is too large for current launch controls. Maximum allowed size is ${launchControls.maxFileSizeMb} MB.` }, { status: 413 });
+    }
+    const extraction = await extractDocumentResult(bytes, mimeType);
 
     const upload = await prepareMatterDocumentUpload({ workspaceId: context.workspace.id, matterId, fileName, bytes, mimeType });
 

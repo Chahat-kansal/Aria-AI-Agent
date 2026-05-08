@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { decryptBuffer, isEncrypted } from "@/lib/security/encryption";
 import { buildStoredZip } from "@/lib/services/zip";
+import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 
 function safeName(value: string) {
   return value.replace(/[^a-zA-Z0-9._ -]+/g, "").trim().replace(/\s+/g, " ") || "record";
@@ -65,6 +66,13 @@ export async function GET(req: Request) {
       reason: "User tried to export a matter outside their access scope."
     });
     return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+  }
+  const launchControls = await getWorkspaceLaunchControls(context.workspace.id);
+  if (!launchControls.exportEnabled) {
+    return NextResponse.json({ error: "Secure client-folder export is disabled by workspace launch controls." }, { status: 409 });
+  }
+  if (!isSubclassAllowedByLaunchControls(launchControls, matter.visaSubclass)) {
+    return NextResponse.json({ error: `Exports are disabled for Subclass ${matter.visaSubclass} by current launch controls.` }, { status: 409 });
   }
 
   const root = `${safeName(`${matter.client.firstName} ${matter.client.lastName}`)}/Matter - Subclass ${safeName(matter.visaSubclass)}`;

@@ -13,6 +13,7 @@ import { assessMatterCaseSafety } from "@/lib/services/case-safety";
 import { prisma } from "@/lib/prisma";
 import { hasPermission } from "@/lib/services/roles";
 import { decryptJson } from "@/lib/security/encryption";
+import { getSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-support";
 
 export default async function MatterFormsPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -27,6 +28,7 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
   const matter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
   if (!matter) notFound();
   const safety = await assessMatterCaseSafety(matter.id);
+  const subclassSupport = getSubclassSupport(matter.visaSubclass);
 
   const [templates, drafts] = await Promise.all([
     prisma.officialFormTemplate.findMany({
@@ -60,6 +62,9 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
 
         <SectionCard className="space-y-3 p-5">
           <div className="flex flex-wrap gap-2">
+            <StatusPill tone={subclassSupport.supportLevel === "FULL_FIELD_AUTOFILL" ? "success" : "warning"}>
+              {supportLevelLabel(subclassSupport.supportLevel)}
+            </StatusPill>
             <StatusPill tone={safety.readyForAgentFinalReview ? "success" : "warning"}>
               {safety.readyForAgentFinalReview ? "Ready for agent final review" : `${safety.hardBlockers.length} hard blocker(s)`}
             </StatusPill>
@@ -67,6 +72,9 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
           </div>
           <p className="text-sm text-slate-300">
             Aria can generate working PDFs now, but approving or publishing a client-visible form copy is blocked until hard blockers are cleared.
+          </p>
+          <p className="text-xs leading-6 text-slate-500">
+            {subclassSupport.notes}
           </p>
         </SectionCard>
 

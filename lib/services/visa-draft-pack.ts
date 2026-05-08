@@ -27,8 +27,8 @@ export async function generateVisaDraftPack(matterId: string): Promise<{
     matter.visaSubclass === "485" ? "485 Graduate" :
     matter.visaSubclass === "482" ? "482 TSS" :
     matter.visaSubclass === "186" ? "186 ENS" :
-    ["820", "801"].includes(matter.visaSubclass) ? "820/801 Partner" :
-    ["309", "100"].includes(matter.visaSubclass) ? "309/100 Partner" :
+    ["820", "801", "820/801"].includes(matter.visaSubclass) ? "820/801 Partner" :
+    ["309", "100", "309/100"].includes(matter.visaSubclass) ? "309/100 Partner" :
     ["189", "190", "491"].includes(matter.visaSubclass) ? "189/190/491 Skilled" :
     matter.visaSubclass === "600" ? "600 Visitor" :
     "Form 80 draft summary";

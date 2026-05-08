@@ -42,6 +42,9 @@ export default async function SettingsDataPage() {
           </div>
           <StatusPill tone="warning">Review required</StatusPill>
         </div>
+        <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+          Do not delete records that must be retained for law, professional obligations, disputes, audits, or client engagement requirements.
+        </div>
         <DataControls
           matters={matters.map((matter) => ({ id: matter.id, title: matter.title, clientName: `${matter.client.firstName} ${matter.client.lastName}` }))}
           clients={clients.map((client) => ({ id: client.id, name: `${client.firstName} ${client.lastName}` }))}

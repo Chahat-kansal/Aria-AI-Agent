@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureClientPortalToken } from "@/lib/services/client-workflows";
 import { auditEvent } from "@/lib/services/audit";
 import { serverLog } from "@/lib/services/runtime-config";
+import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 
 const schema = z.object({
   clientId: z.string().min(1),
@@ -29,6 +30,13 @@ export async function POST(req: Request) {
         include: { assignedToUser: true }
       });
       if (!matter || !canAccessMatter(context.user, matter)) return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+      const launchControls = await getWorkspaceLaunchControls(context.workspace.id);
+      if (!launchControls.clientPortalEnabled) {
+        return NextResponse.json({ error: "Client portal access is disabled by workspace launch controls." }, { status: 409 });
+      }
+      if (!isSubclassAllowedByLaunchControls(launchControls, matter.visaSubclass)) {
+        return NextResponse.json({ error: `Client portal access is disabled for Subclass ${matter.visaSubclass} by current launch controls.` }, { status: 409 });
+      }
     }
 
     const result = await ensureClientPortalToken({

@@ -20,6 +20,7 @@ import { getMatterIntelligence } from "@/lib/services/aria-intelligence";
 import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 import { getAiConfigStatus, getEmailConfigStatus, getEncryptionConfigStatus } from "@/lib/services/runtime-config";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
+import { getSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-support";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -80,6 +81,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     getWorkspaceOperationalSettingsView(context.workspace.id)
   ]);
   const emailConfigured = getEmailConfigStatus().configured;
+  const subclassSupport = getSubclassSupport(matter.visaSubclass);
   const workflowItems = [
     {
       label: "Upload documents for this matter",
@@ -102,9 +104,9 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     {
       label: "Run AI Draft Autofill",
       href: `/app/matters/${matter.id}/draft`,
-      status: matter.visaSubclass === "500" && canUseAi && aiConfigured && matter.documents.length ? "ready" : "blocked",
-      reason: matter.visaSubclass !== "500"
-        ? "Field-level draft autofill is currently configured for Subclass 500."
+      status: subclassSupport.aiDraftAutofill && canUseAi && aiConfigured && matter.documents.length ? "ready" : "blocked",
+      reason: !subclassSupport.aiDraftAutofill
+        ? `Field-level draft autofill is not configured for this subclass. Current support level: ${supportLevelLabel(subclassSupport.supportLevel)}.`
         : !matter.documents.length
           ? "Upload documents before running draft autofill."
           : !canUseAi
@@ -116,8 +118,8 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     {
       label: "Review application draft",
       href: `/app/matters/${matter.id}/draft`,
-      status: latestDraft ? "ready" : matter.visaSubclass === "500" ? "ready" : "blocked",
-      reason: latestDraft ? `Latest draft status: ${formatEnum(latestDraft.status)}.` : matter.visaSubclass === "500" ? "Open the draft workspace to create or review the matter draft." : "This matter uses knowledge/checklist review until an official form template is configured."
+      status: latestDraft ? "ready" : subclassSupport.fieldLevelDraftKeys ? "ready" : "blocked",
+      reason: latestDraft ? `Latest draft status: ${formatEnum(latestDraft.status)}.` : subclassSupport.fieldLevelDraftKeys ? "Open the draft workspace to create or review the matter draft." : `This matter currently uses ${supportLevelLabel(subclassSupport.supportLevel)} until field-level draft keys are configured.`
     },
     {
       label: "Open checklist",
@@ -179,6 +181,9 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           action={
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill tone="info">{matter.visaSubclass}</StatusPill>
+              <StatusPill tone={subclassSupport.supportLevel === "FULL_FIELD_AUTOFILL" ? "success" : "warning"}>
+                {supportLevelLabel(subclassSupport.supportLevel)}
+              </StatusPill>
               <StatusPill>{formatEnum(matter.stage)}</StatusPill>
               <StatusPill tone={matter.readinessScore >= 80 ? "success" : matter.readinessScore >= 60 ? "warning" : "danger"}>
                 {matter.readinessScore}% ready
@@ -217,6 +222,10 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
             <SectionCard className="p-4">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Final review note</p>
               <p className="mt-3 text-sm leading-6 text-slate-200">{intelligence.finalReviewNote}</p>
+            </SectionCard>
+            <SectionCard className="p-4 md:col-span-3">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Subclass support</p>
+              <p className="mt-3 text-sm leading-6 text-slate-200">{subclassSupport.label}: {subclassSupport.notes}</p>
             </SectionCard>
           </div>
           <div className="grid gap-3 md:grid-cols-2">

@@ -1,6 +1,9 @@
 import type { AriaEvidenceSource, AriaGroundedResponse } from "@/lib/services/aria-evidence";
 import { buildGroundedResponse, clampConfidence } from "@/lib/services/aria-evidence";
 
+const ARIA_REVIEW_WARNING =
+  "AI-assisted output. Registered migration agent review required before use. Aria does not provide final migration advice, does not guarantee visa outcomes, and does not lodge applications.";
+
 export type AssistantGroundedPayload = {
   content: string;
   evidence: AriaEvidenceSource[];
@@ -23,7 +26,7 @@ export function groundedResponseToAssistantPayload(
   response: AriaGroundedResponse,
   extras?: Partial<AssistantGroundedPayload>
 ): AssistantGroundedPayload {
-  const warnings = Array.from(new Set([...(response.warnings ?? []), ...(extras?.warnings ?? [])]));
+  const warnings = Array.from(new Set([ARIA_REVIEW_WARNING, ...(response.warnings ?? []), ...(extras?.warnings ?? [])]));
   return {
     content: response.answer,
     evidence: response.evidence,
@@ -73,4 +76,8 @@ export function buildFallbackGroundedAssistantPayload(input: {
     reasoning: input.reasoning,
     citations: input.citations
   });
+}
+
+export function getAriaReviewWarning() {
+  return ARIA_REVIEW_WARNING;
 }

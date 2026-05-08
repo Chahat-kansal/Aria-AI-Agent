@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assessMatterCaseSafety } from "@/lib/services/case-safety";
 import { approveMatterFormDraft, generateMatterFormDraft, publishApprovedFormToClient } from "@/lib/services/pdf-form-engine";
 import { auditAccessDenied, auditEvent, auditMatterAction } from "@/lib/services/audit";
+import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 
 export async function POST(req: Request, { params }: { params: { templateId: string } }) {
   const context = await requireCurrentWorkspaceContext();
@@ -22,6 +23,13 @@ export async function POST(req: Request, { params }: { params: { templateId: str
   if (!matter || !canAccessMatter(context.user, matter)) {
     await auditAccessDenied({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterOfficialFormDraft", entityId: body.matterId, reason: "form_draft_scope_denied" });
     return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+  }
+  const launchControls = await getWorkspaceLaunchControls(context.workspace.id);
+  if (!isSubclassAllowedByLaunchControls(launchControls, matter.visaSubclass)) {
+    return NextResponse.json({ error: `Form drafting is disabled for Subclass ${matter.visaSubclass} by current launch controls.` }, { status: 409 });
+  }
+  if (!launchControls.pdfFormFillingEnabled) {
+    return NextResponse.json({ error: "PDF form filling is disabled by workspace launch controls." }, { status: 409 });
   }
 
   const action = body.action || "generate";

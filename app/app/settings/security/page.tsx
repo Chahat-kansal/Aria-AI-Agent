@@ -37,7 +37,12 @@ export default async function SettingsSecurityPage() {
           eyebrow="ARIA SECURITY VAULT"
           title="Security and document protection"
           description="Configuration health only is shown here. Secret values are never displayed. AI-assisted output always remains review required."
-          action={<a href="/app/settings/security/incidents" className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Incident register</a>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <a href="/app/settings/security/launch-readiness" className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Launch readiness</a>
+              <a href="/app/settings/security/incidents" className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 transition hover:bg-white/[0.08]">Incident register</a>
+            </div>
+          }
         />
 
         {!health.encryption.configured ? (

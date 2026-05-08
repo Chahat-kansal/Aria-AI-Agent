@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
 import { serverLog } from "@/lib/services/runtime-config";
 import { auditAiUsed, auditAccessDenied, auditMatterAction } from "@/lib/services/audit";
+import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
+import { getSubclassSupport } from "@/lib/services/subclass-support";
 
 export async function POST(req: Request) {
   try {
@@ -23,6 +25,21 @@ export async function POST(req: Request) {
     if (!matter || !canAccessMatter(context.user, matter)) {
       await auditAccessDenied({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterApplicationDraft", entityId: matterId, reason: "matter_scope_denied" });
       return NextResponse.json({ error: "You do not have access to this matter." }, { status: 403 });
+    }
+    const launchControls = await getWorkspaceLaunchControls(context.workspace.id);
+    if (!launchControls.aiDraftAutofillEnabled) {
+      return NextResponse.json({ error: "AI draft autofill is disabled by workspace launch controls." }, { status: 409 });
+    }
+    if (!isSubclassAllowedByLaunchControls(launchControls, matter.visaSubclass)) {
+      return NextResponse.json({ error: `AI draft autofill is disabled for Subclass ${matter.visaSubclass} by current launch controls.` }, { status: 409 });
+    }
+    const support = getSubclassSupport(matter.visaSubclass);
+    if (!support.aiDraftAutofill) {
+      return NextResponse.json({
+        error: `Field-level draft autofill is not configured for Subclass ${matter.visaSubclass}.`,
+        supportLevel: support.supportLevel,
+        reviewRequired: true
+      }, { status: 409 });
     }
 
     const result = await mapDocumentsToDraft(matterId);

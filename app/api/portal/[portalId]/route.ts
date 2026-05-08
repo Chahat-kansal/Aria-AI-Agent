@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureClientPortalToken } from "@/lib/services/client-workflows";
 import { auditEvent } from "@/lib/services/audit";
 import { sendClientWorkflowEmail } from "@/lib/services/email";
+import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 
 export async function PATCH(req: Request, { params }: { params: { portalId: string } }) {
   const context = await requireCurrentWorkspaceContext();
@@ -19,6 +20,13 @@ export async function PATCH(req: Request, { params }: { params: { portalId: stri
   if (!existing) return NextResponse.json({ error: "Portal link not found." }, { status: 404 });
   if (existing.matter && !canAccessMatter(context.user, existing.matter)) {
     return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
+  }
+  const launchControls = await getWorkspaceLaunchControls(context.workspace.id);
+  if (!launchControls.clientPortalEnabled) {
+    return NextResponse.json({ error: "Client portal access is disabled by workspace launch controls." }, { status: 409 });
+  }
+  if (existing.matter && !isSubclassAllowedByLaunchControls(launchControls, existing.matter.visaSubclass)) {
+    return NextResponse.json({ error: `Client portal access is disabled for Subclass ${existing.matter.visaSubclass} by current launch controls.` }, { status: 409 });
   }
 
   const body = await req.json().catch(() => null) as { action?: "revoke" | "regenerate" | "email"; recipientEmail?: string; recipientName?: string } | null;
@@ -66,4 +74,3 @@ export async function PATCH(req: Request, { params }: { params: { portalId: stri
   await auditEvent({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "ClientPortalAccessToken", entityId: fresh.record.id, action: "regenerated" });
   return NextResponse.json({ ok: true, portalUrl: fresh.url, expiresAt: fresh.record.expiresAt });
 }
-

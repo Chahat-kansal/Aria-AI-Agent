@@ -192,6 +192,72 @@ function buildItemsFromContext(context: MatterConfirmationContext) {
     });
   }
 
+  if (context.visaSubclass === "485") {
+    items.push(
+      {
+        key: "485.current_visa",
+        category: "document_accuracy",
+        title: "Confirm current visa and grant details",
+        detail: "Confirm the applicant's current visa status, grant details, expiry, and any recent changes that the migration agent should rely on.",
+        status: "required"
+      },
+      {
+        key: "485.english_skills",
+        category: "study_gte",
+        title: "Confirm English and qualification details",
+        detail: "Confirm the English test details, Australian study completion evidence, and any skills/licensing documents relevant to the selected 485 stream.",
+        status: "required"
+      },
+      {
+        key: "485.character_health",
+        category: "character_declaration",
+        title: "Confirm AFP / health / compliance details",
+        detail: "Confirm police clearances, health declarations, visa compliance, refusals, cancellations, and any material history requiring agent review.",
+        status: "required"
+      },
+      {
+        key: "485.insurance",
+        category: "insurance",
+        title: "Confirm post-study health insurance coverage",
+        detail: "Confirm the insurer, policy dates, and whether the policy covers the intended stay period after study completion.",
+        status: "recommended"
+      }
+    );
+  }
+
+  if (context.visaSubclass === "309/100") {
+    items.push(
+      {
+        key: "309100.identity",
+        category: "relationship_family",
+        title: "Confirm applicant and sponsor identity details",
+        detail: "Confirm the applicant's and sponsor's current identity details, status documents, and any name changes used in the relationship evidence.",
+        status: "required"
+      },
+      {
+        key: "309100.relationship_evidence",
+        category: "relationship_family",
+        title: "Confirm relationship evidence categories",
+        detail: "Confirm which documents best prove finances, household, social recognition, commitment, and periods spent together or apart.",
+        status: "required"
+      },
+      {
+        key: "309100.timeline",
+        category: "relationship_family",
+        title: "Confirm relationship timeline and witness support",
+        detail: "Confirm the relationship chronology, engagement/marriage milestones, and any witness statements or Form 888 support the matter should rely on.",
+        status: "required"
+      },
+      {
+        key: "309100.character_health",
+        category: "character_declaration",
+        title: "Confirm health and character matters for the partner application",
+        detail: "Confirm health disclosures, police clearances, refusals, cancellations, overstays, and any material issues for applicant or sponsor that need agent review.",
+        status: "required"
+      }
+    );
+  }
+
   return uniqueItems(items);
 }
 
