@@ -292,6 +292,7 @@ textarea:focus {
 
 .page-title-display {
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .assistant-workspace-surface {
@@ -340,6 +341,68 @@ html[data-theme="light"] .assistant-workspace-surface {
 .aria-sidebar-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(139, 92, 246, 0.26) transparent;
+}
+
+.app-surface,
+.panel,
+.aria-surface,
+.aria-surface-strong,
+.aria-note,
+.aria-table-td {
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-slate-50,
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .text-slate-300 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] .text-slate-500 {
+  color: var(--text-tertiary) !important;
+}
+
+html[data-theme="light"] .bg-white\/\[0\.02\],
+html[data-theme="light"] .bg-white\/\[0\.03\],
+html[data-theme="light"] .bg-white\/\[0\.04\],
+html[data-theme="light"] .bg-white\/\[0\.05\],
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-slate-950\/45,
+html[data-theme="light"] .bg-slate-950\/55 {
+  background: color-mix(in srgb, var(--surface-soft) 78%, white 22%) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+html[data-theme="light"] .hover\:bg-white\/\[0\.05\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover,
+html[data-theme="light"] .hover\:bg-slate-950\/55:hover {
+  background: color-mix(in srgb, var(--surface-soft) 90%, white 10%) !important;
+}
+
+html[data-theme="light"] .border-white\/8,
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/12,
+html[data-theme="light"] .border-violet-400\/20 {
+  border-color: transparent !important;
+}
+
+html[data-theme="light"] .from-white\/8,
+html[data-theme="light"] .to-white\/3 {
+  --tw-gradient-from: rgba(255, 255, 255, 0.92) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(250, 248, 254, 0.96) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="light"] .bg-\[radial-gradient\(circle_at_top_right\,rgba\(168\,85\,247\,0\.22\)\,transparent_34\%\)\,linear-gradient\(180deg\,rgba\(255\,255\,255\,0\.08\)\,rgba\(255\,255\,255\,0\.03\)\)\] {
+  background:
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 248, 254, 0.98)) !important;
+  box-shadow: var(--shadow-card), var(--shadow-glow);
 }
 
 @layer components {
