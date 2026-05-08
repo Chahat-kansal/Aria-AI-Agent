@@ -35,7 +35,7 @@ const documentRequestInclude = Prisma.validator<Prisma.DocumentRequestInclude>()
   items: { include: { checklistItem: { include: { document: true } } }, orderBy: { createdAt: "asc" } }
 });
 
-const checklistTemplates: Record<string, Array<{ key: string; category: string; label: string; description: string; required: boolean }>> = {
+export const checklistTemplates: Record<string, Array<{ key: string; category: string; label: string; description: string; required: boolean }>> = {
   "500": [
     { key: "passport", category: "Identity", label: "Passport bio page", description: "Current passport biodata page and any recent passport changes.", required: true },
     { key: "coe", category: "Education", label: "Confirmation of Enrolment", description: "Course enrolment evidence for the intended provider.", required: true },
@@ -192,6 +192,14 @@ export async function getClientPortalByToken(token: string) {
   });
   if (!record) return null;
   await prisma.clientPortalAccessToken.update({ where: { id: record.id }, data: { lastViewedAt: new Date() } }).catch(() => null);
+  await auditEvent({
+    workspaceId: record.workspaceId,
+    userId: record.createdByUserId ?? record.matter?.assignedToUserId ?? undefined,
+    entityType: "ClientPortalAccessToken",
+    entityId: record.id,
+    action: "portal.used",
+    metadata: { matterId: record.matterId ?? null, clientId: record.clientId }
+  });
   return record;
 }
 
@@ -204,6 +212,7 @@ export async function createClientIntakeRequest(input: {
   recipientName?: string;
   recipientEmail?: string;
   message?: string;
+  workflowType?: "INTAKE" | "CLIENT_CONFIRMATION";
   requestOrigin?: string | null;
 }) {
   const token = createToken();
@@ -229,11 +238,16 @@ export async function createClientIntakeRequest(input: {
       workspaceId: input.workspaceId,
       matterId: input.matterId,
       actorUserId: input.createdByUserId,
-      eventType: "intake.sent",
-      title: "Client intake sent",
+      eventType: input.workflowType === "CLIENT_CONFIRMATION" ? "client_confirmation.sent" : "intake.sent",
+      title: input.workflowType === "CLIENT_CONFIRMATION" ? "Client confirmation request sent" : "Client intake sent",
       description: input.message
     });
-    await auditMatterAction({ workspaceId: input.workspaceId, userId: input.createdByUserId, matterId: input.matterId, action: "intake.sent" });
+    await auditMatterAction({
+      workspaceId: input.workspaceId,
+      userId: input.createdByUserId,
+      matterId: input.matterId,
+      action: input.workflowType === "CLIENT_CONFIRMATION" ? "client_confirmation.sent" : "intake.sent"
+    });
     await createWorkflowTask({
       workspaceId: input.workspaceId,
       matterId: input.matterId,
@@ -250,8 +264,8 @@ export async function createClientIntakeRequest(input: {
     userId: input.createdByUserId,
     entityType: "ClientIntakeRequest",
     entityId: request.id,
-    action: "intake.sent",
-    metadata: { recipientEmail: input.recipientEmail ?? null }
+    action: input.workflowType === "CLIENT_CONFIRMATION" ? "client_confirmation.sent" : "intake.sent",
+    metadata: { recipientEmail: input.recipientEmail ?? null, workflowType: input.workflowType ?? "INTAKE" }
   });
 
   return { request, token, url: buildClientLink("/client/intake", token, input.requestOrigin) };
@@ -271,6 +285,14 @@ export async function markIntakeViewed(token: string) {
     await prisma.clientIntakeRequest.update({
       where: { id: request.id },
       data: { viewedAt: new Date(), status: request.status === IntakeRequestStatus.SENT ? IntakeRequestStatus.VIEWED : request.status }
+    });
+    await auditEvent({
+      workspaceId: request.workspaceId,
+      userId: request.createdByUserId,
+      entityType: "ClientIntakeRequest",
+      entityId: request.id,
+      action: "intake.viewed",
+      metadata: { matterId: request.matterId ?? null, clientId: request.clientId ?? null }
     });
   }
   return request;
@@ -305,6 +327,7 @@ export async function submitIntake(token: string, questionnaireJson: Prisma.Inpu
 
   if (updated.matterId) {
     const payload = questionnaireJson as Record<string, unknown>;
+    const clientConfirmations = payload.clientConfirmations as Record<string, unknown> | undefined;
     await prisma.matter.update({
       where: { id: updated.matterId },
       data: {
@@ -317,11 +340,19 @@ export async function submitIntake(token: string, questionnaireJson: Prisma.Inpu
     await addMatterTimelineEvent({
       workspaceId: updated.workspaceId,
       matterId: updated.matterId,
-      eventType: "intake.submitted",
-      title: "Client intake submitted",
-      description: "Client submitted questionnaire details for review."
+      eventType: clientConfirmations ? "client_confirmation.submitted" : "intake.submitted",
+      title: clientConfirmations ? "Client confirmation submitted" : "Client intake submitted",
+      description: clientConfirmations
+        ? "Client submitted structured confirmations for migration agent review."
+        : "Client submitted questionnaire details for review."
     });
-    await auditMatterAction({ workspaceId: updated.workspaceId, matterId: updated.matterId, action: "intake.submitted" });
+    await auditMatterAction({
+      workspaceId: updated.workspaceId,
+      userId: updated.createdByUserId,
+      matterId: updated.matterId,
+      action: clientConfirmations ? "client_confirmation.submitted" : "intake.submitted",
+      metadata: clientConfirmations ? { confirmationItemCount: Array.isArray(clientConfirmations.items) ? clientConfirmations.items.length : 0 } : undefined
+    });
     const matter = await prisma.matter.findUnique({ where: { id: updated.matterId } });
     if (matter) {
       await createWorkflowTask({
@@ -338,9 +369,13 @@ export async function submitIntake(token: string, questionnaireJson: Prisma.Inpu
 
   await auditEvent({
     workspaceId: updated.workspaceId,
+    userId: updated.createdByUserId,
     entityType: "ClientIntakeRequest",
     entityId: updated.id,
-    action: "intake.submitted",
+    action: (() => {
+      const payload = questionnaireJson as Record<string, unknown>;
+      return payload.clientConfirmations ? "client_confirmation.submitted" : "intake.submitted";
+    })(),
     metadata: { matterId: updated.matterId ?? null, clientId: updated.clientId ?? null }
   });
 
@@ -490,6 +525,14 @@ export async function markDocumentRequestViewed(token: string) {
     await prisma.documentRequest.update({
       where: { id: request.id },
       data: { viewedAt: new Date(), status: request.status === DocumentRequestStatus.SENT ? DocumentRequestStatus.VIEWED : request.status }
+    });
+    await auditEvent({
+      workspaceId: request.workspaceId,
+      userId: request.createdByUserId,
+      entityType: "DocumentRequest",
+      entityId: request.id,
+      action: "documents.viewed",
+      metadata: { matterId: request.matterId, clientId: request.clientId }
     });
   }
   return request;

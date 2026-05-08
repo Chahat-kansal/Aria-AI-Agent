@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { markIntakeViewed, submitIntake } from "@/lib/services/client-workflows";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
+import {
+  buildClientConfirmationPrompts,
+  buildMatterClientConfirmationItems,
+  parseSubmittedClientConfirmations
+} from "@/lib/services/client-confirmation";
 
 export default async function ClientIntakePage({ params, searchParams }: { params: { token: string }; searchParams?: { submitted?: string } }) {
   const request = await markIntakeViewed(params.token);
@@ -16,9 +21,12 @@ export default async function ClientIntakePage({ params, searchParams }: { param
       </div>
     );
   }
+  const confirmationItems = request.matterId ? await buildMatterClientConfirmationItems(request.matterId).catch(() => []) : [];
+  const confirmationPrompts = buildClientConfirmationPrompts(confirmationItems);
 
   async function handleSubmit(formData: FormData) {
     "use server";
+    const confirmationPayload = parseSubmittedClientConfirmations(formData, confirmationItems);
     const payload = {
       fullName: String(formData.get("fullName") || ""),
       currentVisaStatus: String(formData.get("currentVisaStatus") || ""),
@@ -31,7 +39,8 @@ export default async function ClientIntakePage({ params, searchParams }: { param
       location: String(formData.get("location") || ""),
       constraints: String(formData.get("constraints") || ""),
       preferredVisaGoal: String(formData.get("preferredVisaGoal") || ""),
-      notes: String(formData.get("notes") || "")
+      notes: String(formData.get("notes") || ""),
+      clientConfirmations: confirmationPayload
     };
     const consentAccepted = String(formData.get("consent") || "") === "on";
     if (!consentAccepted) {
@@ -63,6 +72,49 @@ export default async function ClientIntakePage({ params, searchParams }: { param
           </div>
         ) : null}
         <form action={handleSubmit} className="mt-6 grid gap-3 md:grid-cols-2">
+          {confirmationPrompts.length ? (
+            <div className="md:col-span-2 space-y-4 rounded-2xl border border-violet-400/15 bg-violet-500/[0.05] p-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-500 dark:text-violet-300">Client confirmation tasks</p>
+                <h2 className="mt-2 text-lg font-semibold">Confirm these details for your migration team</h2>
+                <p className="mt-2 text-sm text-muted">These confirmations record your instructions and factual corrections only. They do not finalise legal conclusions and still require migration agent review.</p>
+              </div>
+              <div className="space-y-4">
+                {confirmationPrompts.map((prompt) => (
+                  <div key={prompt.key} className="rounded-2xl border border-white/10 bg-white/70 p-4 shadow-sm dark:bg-white/[0.03]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-300">
+                        {prompt.category.replace(/_/g, " ")}
+                      </span>
+                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-white/[0.05] dark:text-slate-400">
+                        {prompt.status}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-base font-semibold">{prompt.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">{prompt.detail}</p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <label className="rounded-xl border border-border bg-white/80 px-3 py-2 text-sm dark:bg-white/[0.04]">
+                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted">Response</span>
+                        <select name={prompt.responseKey} required defaultValue="confirmed" className="w-full rounded-lg bg-transparent text-sm outline-none">
+                          <option value="confirmed">Confirmed</option>
+                          <option value="needs_agent_follow_up">Needs agent follow-up</option>
+                        </select>
+                      </label>
+                      <label className="rounded-xl border border-border bg-white/80 px-3 py-2 text-sm dark:bg-white/[0.04] md:col-span-2">
+                        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-muted">Details for your migration team</span>
+                        <textarea
+                          name={prompt.detailKey}
+                          required={prompt.status === "required"}
+                          placeholder="Add any corrections, clarifications, or facts your migration team should rely on."
+                          className="min-h-24 w-full rounded-lg bg-transparent text-sm outline-none"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <input name="fullName" defaultValue={request.client ? `${request.client.firstName} ${request.client.lastName}` : ""} placeholder="Full name" className="rounded-lg border border-border bg-white/80 p-3 text-sm" />
           <input name="currentVisaStatus" placeholder="Current visa status" className="rounded-lg border border-border bg-white/80 p-3 text-sm" />
           <input name="currentVisaExpiry" type="date" className="rounded-lg border border-border bg-white/80 p-3 text-sm" />

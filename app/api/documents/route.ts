@@ -7,7 +7,7 @@ import { extractDocumentResult } from "@/lib/services/document-extraction";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { getUploadLimits, serverLog } from "@/lib/services/runtime-config";
-import { auditDocumentUploaded } from "@/lib/services/audit";
+import { auditDocumentUploaded, auditEvent } from "@/lib/services/audit";
 
 export async function POST(req: Request) {
   try {
@@ -69,6 +69,19 @@ export async function POST(req: Request) {
       fileName,
       mimeType,
       fileSize: upload.fileSize
+    });
+    await auditEvent({
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      entityType: "Document",
+      entityId: document.id,
+      action: "document.extracted",
+      metadata: {
+        matterId,
+        provider: extraction.provider,
+        confidence: extraction.confidence,
+        warningCount: extraction.warnings.length
+      }
     });
     if (checklistItemId) {
       await attachDocumentToChecklistItem(checklistItemId, document.id).catch(() => null);

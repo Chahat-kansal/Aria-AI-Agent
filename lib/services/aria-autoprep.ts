@@ -9,6 +9,7 @@ import {
   generateChecklistForMatter,
   generateMatterDocument
 } from "@/lib/services/client-workflows";
+import { buildClientConfirmationItems, buildClientConfirmationMessage, type ClientConfirmationItem } from "@/lib/services/client-confirmation";
 import { buildMatterDraftBriefing } from "@/lib/services/draft-generation";
 import { generateMatterFormDraft } from "@/lib/services/pdf-form-engine";
 import { auditMatterAction } from "@/lib/services/audit";
@@ -34,105 +35,6 @@ type ApprovalCandidate = {
   enabled: boolean;
   reason: string;
 };
-
-type ClientConfirmationItem = {
-  key: string;
-  title: string;
-  detail: string;
-  status: "required" | "recommended";
-};
-
-function buildClientConfirmationItems(input: {
-  visaSubclass: string;
-  safety: Awaited<ReturnType<typeof assessMatterCaseSafety>>;
-  draftBriefing: Awaited<ReturnType<typeof buildMatterDraftBriefing>> | null;
-}) {
-  const items: ClientConfirmationItem[] = [];
-  const seen = new Set<string>();
-
-  function push(item: ClientConfirmationItem) {
-    if (seen.has(item.key)) return;
-    seen.add(item.key);
-    items.push(item);
-  }
-
-  for (const blocker of input.safety.hardBlockers) {
-    if (blocker.relatedFieldKey === "statement.genuine_student" || /genuine student/i.test(blocker.title)) {
-      push({
-        key: "statement.genuine_student",
-        title: "Confirm genuine student statement details",
-        detail: "Ask the client to confirm their study rationale, why this course/provider was chosen, relevant home-country ties, and future plans after study.",
-        status: "required"
-      });
-    }
-    if (/health/i.test(blocker.title) || blocker.relatedFieldKey === "health.declarations") {
-      push({
-        key: "declarations.health",
-        title: "Confirm health declarations",
-        detail: "Ask the client to confirm any current health issues, examinations, treatment history, or health-related disclosures that must be reviewed by the agent.",
-        status: "required"
-      });
-    }
-    if (/character|criminal/i.test(blocker.title) || blocker.relatedFieldKey === "character.declarations") {
-      push({
-        key: "declarations.character",
-        title: "Confirm character declarations",
-        detail: "Ask the client to confirm any refusals, charges, convictions, police matters, or character issues that require explicit disclosure and agent review.",
-        status: "required"
-      });
-    }
-    if (/relationship/i.test(blocker.title) || blocker.relatedFieldKey === "declarations.relationship") {
-      push({
-        key: "declarations.relationship",
-        title: "Confirm relationship history",
-        detail: "Ask the client to confirm the relationship timeline, living arrangements, and any sponsor or partner declarations before any form is treated as complete.",
-        status: "required"
-      });
-    }
-  }
-
-  if (input.visaSubclass === "500") {
-    push({
-      key: "declarations.health",
-      title: "Confirm health / insurance answers",
-      detail: "Confirm the client's health history, any required exams, and whether OSHC coverage details match the intended study period.",
-      status: "recommended"
-    });
-    push({
-      key: "declarations.character",
-      title: "Confirm character / compliance history",
-      detail: "Confirm any visa refusals, cancellations, overstays, police clearances, or criminal history before the matter moves toward agent final review.",
-      status: "recommended"
-    });
-  }
-
-  for (const field of input.draftBriefing?.missingFields ?? []) {
-    if (/passport|date of birth|nationality/i.test(field.label)) {
-      push({
-        key: `confirm.${field.label.toLowerCase().replace(/\s+/g, "_")}`,
-        title: `Confirm ${field.label.toLowerCase()}`,
-        detail: `${field.label} is still unresolved or still needs review. Ask the client to confirm the exact value directly against their source documents.`,
-        status: "recommended"
-      });
-    }
-  }
-
-  return items;
-}
-
-function buildClientConfirmationMessage(items: ClientConfirmationItem[]) {
-  if (!items.length) {
-    return "Please review and confirm any outstanding declarations or client-provided details that your migration agent may still need before final review.";
-  }
-
-  return [
-    "Your migration team needs you to confirm the following items before the matter can move to final review:",
-    "",
-    ...items.map((item, index) => `${index + 1}. ${item.title} - ${item.detail}`),
-    "",
-    "Please answer carefully and provide only accurate information. Your registered migration agent will review everything before it is used."
-  ].join("\n");
-}
 
 export async function runMatterAutoprep(input: {
   matterId: string;
@@ -239,11 +141,7 @@ export async function runMatterAutoprep(input: {
   const latestIntake = refreshedMatter.intakeRequests[0];
   const latestDocumentRequest = refreshedMatter.documentRequests[0];
   const missingChecklistItems = refreshedMatter.checklistItems.filter((item) => !item.documentId && item.required);
-  const clientConfirmations = buildClientConfirmationItems({
-    visaSubclass: refreshedMatter.visaSubclass,
-    safety,
-    draftBriefing
-  });
+  const clientConfirmations = await buildClientConfirmationItems(refreshedMatter.id);
 
   const approvalCandidates: ApprovalCandidate[] = [
     {
@@ -365,6 +263,7 @@ export async function runMatterAutoprep(input: {
       recipientName: `${refreshedMatter.client.firstName} ${refreshedMatter.client.lastName}`.trim(),
       recipientEmail: refreshedMatter.client.email,
       message: buildClientConfirmationMessage(clientConfirmations),
+      workflowType: "CLIENT_CONFIRMATION",
       requestOrigin: input.requestOrigin
     });
     approvedResults.push({

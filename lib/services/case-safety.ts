@@ -1,5 +1,8 @@
 import { DraftFieldStatus, IssueSeverity, ReviewRequestStatus } from "@prisma/client";
 import { getDraftReviewData } from "@/lib/services/application-draft";
+import { buildMatterClientConfirmationItems } from "@/lib/services/client-confirmation";
+import { prisma } from "@/lib/prisma";
+import { decryptJson } from "@/lib/security/encryption";
 
 const UNSAFE_FIELD_KEYS = new Set([
   "statement.genuine_student",
@@ -43,6 +46,13 @@ function buildBlocker(
 
 export async function assessMatterCaseSafety(matterId: string): Promise<CaseSafetyAssessment> {
   const reviewData = await getDraftReviewData(matterId);
+  const [latestIntake, clientConfirmationItems] = await Promise.all([
+    prisma.clientIntakeRequest.findFirst({
+      where: { matterId },
+      orderBy: { createdAt: "desc" }
+    }),
+    buildMatterClientConfirmationItems(matterId).catch(() => [])
+  ]);
   const hardBlockers: CaseSafetyBlocker[] = [];
   const softBlockers: CaseSafetyBlocker[] = [];
 
@@ -132,6 +142,36 @@ export async function assessMatterCaseSafety(matterId: string): Promise<CaseSafe
         "client_review_not_started",
         "Client review has not been started",
         "No client review request has been sent yet for this draft."
+      )
+    );
+  }
+
+  const latestConfirmationPayload = latestIntake?.questionnaireJson && typeof latestIntake.questionnaireJson === "string"
+    ? decryptJson<Record<string, unknown>>(latestIntake.questionnaireJson)
+    : null;
+  const hasSubmittedClientConfirmations = Boolean(
+    latestIntake?.submittedAt
+    && latestConfirmationPayload
+    && typeof latestConfirmationPayload === "object"
+    && latestConfirmationPayload.clientConfirmations
+  );
+
+  if (clientConfirmationItems.length && !hasSubmittedClientConfirmations) {
+    hardBlockers.push(
+      buildBlocker(
+        "HARD",
+        "client_confirmation_missing",
+        "Client confirmation is still required",
+        "Aria has identified client-confirmed facts or declarations that still need a client response before the matter can move to agent final review."
+      )
+    );
+  } else if (clientConfirmationItems.length && latestIntake?.submittedAt && latestIntake.status !== "REVIEWED") {
+    softBlockers.push(
+      buildBlocker(
+        "SOFT",
+        "client_confirmation_review_pending",
+        "Client confirmation has been submitted and still needs agent review",
+        "The client has responded, but the migration agent still needs to review the submitted confirmations before relying on them."
       )
     );
   }

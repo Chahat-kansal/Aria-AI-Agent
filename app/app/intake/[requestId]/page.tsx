@@ -6,6 +6,8 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
+import { decryptJson } from "@/lib/security/encryption";
+import { readSubmittedClientConfirmations } from "@/lib/services/client-confirmation";
 
 export default async function IntakeRequestDetailPage({ params }: { params: { requestId: string } }) {
   const context = await requireCurrentWorkspaceContext();
@@ -24,7 +26,10 @@ export default async function IntakeRequestDetailPage({ params }: { params: { re
   });
   if (!request) notFound();
 
-  const questionnaire = (request.questionnaireJson as Record<string, unknown> | null) ?? null;
+  const questionnaire = typeof request.questionnaireJson === "string"
+    ? decryptJson<Record<string, unknown>>(request.questionnaireJson)
+    : (request.questionnaireJson as Record<string, unknown> | null) ?? null;
+  const submittedConfirmations = readSubmittedClientConfirmations(questionnaire?.clientConfirmations as any);
 
   return (
     <AppShell title="Client Intake">
@@ -56,9 +61,24 @@ export default async function IntakeRequestDetailPage({ params }: { params: { re
 
       <Card className="mt-4">
         <h3 className="text-xl font-semibold tracking-tight text-white">Submitted questionnaire</h3>
+        {submittedConfirmations?.items.length ? (
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-slate-300">Structured client confirmations captured for migration agent review.</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {submittedConfirmations.items.map((item) => (
+                <div key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{item.category.replace(/_/g, " ")}</p>
+                  <p className="mt-1 font-medium text-white">{item.title}</p>
+                  <p className="mt-2 text-slate-300">Response: {item.response === "confirmed" ? "Confirmed" : "Needs agent follow-up"}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-slate-300">{item.detail || "No extra detail supplied."}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {questionnaire ? (
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {Object.entries(questionnaire).map(([key, value]) => (
+            {Object.entries(questionnaire).filter(([key]) => key !== "clientConfirmations").map(([key, value]) => (
               <div key={key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{key.replace(/([A-Z])/g, " $1")}</p>
                 <p className="mt-1 whitespace-pre-wrap text-slate-200">{typeof value === "string" ? value : JSON.stringify(value)}</p>

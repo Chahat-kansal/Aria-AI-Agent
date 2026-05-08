@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { ReviewRequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { auditEvent, auditMatterAction } from "@/lib/services/audit";
+import { addMatterTimelineEvent } from "@/lib/services/client-workflows";
 import { serverLog } from "@/lib/services/runtime-config";
 import { hashPortalToken } from "@/lib/security/hash";
 
@@ -37,7 +39,46 @@ export async function PATCH(req: Request, { params }: { params: { requestId: str
       viewedAt: status === ReviewRequestStatus.VIEWED_BY_CLIENT ? new Date() : undefined,
       confirmedAt: status === ReviewRequestStatus.SIGNED_CONFIRMED ? new Date() : undefined,
       returnedAt: status === ReviewRequestStatus.RETURNED_TO_AGENT || status === ReviewRequestStatus.REQUIRES_FOLLOW_UP ? new Date() : undefined
-    }
+    },
+    include: { matter: true }
+  });
+
+  const action =
+    status === ReviewRequestStatus.SIGNED_CONFIRMED
+      ? "client_review.confirmed"
+      : status === ReviewRequestStatus.RETURNED_TO_AGENT
+        ? "client_review.returned"
+        : status === ReviewRequestStatus.REQUIRES_FOLLOW_UP
+          ? "client_review.follow_up_requested"
+          : "client_review.viewed";
+
+  await addMatterTimelineEvent({
+    workspaceId: request.matter.workspaceId,
+    matterId: request.matterId,
+    eventType: action,
+    title:
+      status === ReviewRequestStatus.SIGNED_CONFIRMED
+        ? "Client review confirmed"
+        : status === ReviewRequestStatus.RETURNED_TO_AGENT
+          ? "Client review returned to agent"
+          : status === ReviewRequestStatus.REQUIRES_FOLLOW_UP
+            ? "Client review needs follow-up"
+            : "Client review viewed",
+    description: "Client review workflow status changed through the secure review link."
+  }).catch(() => null);
+
+  await auditMatterAction({
+    workspaceId: request.matter.workspaceId,
+    matterId: request.matterId,
+    action,
+    metadata: { reviewRequestId: request.id, status }
+  });
+  await auditEvent({
+    workspaceId: request.matter.workspaceId,
+    entityType: "MatterReviewRequest",
+    entityId: request.id,
+    action,
+    metadata: { matterId: request.matterId, status }
   });
 
   return NextResponse.json({ request });
