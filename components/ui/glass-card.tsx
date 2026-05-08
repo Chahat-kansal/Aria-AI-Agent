@@ -8,7 +8,7 @@ export function GlassCard({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-3xl border border-white/10 bg-slate-950/55 p-5 shadow-glass backdrop-blur-xl", className)}>
+    <div className={cn("app-surface-strong rounded-[2rem] p-6 backdrop-blur-xl", className)}>
       {children}
     </div>
   );

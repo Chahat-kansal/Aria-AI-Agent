@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
+import { assessMatterCaseSafety } from "@/lib/services/case-safety";
 import { approveMatterFormDraft, generateMatterFormDraft, publishApprovedFormToClient } from "@/lib/services/pdf-form-engine";
-import { auditEvent } from "@/lib/services/audit";
+import { auditAccessDenied, auditEvent, auditMatterAction } from "@/lib/services/audit";
 
 export async function POST(req: Request, { params }: { params: { templateId: string } }) {
   const context = await requireCurrentWorkspaceContext();
+  const body = await req.json().catch(() => null) as { matterId?: string; action?: "generate" | "approve" | "publish"; draftId?: string } | null;
   if (!hasPermission(context.user, "can_edit_matters")) {
+    await auditAccessDenied({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterOfficialFormDraft", entityId: body?.draftId ?? body?.matterId, reason: "form_draft_permission_missing" });
     return NextResponse.json({ error: "You do not have permission to generate matter form drafts." }, { status: 403 });
   }
-
-  const body = await req.json().catch(() => null) as { matterId?: string; action?: "generate" | "approve" | "publish"; draftId?: string } | null;
   if (!body?.matterId) return NextResponse.json({ error: "matterId is required." }, { status: 400 });
 
   const matter = await prisma.matter.findFirst({
@@ -19,12 +20,27 @@ export async function POST(req: Request, { params }: { params: { templateId: str
     include: { assignedToUser: true }
   });
   if (!matter || !canAccessMatter(context.user, matter)) {
+    await auditAccessDenied({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterOfficialFormDraft", entityId: body.matterId, reason: "form_draft_scope_denied" });
     return NextResponse.json({ error: "Matter is not available for this user scope." }, { status: 403 });
   }
 
   const action = body.action || "generate";
   if (action === "approve") {
     if (!body.draftId) return NextResponse.json({ error: "draftId is required to approve a form draft." }, { status: 400 });
+    const assessment = await assessMatterCaseSafety(body.matterId);
+    if (!assessment.readyForAgentFinalReview) {
+      await auditMatterAction({
+        workspaceId: context.workspace.id,
+        userId: context.user.id,
+        matterId: body.matterId,
+        action: "form_draft.approve_blocked",
+        metadata: { hardBlockers: assessment.hardBlockers.length }
+      });
+      return NextResponse.json({
+        error: "This matter still has hard blockers. Resolve them before approving a final client-facing form copy.",
+        hardBlockers: assessment.hardBlockers
+      }, { status: 409 });
+    }
     const draft = await approveMatterFormDraft(body.draftId, context.user.id);
     await auditEvent({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterOfficialFormDraft", entityId: draft.id, action: "approved" });
     return NextResponse.json({ ok: true, draft });
@@ -32,6 +48,26 @@ export async function POST(req: Request, { params }: { params: { templateId: str
 
   if (action === "publish") {
     if (!body.draftId) return NextResponse.json({ error: "draftId is required to publish a form draft." }, { status: 400 });
+    const existingDraft = await prisma.matterOfficialFormDraft.findFirst({
+      where: { id: body.draftId, matterId: body.matterId, workspaceId: context.workspace.id }
+    });
+    if (!existingDraft || existingDraft.status !== "APPROVED") {
+      return NextResponse.json({ error: "Only approved form drafts can be published to the client portal." }, { status: 409 });
+    }
+    const assessment = await assessMatterCaseSafety(body.matterId);
+    if (!assessment.readyForAgentFinalReview) {
+      await auditMatterAction({
+        workspaceId: context.workspace.id,
+        userId: context.user.id,
+        matterId: body.matterId,
+        action: "form_draft.publish_blocked",
+        metadata: { hardBlockers: assessment.hardBlockers.length }
+      });
+      return NextResponse.json({
+        error: "This matter still has hard blockers. Resolve them before publishing a client-visible form copy.",
+        hardBlockers: assessment.hardBlockers
+      }, { status: 409 });
+    }
     const draft = await publishApprovedFormToClient(body.draftId);
     await auditEvent({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterOfficialFormDraft", entityId: draft.id, action: "published_to_client" });
     return NextResponse.json({ ok: true, draft });

@@ -74,9 +74,10 @@ export default function SignInPage() {
   return (
     <AppPage contentClassName="flex min-h-screen items-center justify-center py-10">
       <Card className="w-full max-w-md p-8 sm:p-10">
-        <p className="text-xs font-medium uppercase tracking-[0.24em] text-cyan-300">Aria</p>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white">Welcome back.</h1>
-        <p className="mt-3 text-base leading-7 text-slate-400">Company owners create and manage workspaces here. Staff and agents sign in through their firm workspace portal, and clients use secure links sent by their migration agent.</p>
+        <div className="themed-logo-mark flex h-12 w-12 items-center justify-center rounded-[1rem] text-white">A</div>
+        <p className="mt-5 text-xs font-medium uppercase tracking-[0.24em] text-[color:var(--accent)]">Aria Migration</p>
+        <h1 className="page-title-display mt-4 text-[3.2rem] leading-none text-[color:var(--text-strong)]">Welcome back.</h1>
+        <p className="mt-4 text-base leading-8 text-[color:var(--text-muted)]">Company owners create and manage workspaces here. Staff and agents sign in through their firm workspace portal, and clients use secure links sent by their migration agent.</p>
 
         <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
           <FormField label="Email">
@@ -85,7 +86,7 @@ export default function SignInPage() {
           <FormField label="Password">
             <input name="password" required placeholder="Enter your password" type="password" />
           </FormField>
-          {error ? <p className="rounded-[1rem] border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p> : null}
+          {error ? <p className="rounded-[1rem] border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-500 dark:text-rose-200">{error}</p> : null}
           {workspacePortal ? (
             <Link
               href={`/w/${workspacePortal}/login` as any}
@@ -100,8 +101,8 @@ export default function SignInPage() {
         </form>
 
         <div className="mt-4 flex flex-col gap-3 text-sm">
-          <Link href="/auth/sign-up" className="text-cyan-300 hover:text-cyan-200">New here? Create an owner account</Link>
-          <Link href="/" className="text-slate-500 hover:text-slate-300">Back to product overview</Link>
+          <Link href="/auth/sign-up" className="text-[color:var(--accent)] hover:opacity-80">New here? Create an owner account</Link>
+          <Link href="/" className="text-[color:var(--text-faint)] hover:text-[color:var(--text-muted)]">Back to product overview</Link>
         </div>
       </Card>
     </AppPage>

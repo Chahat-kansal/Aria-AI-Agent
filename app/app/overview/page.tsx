@@ -78,17 +78,30 @@ export default async function OverviewPage() {
       <div className="space-y-6">
         <PageHeader
           eyebrow="Briefing"
-          title="Your practice at a glance."
-          description={`Aria does the admin. You stay in review. ${dashboardScope} signals are tuned to ${roleLabel(context.user.role).toLowerCase()} access.`}
+          title={`Good morning, ${context.user.name.split(" ")[0]}.`}
+          description={`${dashboardScope} signals are tuned to ${roleLabel(context.user.role).toLowerCase()} access. Aria keeps the admin moving while you stay in review.`}
           action={
             hasPermission(context.user, "can_run_pathway_analysis") ? (
-              <Link href="/app/pathways" className="inline-flex">
-                <GradientButton className="px-6">
-                  Find pathway
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </GradientButton>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/app/documents" className="inline-flex">
+                  <div className="inline-flex h-11 items-center justify-center rounded-[1.2rem] border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-5 text-sm font-semibold text-[color:var(--text)] shadow-[var(--shadow-soft)]">
+                    Upload evidence
+                  </div>
+                </Link>
+                <Link href="/app/pathways" className="inline-flex">
+                  <GradientButton className="px-6">
+                    New AI draft
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </GradientButton>
+                </Link>
+              </div>
+            ) : (
+              <Link href="/app/documents" className="inline-flex">
+                <div className="inline-flex h-11 items-center justify-center rounded-[1.2rem] border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-5 text-sm font-semibold text-[color:var(--text)] shadow-[var(--shadow-soft)]">
+                  Upload evidence
+                </div>
               </Link>
-            ) : null
+            )
           }
         />
 
@@ -97,27 +110,27 @@ export default async function OverviewPage() {
           summary={briefing.summary}
           statusLabel={briefing.urgency}
           action={briefing.status === "not_configured" || !canAccessAi ? null : (
-            <Link href="/app/assistant" className="inline-flex h-10 items-center justify-center rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 hover:bg-white/[0.08]">
+            <Link href="/app/assistant" className="inline-flex h-10 items-center justify-center rounded-[1.1rem] border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-4 text-sm font-medium text-[color:var(--text)] shadow-[var(--shadow-soft)] hover:text-[color:var(--accent)]">
               Open Aria
             </Link>
           )}
         >
           <AIReviewNotice />
           {briefing.status === "not_configured" && briefing.configMessage ? (
-            <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+            <div className="rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-4 py-3 text-sm text-[color:var(--text-muted)]">
               {briefing.configMessage}
             </div>
           ) : null}
           <div className="grid gap-3 md:grid-cols-2">
             <SectionCard className="p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Evidence used</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--text-faint)]">Evidence used</p>
+              <ul className="mt-3 space-y-2 text-sm text-[color:var(--text-muted)]">
                 {briefing.groundedFacts.slice(0, 6).map((item) => <li key={item}>{item}</li>)}
               </ul>
             </SectionCard>
             <SectionCard className="p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Warnings</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--text-faint)]">Warnings</p>
+              <ul className="mt-3 space-y-2 text-sm text-[color:var(--text-muted)]">
                 {(briefing.securityWarnings.length ? briefing.securityWarnings : ["No additional security warning is currently visible in your scope."]).slice(0, 6).map((item) => <li key={item}>{item}</li>)}
               </ul>
             </SectionCard>
@@ -125,9 +138,9 @@ export default async function OverviewPage() {
           {briefing.recommendedOrder.length ? (
             <div className="mt-6 grid gap-3 md:grid-cols-3">
               {briefing.recommendedOrder.slice(0, 3).map((item, index) => (
-                <div key={item} className="rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">Step {index + 1}</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-300">{item}</p>
+                <div key={item} className="rounded-[1.5rem] border border-[color:var(--border)] bg-[color:var(--surface-soft)] p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.22em] text-[color:var(--accent)]">Step {index + 1}</p>
+                  <p className="mt-3 text-sm leading-6 text-[color:var(--text-muted)]">{item}</p>
                 </div>
               ))}
             </div>

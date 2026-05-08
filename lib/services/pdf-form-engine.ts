@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { PDFCheckBox, PDFDropdown, PDFForm, PDFRadioGroup, PDFTextField, PDFDocument } from "pdf-lib";
 import { MatterOfficialFormDraftStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { suggestAriaFieldKey } from "@/lib/services/form-template-catalog";
 import { decryptString, encryptBuffer, encryptJson } from "@/lib/security/encryption";
 
 type InspectedField = {
@@ -104,16 +105,7 @@ export async function mapPdfFieldsToAriaFields(templateId: string) {
   const inspected = await inspectPdfFormFields(templateId);
   const storedMappings = (inspected.template.fieldMappingsJson as Record<string, string> | null) ?? {};
   const suggestions = inspected.fields.map((field) => {
-    const normalizedName = normalize(field.name);
-    const mappedFieldKey =
-      storedMappings[field.name]
-      ?? (normalizedName.includes("passport") ? "applicant.passport_number" : null)
-      ?? (normalizedName.includes("birth") || normalizedName.includes("dob") ? "applicant.date_of_birth" : null)
-      ?? (normalizedName.includes("nationality") ? "applicant.nationality" : null)
-      ?? (normalizedName.includes("name") ? "applicant.full_name" : null)
-      ?? (normalizedName.includes("course") ? "study.course_name" : null)
-      ?? (normalizedName.includes("provider") ? "study.provider" : null)
-      ?? null;
+    const mappedFieldKey = suggestAriaFieldKey(field.name, storedMappings);
     return {
       fieldName: field.name,
       fieldType: field.type,
@@ -188,7 +180,7 @@ export async function fillPdfForm(input: { templateId: string; matterId: string;
   const reviewRows: Array<Record<string, unknown>> = [];
 
   for (const field of inspected.fields) {
-    const mappedKey = mappings[field.name];
+    const mappedKey = suggestAriaFieldKey(field.name, mappings);
     const explicit = input.fieldValues?.[field.name];
     const suggested = explicit
       ?? (mappedKey ? draftValues.get(mappedKey) || baseValues.get(normalize(mappedKey)) : undefined)

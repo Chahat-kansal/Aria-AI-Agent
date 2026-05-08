@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterDetailData } from "@/lib/data/workspace-repository";
+import { assessMatterCaseSafety } from "@/lib/services/case-safety";
 import { prisma } from "@/lib/prisma";
 import { hasPermission } from "@/lib/services/roles";
 import { decryptJson } from "@/lib/security/encryption";
@@ -25,6 +26,7 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
 
   const matter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
   if (!matter) notFound();
+  const safety = await assessMatterCaseSafety(matter.id);
 
   const [templates, drafts] = await Promise.all([
     prisma.officialFormTemplate.findMany({
@@ -56,11 +58,28 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
 
         <AIReviewNotice />
 
+        <SectionCard className="space-y-3 p-5">
+          <div className="flex flex-wrap gap-2">
+            <StatusPill tone={safety.readyForAgentFinalReview ? "success" : "warning"}>
+              {safety.readyForAgentFinalReview ? "Ready for agent final review" : `${safety.hardBlockers.length} hard blocker(s)`}
+            </StatusPill>
+            <StatusPill tone="info">{safety.softBlockers.length} softer review item(s)</StatusPill>
+          </div>
+          <p className="text-sm text-slate-300">
+            Aria can generate working PDFs now, but approving or publishing a client-visible form copy is blocked until hard blockers are cleared.
+          </p>
+        </SectionCard>
+
         <PageSection title="Relevant forms for this matter" description="Supported PDF drafts can be generated where real fillable fields exist. Online-only and manual forms stay explicit.">
           <div className="grid gap-4 xl:grid-cols-2">
             {templates.length ? templates.map((template) => {
               const matterDraft = draftByTemplateId.get(template.id);
               const reviewRows = matterDraft?.fieldValuesJson ? decryptJson<Array<Record<string, unknown>>>(String(matterDraft.fieldValuesJson)) : [];
+              const fieldSchema = Array.isArray(template.fieldSchemaJson) ? template.fieldSchemaJson as Array<Record<string, unknown>> : [];
+              const storedMappings = template.fieldMappingsJson && typeof template.fieldMappingsJson === "object"
+                ? template.fieldMappingsJson as Record<string, string>
+                : {};
+              const mappedCount = Object.values(storedMappings).filter(Boolean).length;
               return (
                 <SectionCard key={template.id} className="space-y-4 p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -101,6 +120,21 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
                       </div>
                     </div>
                   ) : null}
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Template mapping</p>
+                      <p className="mt-2 text-sm text-white">{mappedCount}/{fieldSchema.length || 0} fields mapped</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Next step</p>
+                      <p className="mt-2 text-sm text-white">
+                        {mappedCount
+                          ? "Generate a matter draft PDF using saved company mappings."
+                          : "Open the template and map company PDF fields before generation."}
+                      </p>
+                    </div>
+                  </div>
 
                   {reviewRows.length ? (
                     <div className="space-y-2">

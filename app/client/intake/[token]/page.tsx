@@ -48,6 +48,12 @@ export default async function ClientIntakePage({ params, searchParams }: { param
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria Client Portal</p>
         <h1 className="mt-2 text-2xl font-semibold">{request.title}</h1>
         <p className="mt-3 text-sm text-muted">Provide accurate information for your migration team. This is an AI-assisted intake workflow and will be reviewed by a registered migration agent.</p>
+        {request.message ? (
+          <div className="mt-4 rounded-2xl border border-violet-400/20 bg-violet-500/8 p-4 text-sm leading-6 text-slate-700 dark:text-slate-200">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-500 dark:text-violet-300">Requested confirmations</p>
+            <p className="mt-2 whitespace-pre-wrap">{request.message}</p>
+          </div>
+        ) : null}
         <div className="mt-4">
           <AIReviewNotice variant="client" />
         </div>

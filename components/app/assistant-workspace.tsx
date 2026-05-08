@@ -655,7 +655,7 @@ export function AssistantWorkspace({
   );
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(7,9,13,0.98),rgba(10,12,17,0.97))] shadow-[0_28px_80px_rgba(0,0,0,0.35)]">
+    <div className="assistant-workspace-surface overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(7,9,13,0.98),rgba(10,12,17,0.97))] shadow-[0_28px_80px_rgba(0,0,0,0.35)]">
       <div className="grid min-h-[74vh] lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside
           className={cn(

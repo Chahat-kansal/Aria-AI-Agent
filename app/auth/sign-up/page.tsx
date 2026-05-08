@@ -63,9 +63,10 @@ export default function SignUpPage() {
   return (
     <AppPage contentClassName="flex min-h-screen items-center justify-center py-10">
       <Card className="w-full max-w-3xl p-8 sm:p-10">
-        <p className="text-xs font-medium uppercase tracking-[0.24em] text-cyan-300">Company onboarding</p>
-        <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white">Create your workspace.</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-400">Company owners create and manage workspaces here. The first user becomes the Company Owner and can invite staff later.</p>
+        <div className="themed-logo-mark flex h-12 w-12 items-center justify-center rounded-[1rem] text-white">A</div>
+        <p className="mt-5 text-xs font-medium uppercase tracking-[0.24em] text-[color:var(--accent)]">Company onboarding</p>
+        <h1 className="page-title-display mt-4 text-[3.2rem] leading-none text-[color:var(--text-strong)]">Create your workspace.</h1>
+        <p className="mt-4 max-w-2xl text-base leading-8 text-[color:var(--text-muted)]">Company owners create and manage workspaces here. The first user becomes the Company Owner and can invite staff later.</p>
 
         <form className="mt-8 grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
           <FormField label="Owner full name">
@@ -95,14 +96,14 @@ export default function SignUpPage() {
           <FormField className="sm:col-span-2" label="Password">
             <input name="password" required minLength={8} placeholder="Create a secure password" type="password" />
           </FormField>
-          {error ? <p className="rounded-[1rem] border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200 sm:col-span-2">{error}</p> : null}
+          {error ? <p className="rounded-[1rem] border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-500 dark:text-rose-200 sm:col-span-2">{error}</p> : null}
           <GradientButton className="w-full sm:col-span-2" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Creating workspace..." : "Create workspace"}
           </GradientButton>
         </form>
 
-        <p className="mt-5 text-sm text-slate-400">
-          Already have an account? <Link href="/auth/sign-in" className="text-cyan-300 hover:text-cyan-200">Sign in</Link>
+        <p className="mt-5 text-sm text-[color:var(--text-muted)]">
+          Already have an account? <Link href="/auth/sign-in" className="text-[color:var(--accent)] hover:opacity-80">Sign in</Link>
         </p>
       </Card>
     </AppPage>

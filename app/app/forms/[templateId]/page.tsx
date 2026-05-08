@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
+import { FormTemplateMappingEditor } from "@/components/app/form-template-mapping-editor";
 import { FormsSyncAction } from "@/components/app/forms-sync-action";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSection } from "@/components/ui/page-section";
@@ -93,29 +94,19 @@ export default async function OfficialFormTemplatePage({ params }: { params: { t
         </PageSection>
 
         <PageSection title="Detected PDF fields" description="These are real AcroForm fields where present. No fake successful filling is shown for unsupported templates.">
-          <div className="grid gap-3">
-            {inspection.fields.length ? inspection.fields.map((field) => {
-              const suggestion = mapping.suggestions.find((item) => item.fieldName === field.name);
-              return (
-                <SectionCard key={field.name} className="space-y-3 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white">{field.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{field.type}</p>
-                    </div>
-                    <StatusPill tone={suggestion?.mappedFieldKey ? "info" : "warning"}>
-                      {suggestion?.mappedFieldKey ? suggestion.mappedFieldKey : "Mapping required"}
-                    </StatusPill>
-                  </div>
-                  {field.options?.length ? <p className="text-xs text-slate-400">Options: {field.options.join(", ")}</p> : null}
-                </SectionCard>
-              );
-            }) : (
-              <SectionCard className="p-4">
-                <p className="text-sm text-slate-400">No fillable fields were detected. This template remains manual or online-only.</p>
-              </SectionCard>
-            )}
-          </div>
+          {inspection.fields.length ? (
+            <SectionCard className="p-5">
+              <FormTemplateMappingEditor
+                templateId={template.id}
+                suggestions={mapping.suggestions}
+                canEdit={hasPermission(context.user, "can_edit_matters")}
+              />
+            </SectionCard>
+          ) : (
+            <SectionCard className="p-4">
+              <p className="text-sm text-slate-400">No fillable fields were detected. This template remains manual or online-only.</p>
+            </SectionCard>
+          )}
         </PageSection>
 
         <PageSection title="Matter usage" description="Open a matter forms workspace to generate or review a client-specific draft copy where supported.">

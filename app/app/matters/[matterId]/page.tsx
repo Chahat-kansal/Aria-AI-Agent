@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
+import { AriaAutoprepPanel } from "@/components/app/aria-autoprep-panel";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { PortalAccessManager } from "@/components/app/portal-access-manager";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
@@ -237,6 +238,16 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
             </SectionCard>
           </div>
         </AIInsightPanel>
+
+        <PageSection
+          eyebrow="AUTOMATION"
+          title="Aria autoprep agent"
+          description="Aria can run the low-risk prep work on its own, then wait for explicit approval before higher-impact matter actions."
+        >
+          <SectionCard className="p-5">
+            <AriaAutoprepPanel matterId={matter.id} canRun={canEditMatter} />
+          </SectionCard>
+        </PageSection>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Readiness" value={`${matter.readinessScore}%`} hint="Current submission-readiness score." accent={matter.readinessScore >= 80 ? "emerald" : matter.readinessScore >= 60 ? "amber" : "red"} />

@@ -27,9 +27,14 @@ export function MatterFormActions({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ matterId, draftId, action })
     });
-    const payload = await response.json().catch(() => null) as { error?: string; reason?: string; ok?: boolean } | null;
+    const payload = await response.json().catch(() => null) as { error?: string; reason?: string; ok?: boolean; hardBlockers?: Array<{ title?: string }> } | null;
     if (!response.ok) {
-      setMessage(payload?.error ?? payload?.reason ?? "Unable to run the form workflow action.");
+      const blockerLabel = payload?.hardBlockers?.[0]?.title;
+      setMessage(
+        blockerLabel
+          ? `${payload?.error ?? "Unable to run the form workflow action."} First blocker: ${blockerLabel}.`
+          : payload?.error ?? payload?.reason ?? "Unable to run the form workflow action."
+      );
       return;
     }
     setMessage(
@@ -55,4 +60,3 @@ export function MatterFormActions({
     </div>
   );
 }
-

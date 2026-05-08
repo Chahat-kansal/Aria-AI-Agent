@@ -36,9 +36,9 @@ export default async function ApplicationDraftsPage() {
     <AppShell title="Application Drafts">
       <div className="space-y-8">
         <PageHeader
-          eyebrow="APPLICATION DRAFTS"
-          title="Matter-linked draft reviews"
-          description="Only real matter drafts are shown here. Aria does not create fake standalone application draft records."
+          eyebrow="AI DRAFTS"
+          title="AI drafts"
+          description="Draft submissions and statements grounded in real matter evidence. No fake standalone records."
         />
 
         <PageSection title="Drafts needing review" description="Open the matter draft workspace to review source-backed suggestions, field confidence, and client review state.">
@@ -94,4 +94,3 @@ export default async function ApplicationDraftsPage() {
     </AppShell>
   );
 }
-

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
 
 export function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium", className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--text-muted)]", className)}>{children}</span>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -7,6 +8,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 export function FirmTemplateUploadForm() {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -24,6 +26,7 @@ export function FirmTemplateUploadForm() {
       setMessage(payload?.error ?? "Unable to upload firm template.");
       return;
     }
+    setTemplateId(payload?.templateId ?? null);
     setMessage(`Firm template stored privately. Fillable: ${payload?.fillable ? "yes" : "no"}. Detected fields: ${payload?.fieldCount ?? 0}.`);
     startTransition(() => router.refresh());
   }
@@ -39,7 +42,11 @@ export function FirmTemplateUploadForm() {
         {isUploading ? "Uploading firm template..." : "Upload firm template"}
       </GradientButton>
       {message ? <p className="text-xs text-slate-400">{message}</p> : null}
+      {templateId ? (
+        <Link href={`/app/forms/${templateId}` as any} className="text-xs font-medium text-cyan-300 hover:text-cyan-200">
+          Open template mapping
+        </Link>
+      ) : null}
     </form>
   );
 }
-

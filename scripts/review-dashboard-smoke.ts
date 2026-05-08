@@ -1,9 +1,10 @@
-import { DraftFieldStatus } from "@prisma/client";
+import { DraftFieldStatus, FieldStatus } from "@prisma/client";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
 import { extractDocumentResult } from "@/lib/services/document-extraction";
 import { prepareMatterDocumentUpload, persistDocumentStorageObject } from "@/lib/services/storage";
-import { uploadDocumentToMatter, getDraftReviewData, updateDraftFieldReview, mapDocumentsToDraft } from "@/lib/services/application-draft";
+import { inferExtractedDraftFields, uploadDocumentToMatter, getDraftReviewData, updateDraftFieldReview, mapDocumentsToDraft } from "@/lib/services/application-draft";
+import { encryptJson, encryptString } from "@/lib/security/encryption";
 
 const matterId = process.argv[2];
 
@@ -133,7 +134,61 @@ async function main() {
 
   for (const upload of dummyUploads) {
     const alreadyExists = matter.documents.find((document) => document.fileName === upload.fileName);
-    if (alreadyExists) continue;
+    if (alreadyExists) {
+      const latestExtraction = await prisma.documentExtractionResult.findFirst({
+        where: { documentId: alreadyExists.id },
+        orderBy: { createdAt: "desc" }
+      });
+
+      if (latestExtraction) {
+        const baselineExtraction = await extractDocumentResult(Buffer.from(upload.body, "utf8"), upload.mimeType);
+        const extraction = buildSeededExtraction(upload, baselineExtraction);
+        const inferred = inferExtractedDraftFields({
+          fileName: upload.fileName,
+          category: alreadyExists.category,
+          extractedText: extraction.extractedText,
+          keyValues: extraction.keyValues
+        });
+
+        await prisma.documentExtractionResult.update({
+          where: { id: latestExtraction.id },
+          data: {
+            provider: extraction.provider,
+            model: extraction.model,
+            extractedJson: encryptJson({
+              category: alreadyExists.category,
+              fields: inferred,
+              extractedTextPreview: extraction.extractedTextPreview,
+              extractionConfidence: extraction.confidence,
+              extractionWarnings: extraction.warnings,
+              extractionConfigured: extraction.configured,
+              keyValues: extraction.keyValues ?? [],
+              reviewRequired: true
+            })
+          }
+        });
+
+        await prisma.extractedField.deleteMany({ where: { documentId: alreadyExists.id } });
+        for (const field of inferred) {
+          await prisma.extractedField.create({
+            data: {
+              matterId: matter.id,
+              documentId: alreadyExists.id,
+              fieldKey: field.key,
+              fieldLabel: field.key.split(".").slice(-1)[0].replace(/_/g, " "),
+              fieldValue: encryptString(field.value),
+              confidence: field.confidence,
+              sourceSnippet: encryptString(field.snippet),
+              sourcePageRef: encryptString("seeded local smoke fixture"),
+              status: field.confidence >= 0.75 ? FieldStatus.SUPPORTED : FieldStatus.NEEDS_REVIEW,
+              needsReview: true
+            }
+          });
+        }
+      }
+
+      continue;
+    }
 
     const bytes = await createPdfBytes(upload.body);
     const baselineExtraction = await extractDocumentResult(bytes, upload.mimeType);

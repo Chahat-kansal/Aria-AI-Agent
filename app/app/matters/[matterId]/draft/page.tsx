@@ -11,6 +11,7 @@ import { SourceReliabilityBadge } from "@/components/ui/source-reliability-badge
 import { StatusPill } from "@/components/ui/status-pill";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { createOrGetSubclass500Draft, getDraftReviewData } from "@/lib/services/application-draft";
+import { assessMatterCaseSafety } from "@/lib/services/case-safety";
 import { buildMatterDraftBriefing } from "@/lib/services/draft-generation";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { getMatterDetailData } from "@/lib/data/workspace-repository";
@@ -38,6 +39,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
   await createOrGetSubclass500Draft(params.matterId);
   const { matter, template, draft, packageFolders, openIssues } = await getDraftReviewData(params.matterId);
   const draftBriefing = await buildMatterDraftBriefing(params.matterId);
+  const safety = await assessMatterCaseSafety(params.matterId);
   const sections = template.sections;
   const needsReviewCount = draft.fields.filter((field: any) => field.status === "NEEDS_REVIEW").length;
   const verifiedCount = draft.fields.filter((field: any) => field.status === "VERIFIED").length;
@@ -197,6 +199,26 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                     <p className="mt-1 text-xs leading-6 text-slate-400">{issue.description}</p>
                   </div>
                 )) : <p className="text-sm text-slate-400">No open Subclass 500 validation issues. Agent review is still required.</p>}
+              </SectionCard>
+            </PageSection>
+
+            <PageSection title="Safety gate">
+              <SectionCard className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <StatusPill tone={safety.readyForAgentFinalReview ? "success" : "warning"}>
+                    {safety.readyForAgentFinalReview ? "Ready for agent final review" : `${safety.hardBlockers.length} hard blocker(s)`}
+                  </StatusPill>
+                  <StatusPill tone="info">{safety.softBlockers.length} softer review item(s)</StatusPill>
+                </div>
+                <p className="text-sm text-slate-300">
+                  Aria can keep preparing this matter, but final client-facing or approval steps are gated until hard blockers are resolved.
+                </p>
+                <ul className="space-y-2 text-sm text-slate-300">
+                  {safety.hardBlockers.slice(0, 4).map((blocker) => (
+                    <li key={`${blocker.code}-${blocker.relatedFieldKey ?? blocker.title}`}>{blocker.title}</li>
+                  ))}
+                  {!safety.hardBlockers.length ? <li>No hard blockers currently remain. Migration agent final review is still required.</li> : null}
+                </ul>
               </SectionCard>
             </PageSection>
 

@@ -15,7 +15,7 @@ import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { buildClientLink } from "@/lib/services/client-workflows";
 import { detectExtractionSchema } from "@/lib/services/document-extraction-schemas";
 import { buildGroundedResponse, type AriaGroundedResponse } from "@/lib/services/aria-evidence";
-import { decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
+import { decryptJson, decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken, shortHashPreview } from "@/lib/security/hash";
 
 const packageFolders = [
@@ -51,36 +51,85 @@ function findSnippet(text: string, pattern: RegExp, fallback: string) {
   return text.slice(Math.max(0, match.index - 80), Math.min(text.length, match.index + 180)).trim() || fallback;
 }
 
+function cleanExtractedValue(value: string | undefined | null) {
+  if (!value) return null;
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/[|]+/g, " ")
+    .replace(/\s*[;,.]\s*$/, "")
+    .trim();
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractLabelValue(text: string, labels: string[]) {
+  for (const label of labels) {
+    const inline = new RegExp(`\\b${escapeRegex(label)}\\s*[:\\-]\\s*([^\\n\\r]+)`, "i");
+    const inlineMatch = text.match(inline);
+    const inlineValue = cleanExtractedValue(inlineMatch?.[1]);
+    if (inlineValue) return inlineValue;
+
+    const nextLine = new RegExp(`\\b${escapeRegex(label)}\\s*[\\n\\r]+([^\\n\\r]+)`, "i");
+    const nextLineMatch = text.match(nextLine);
+    const nextLineValue = cleanExtractedValue(nextLineMatch?.[1]);
+    if (nextLineValue) return nextLineValue;
+  }
+
+  return null;
+}
+
+function extractAmountValue(text: string, labels: string[]) {
+  const raw = extractLabelValue(text, labels);
+  if (!raw) return null;
+  const amount = raw.match(/(?:AUD|A\$|\$)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?|[0-9]{4,})/i)?.[1];
+  return cleanExtractedValue(amount ?? raw);
+}
+
+function looksGenericDraftValue(value: string) {
+  return /review|requires review|needs manual|evidence uploaded|reference present/i.test(value);
+}
+
+function candidateStrength(candidate: { value: string; confidence: number }) {
+  return candidate.confidence + (looksGenericDraftValue(candidate.value) ? 0 : 0.25);
+}
+
+function strongerCandidate<T extends { value: string; confidence: number }>(current: T | null, next: T) {
+  if (!current) return next;
+  return candidateStrength(next) > candidateStrength(current) ? next : current;
+}
+
 function inferredFields(fileName: string, category: string, extractedText = "") {
   const lower = `${fileName} ${extractedText}`.toLowerCase();
   const fields: Array<{ key: string; value: string; confidence: number; snippet: string }> = [];
 
-  const fullName = extractedText.match(/\b(?:name|full name)\s*[:\-]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i)?.[1];
-  const dateOfBirth = extractedText.match(/\b(?:date of birth|dob|birth date)\s*[:\-]?\s*(\d{1,2}[\/\-\s][A-Za-z0-9]{2,9}[\/\-\s]\d{2,4})/i)?.[1];
-  const nationality = extractedText.match(/\b(?:nationality|citizenship)\s*[:\-]\s*([A-Za-z ]{3,40})/i)?.[1];
-  const passportNumber = extractedText.match(/\b(?:passport(?: number| no\.?)?)\s*[:\-]?\s*([A-Z0-9]{6,12})\b/i)?.[1];
-  const coeNumber = extractedText.match(/\b(?:coe|confirmation of enrolment)\s*(?:number|no\.?)?\s*[:\-]?\s*([A-Z0-9-]{6,20})\b/i)?.[1];
-  const provider = extractedText.match(/\b(?:provider|institution|university|college)\s*[:\-]\s*([A-Za-z0-9 &,'-]{4,80})/i)?.[1];
-  const courseName = extractedText.match(/\b(?:course|program|qualification)\s*(?:name)?\s*[:\-]\s*([A-Za-z0-9 &,'()-]{4,100})/i)?.[1];
-  const courseStart = extractedText.match(/\b(?:course start|start date|commencement)\s*[:\-]?\s*(\d{1,2}[\/\-\s][A-Za-z0-9]{2,9}[\/\-\s]\d{2,4})/i)?.[1];
-  const funds = extractedText.match(/\b(?:funds|balance|available funds)\s*[:\-]?\s*(?:AUD|A\$|\$)?\s*([0-9,]{4,})\b/i)?.[1];
-  const oshc = extractedText.match(/\b(?:oshc|health insurance)\s*(?:provider)?\s*[:\-]?\s*([A-Za-z &'-]{3,80})/i)?.[1];
+  const fullName = extractLabelValue(extractedText, ["Full Name", "Name", "Applicant Name", "Student Name", "Candidate Name"]);
+  const dateOfBirth = extractLabelValue(extractedText, ["Date of Birth", "DOB", "Birth Date"]);
+  const nationality = extractLabelValue(extractedText, ["Nationality", "Citizenship"]);
+  const passportNumber = extractLabelValue(extractedText, ["Passport Number", "Passport No", "Passport"]);
+  const coeNumber = extractLabelValue(extractedText, ["COE Number", "CoE Number", "Confirmation of Enrolment Number", "COE"]);
+  const provider = extractLabelValue(extractedText, ["Provider", "Institution", "University", "College", "Provider Name"]);
+  const courseName = extractLabelValue(extractedText, ["Course Name", "Course", "Program", "Qualification"]);
+  const courseStart = extractLabelValue(extractedText, ["Course Start", "Start Date", "Commencement"]);
+  const funds = extractAmountValue(extractedText, ["Available Funds", "Funds", "Balance", "Declared Funds"]);
+  const oshc = extractLabelValue(extractedText, ["OSHC Provider", "Health Insurance Provider", "OSHC", "Health Insurance"]);
 
   if (category === "Identity") {
     fields.push(
-      { key: "applicant.full_name", value: fullName ?? "Review against passport", confidence: fullName ? 0.86 : 0.62, snippet: findSnippet(extractedText, /(?:name|full name)/i, `Identity evidence from ${fileName}`) },
-      { key: "applicant.date_of_birth", value: dateOfBirth ?? "Needs manual DOB review", confidence: dateOfBirth ? 0.84 : 0.54, snippet: findSnippet(extractedText, /date of birth|dob|birth date/i, `Date of birth evidence from ${fileName}`) },
-      { key: "applicant.nationality", value: nationality ?? "Needs manual nationality review", confidence: nationality ? 0.82 : 0.54, snippet: findSnippet(extractedText, /nationality|citizenship/i, `Nationality evidence from ${fileName}`) },
-      { key: "applicant.passport_number", value: passportNumber ?? "Needs manual passport review", confidence: passportNumber ? 0.9 : 0.55, snippet: findSnippet(extractedText, /passport/i, `Passport reference detected in ${fileName}`) }
+      { key: "applicant.full_name", value: fullName ?? "Review against passport", confidence: fullName ? 0.96 : 0.62, snippet: findSnippet(extractedText, /(?:name|full name|applicant name)/i, `Identity evidence from ${fileName}`) },
+      { key: "applicant.date_of_birth", value: dateOfBirth ?? "Needs manual DOB review", confidence: dateOfBirth ? 0.95 : 0.54, snippet: findSnippet(extractedText, /date of birth|dob|birth date/i, `Date of birth evidence from ${fileName}`) },
+      { key: "applicant.nationality", value: nationality ?? "Needs manual nationality review", confidence: nationality ? 0.94 : 0.54, snippet: findSnippet(extractedText, /nationality|citizenship/i, `Nationality evidence from ${fileName}`) },
+      { key: "applicant.passport_number", value: passportNumber ?? "Needs manual passport review", confidence: passportNumber ? 0.97 : 0.55, snippet: findSnippet(extractedText, /passport/i, `Passport reference detected in ${fileName}`) }
     );
   }
 
   if (category === "Education") {
     fields.push(
-      { key: "study.provider", value: provider ?? "Education provider requires review", confidence: provider ? 0.82 : 0.6, snippet: findSnippet(extractedText, /provider|institution|university|college/i, `Provider evidence from ${fileName}`) },
-      { key: "study.course_name", value: courseName ?? "Course name requires review", confidence: courseName ? 0.8 : 0.58, snippet: findSnippet(extractedText, /course|program|qualification/i, `Course evidence from ${fileName}`) },
-      { key: "study.coe_number", value: coeNumber ?? (lower.includes("coe") ? "CoE reference present" : "Needs CoE review"), confidence: coeNumber ? 0.88 : 0.62, snippet: findSnippet(extractedText, /coe|confirmation of enrolment/i, `CoE evidence from ${fileName}`) },
-      { key: "study.course_start_date", value: courseStart ?? "Course start requires review", confidence: courseStart ? 0.78 : 0.56, snippet: findSnippet(extractedText, /course start|start date|commencement/i, `Course start evidence from ${fileName}`) }
+      { key: "study.provider", value: provider ?? "Education provider requires review", confidence: provider ? 0.95 : 0.6, snippet: findSnippet(extractedText, /provider|institution|university|college/i, `Provider evidence from ${fileName}`) },
+      { key: "study.course_name", value: courseName ?? "Course name requires review", confidence: courseName ? 0.94 : 0.58, snippet: findSnippet(extractedText, /course|program|qualification/i, `Course evidence from ${fileName}`) },
+      { key: "study.coe_number", value: coeNumber ?? (lower.includes("coe") ? "CoE reference present" : "Needs CoE review"), confidence: coeNumber ? 0.97 : 0.62, snippet: findSnippet(extractedText, /coe|confirmation of enrolment/i, `CoE evidence from ${fileName}`) },
+      { key: "study.course_start_date", value: courseStart ?? "Course start requires review", confidence: courseStart ? 0.92 : 0.56, snippet: findSnippet(extractedText, /course start|start date|commencement/i, `Course start evidence from ${fileName}`) }
     );
   }
 
@@ -88,7 +137,7 @@ function inferredFields(fileName: string, category: string, extractedText = "") 
     fields.push({
       key: "financial.available_funds",
       value: funds ? `AUD ${funds}` : "Financial evidence uploaded",
-      confidence: funds ? 0.8 : 0.62,
+      confidence: funds ? 0.95 : 0.62,
       snippet: findSnippet(extractedText, /funds|balance|available funds/i, `Financial evidence from ${fileName}`)
     });
   }
@@ -97,7 +146,7 @@ function inferredFields(fileName: string, category: string, extractedText = "") 
     fields.push({
       key: "health.oshc_provider",
       value: oshc ?? "OSHC evidence uploaded",
-      confidence: oshc ? 0.79 : 0.66,
+      confidence: oshc ? 0.94 : 0.66,
       snippet: findSnippet(extractedText, /oshc|health insurance/i, `Health insurance evidence from ${fileName}`)
     });
   }
@@ -112,6 +161,105 @@ function inferredFields(fileName: string, category: string, extractedText = "") 
   }
 
   return fields;
+}
+
+function normalizeKeyValueLabel(key: string) {
+  return key.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function inferredFieldsFromKeyValues(
+  fileName: string,
+  category: string,
+  keyValues: Array<{ key: string; value: string; confidence?: number }> = []
+) {
+  const normalized = keyValues.map((item) => ({
+    ...item,
+    key: normalizeKeyValueLabel(item.key),
+    value: cleanExtractedValue(item.value) ?? ""
+  })).filter((item) => item.value);
+
+  const findValue = (...labels: string[]) =>
+    normalized.find((item) => labels.some((label) => item.key.includes(normalizeKeyValueLabel(label))));
+
+  const fullName = findValue("full name", "name", "applicant name", "student name", "candidate name");
+  const dateOfBirth = findValue("date of birth", "dob", "birth date");
+  const nationality = findValue("nationality", "citizenship");
+  const passportNumber = findValue("passport number", "passport no", "passport");
+  const coeNumber = findValue("coe number", "confirmation of enrolment number", "coe");
+  const provider = findValue("provider", "provider name", "institution", "university", "college");
+  const courseName = findValue("course name", "course", "program", "qualification");
+  const courseStart = findValue("course start", "start date", "commencement");
+  const funds = findValue("available funds", "funds", "balance", "declared funds");
+  const oshc = findValue("oshc provider", "health insurance provider", "oshc", "health insurance");
+
+  const textSummary = normalized.map((item) => `${item.key}: ${item.value}`).join("\n");
+  const candidates: Array<{ key: string; value: string; confidence: number; snippet: string }> = [];
+
+  const pushCandidate = (
+    fieldKey: string,
+    match: { value: string; confidence?: number } | undefined,
+    fallback: string,
+    pattern: RegExp
+  ) => {
+    if (!match?.value) return;
+    candidates.push({
+      key: fieldKey,
+      value: match.value,
+      confidence: Math.max(Number(match.confidence ?? 0.9), 0.88),
+      snippet: findSnippet(textSummary, pattern, fallback)
+    });
+  };
+
+  if (category === "Identity") {
+    pushCandidate("applicant.full_name", fullName, `Identity evidence from ${fileName}`, /full name|name/i);
+    pushCandidate("applicant.date_of_birth", dateOfBirth, `Date of birth evidence from ${fileName}`, /date of birth|dob|birth date/i);
+    pushCandidate("applicant.nationality", nationality, `Nationality evidence from ${fileName}`, /nationality|citizenship/i);
+    pushCandidate("applicant.passport_number", passportNumber, `Passport evidence from ${fileName}`, /passport/i);
+  }
+
+  if (category === "Education") {
+    pushCandidate("study.provider", provider, `Provider evidence from ${fileName}`, /provider|institution|university|college/i);
+    pushCandidate("study.course_name", courseName, `Course evidence from ${fileName}`, /course|program|qualification/i);
+    pushCandidate("study.coe_number", coeNumber, `CoE evidence from ${fileName}`, /coe|confirmation of enrolment/i);
+    pushCandidate("study.course_start_date", courseStart, `Course start evidence from ${fileName}`, /course start|start date|commencement/i);
+  }
+
+  if (category === "Financial" && funds?.value) {
+    candidates.push({
+      key: "financial.available_funds",
+      value: funds.value.match(/^\d/) ? `AUD ${funds.value}` : funds.value,
+      confidence: Math.max(Number(funds.confidence ?? 0.9), 0.88),
+      snippet: findSnippet(textSummary, /funds|balance|available funds/i, `Financial evidence from ${fileName}`)
+    });
+  }
+
+  if (category === "Health / Insurance") {
+    pushCandidate("health.oshc_provider", oshc, `Health insurance evidence from ${fileName}`, /oshc|health insurance/i);
+  }
+
+  return candidates;
+}
+
+export function inferExtractedDraftFields(input: {
+  fileName: string;
+  category: string;
+  extractedText?: string;
+  keyValues?: Array<{ key: string; value: string; confidence?: number }>;
+}) {
+  const strongestByFieldKey = new Map<string, { key: string; value: string; confidence: number; snippet: string }>();
+  const candidates = [
+    ...inferredFields(input.fileName, input.category, input.extractedText ?? ""),
+    ...inferredFieldsFromKeyValues(input.fileName, input.category, input.keyValues ?? [])
+  ];
+
+  for (const candidate of candidates) {
+    strongestByFieldKey.set(
+      candidate.key,
+      strongerCandidate(strongestByFieldKey.get(candidate.key) ?? null, candidate)
+    );
+  }
+
+  return [...strongestByFieldKey.values()];
 }
 
 function draftStatusForConfidence(confidence?: number | null): DraftFieldStatus {
@@ -174,7 +322,12 @@ export async function uploadDocumentToMatter(input: {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
   const category = classifyDocument(input.fileName, input.extractedText);
   const extractionSchema = detectExtractionSchema(input.fileName, input.extractedText);
-  const extractedFields = inferredFields(input.fileName, category, input.extractedText);
+  const extractedFields = inferExtractedDraftFields({
+    fileName: input.fileName,
+    category,
+    extractedText: input.extractedText,
+    keyValues: input.extractionMetadata?.keyValues
+  });
 
   const document = await prisma.document.create({
     data: {
@@ -246,6 +399,82 @@ export async function mapDocumentsToDraft(matterId: string) {
   const reviewData = await createOrGetSubclass500Draft(matterId);
   const draft = reviewData.draft;
 
+  const documentsWithExtraction = await prisma.document.findMany({
+    where: { matterId },
+    include: {
+      extractionResults: {
+        orderBy: { createdAt: "desc" },
+        take: 1
+      },
+      extractedFields: {
+        orderBy: { createdAt: "desc" }
+      }
+    }
+  });
+
+  for (const document of documentsWithExtraction) {
+    const latestExtraction = document.extractionResults[0];
+    if (!latestExtraction) continue;
+
+    const extractedPayload = decryptJson<{
+      extractedTextPreview?: string;
+      keyValues?: Array<{ key: string; value: string; confidence?: number }>;
+    }>(String(latestExtraction.extractedJson));
+
+    const previewText = [
+      extractedPayload.extractedTextPreview ?? "",
+      ...(extractedPayload.keyValues ?? []).map((item) => `${item.key}: ${item.value}`)
+    ].join("\n");
+
+    const derivedCandidates = inferExtractedDraftFields({
+      fileName: document.fileName,
+      category: document.category,
+      extractedText: previewText,
+      keyValues: extractedPayload.keyValues ?? []
+    });
+
+    for (const candidate of derivedCandidates) {
+      const existing = document.extractedFields.find((field) => field.fieldKey === candidate.key);
+      const existingValue = existing ? readSensitive(existing.fieldValue) ?? "" : "";
+      const shouldWrite =
+        !existing
+        || looksGenericDraftValue(existingValue)
+        || candidateStrength({ value: candidate.value, confidence: candidate.confidence }) > candidateStrength({ value: existingValue, confidence: existing.confidence ?? 0 });
+
+      if (!shouldWrite) continue;
+
+      if (existing) {
+        await prisma.extractedField.update({
+          where: { id: existing.id },
+          data: {
+            fieldLabel: candidate.key.split(".").slice(-1)[0].replace(/_/g, " "),
+            fieldValue: encryptString(candidate.value),
+            confidence: candidate.confidence,
+            sourceSnippet: encryptString(candidate.snippet),
+            sourcePageRef: encryptString("document metadata"),
+            status: candidate.confidence >= 0.75 ? FieldStatus.SUPPORTED : FieldStatus.NEEDS_REVIEW,
+            needsReview: true
+          }
+        });
+      } else {
+        await prisma.extractedField.create({
+          data: {
+            matterId,
+            documentId: document.id,
+            fieldKey: candidate.key,
+            fieldLabel: candidate.key.split(".").slice(-1)[0].replace(/_/g, " "),
+            fieldValue: encryptString(candidate.value),
+            confidence: candidate.confidence,
+            sourceSnippet: encryptString(candidate.snippet),
+            sourcePageRef: encryptString("document metadata"),
+            status: candidate.confidence >= 0.75 ? FieldStatus.SUPPORTED : FieldStatus.NEEDS_REVIEW,
+            needsReview: true
+          }
+        });
+      }
+    }
+  }
+
   const extractedFields = await prisma.extractedField.findMany({
     where: { matterId },
     include: { document: true },
@@ -258,9 +487,20 @@ export async function mapDocumentsToDraft(matterId: string) {
     sourcePageRef: readSensitive(field.sourcePageRef) ?? ""
   }));
 
+  const bestSupportByFieldKey = new Map<string, typeof decryptedExtractedFields[number]>();
+  const validDocumentIds = new Set(decryptedExtractedFields.map((field) => field.documentId));
+  for (const field of decryptedExtractedFields) {
+    const current = bestSupportByFieldKey.get(field.fieldKey) ?? null;
+    const nextScore = candidateStrength({ value: field.fieldValue, confidence: field.confidence ?? 0 });
+    const currentScore = current ? candidateStrength({ value: current.fieldValue, confidence: current.confidence ?? 0 }) : -1;
+    if (!current || nextScore > currentScore) {
+      bestSupportByFieldKey.set(field.fieldKey, field);
+    }
+  }
+
   for (const draftField of draft.fields) {
     const templateField = draftField.templateField;
-    const supporting = decryptedExtractedFields.find((field) => field.fieldKey === templateField.fieldKey);
+    const supporting = bestSupportByFieldKey.get(templateField.fieldKey);
     if (!supporting) continue;
     if (draftField.status === DraftFieldStatus.VERIFIED) continue;
 
@@ -275,15 +515,17 @@ export async function mapDocumentsToDraft(matterId: string) {
       }
     });
 
-    await prisma.matterDraftFieldEvidenceLink.create({
-      data: {
-        draftFieldId: updated.id,
-        documentId: supporting.documentId,
-        sourceSnippet: encryptString(supporting.sourceSnippet),
-        sourcePageRef: encryptString(supporting.sourcePageRef),
-        confidence: supporting.confidence
-      }
-    }).catch(() => null);
+    if (validDocumentIds.has(supporting.documentId)) {
+      await prisma.matterDraftFieldEvidenceLink.create({
+        data: {
+          draftFieldId: updated.id,
+          documentId: supporting.documentId,
+          sourceSnippet: encryptString(supporting.sourceSnippet),
+          sourcePageRef: encryptString(supporting.sourcePageRef),
+          confidence: supporting.confidence
+        }
+      }).catch(() => null);
+    }
   }
 
   const aiSuggestions = await generateAriaAiResponse({
@@ -357,7 +599,7 @@ Rules:
         }
       });
 
-      if (suggestion.sourceDocumentId) {
+      if (suggestion.sourceDocumentId && validDocumentIds.has(String(suggestion.sourceDocumentId))) {
         await prisma.matterDraftFieldEvidenceLink.create({
           data: {
             draftFieldId: updated.id,
