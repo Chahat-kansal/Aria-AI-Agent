@@ -1,5 +1,14 @@
 import { cn } from "@/lib/utils";
 
 export function Button({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <button className={cn("inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-cyan-300/60", className)}>{children}</button>;
+  return (
+    <button
+      className={cn(
+        "app-purple-glow inline-flex h-11 items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,var(--violet),var(--violet-600))] px-5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-violet-300/35 hover:-translate-y-[1px]",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
 }

@@ -14,9 +14,9 @@ export function PageHeader({
   return (
     <div className={className ?? "flex flex-col gap-4 md:flex-row md:items-end md:justify-between"}>
       <div>
-        {eyebrow ? <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p> : null}
-        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">{title}</h1>
-        {description ? <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400 md:text-base">{description}</p> : null}
+        {eyebrow ? <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-tertiary)]">{eyebrow}</p> : null}
+        <h1 className="page-title-display text-[2.35rem] leading-[0.95] text-[color:var(--text-primary)] md:text-[3rem]">{title}</h1>
+        {description ? <p className="mt-3 max-w-3xl text-[0.98rem] leading-7 text-[color:var(--text-secondary)]">{description}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

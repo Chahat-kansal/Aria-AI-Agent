@@ -8,9 +8,9 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-      <h3 className="text-base font-semibold text-white">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">{description}</p>
+    <div className="app-surface rounded-[18px] p-10 text-center">
+      <h3 className="page-title-display text-[2rem] text-[color:var(--text-primary)]">{title}</h3>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[color:var(--text-secondary)]">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );

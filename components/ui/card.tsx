@@ -1,5 +1,14 @@
 import { cn } from "@/lib/utils";
 
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <section className={cn("rounded-[1.9rem] border border-white/8 bg-[linear-gradient(180deg,rgba(11,15,23,0.94),rgba(12,17,27,0.9))] p-5 text-slate-50 shadow-glass backdrop-blur-xl", className)}>{children}</section>;
+  return (
+    <section
+      className={cn(
+        "app-surface-strong rounded-[18px] p-6 text-[color:var(--text-primary)] sm:p-7",
+        className
+      )}
+    >
+      {children}
+    </section>
+  );
 }

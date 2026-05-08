@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   Bell,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
-  ChevronLeft,
+  CheckCircle2,
   ChevronRight,
   ClipboardCheck,
   FileText,
@@ -16,18 +17,22 @@ import {
   FolderKanban,
   LayoutDashboard,
   Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   ReceiptText,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
+  SunMedium,
   Users,
-  Activity,
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VisaKnowledgeSearch } from "@/components/app/visa-knowledge-search";
 import { StatusPill } from "@/components/ui/status-pill";
+import { useTheme } from "@/components/theme-provider";
 
 type IconName =
   | "overview"
@@ -98,8 +103,12 @@ function SidebarNavSection({
 
   return (
     <section className="space-y-2">
-      {!collapsed ? <p className="px-3 text-[11px] font-medium uppercase tracking-[0.24em] text-slate-500">{title}</p> : null}
-      <div className="space-y-1">
+      {!collapsed ? (
+        <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-tertiary)]">
+          {title}
+        </p>
+      ) : null}
+      <div className="space-y-1.5">
         {items.map((item) => {
           const Icon = iconMap[item.icon];
           const active = isActivePath(pathname, item.href);
@@ -110,18 +119,25 @@ function SidebarNavSection({
               href={item.href as any}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "group relative flex items-center gap-3 overflow-hidden rounded-[1.15rem] px-3 py-2.5 text-sm transition",
-                active ? "bg-cyan-500/10 text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-white",
+                "group relative flex items-center gap-3 overflow-hidden rounded-[14px] px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                active
+                  ? "bg-[linear-gradient(90deg,var(--violet-dim),rgba(255,255,255,0.01))] text-[color:var(--violet)] shadow-[var(--shadow-card)]"
+                  : "text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--text-primary)]",
                 collapsed && "justify-center px-0"
               )}
             >
               <span
                 className={cn(
-                  "absolute inset-y-2 left-0 w-[3px] rounded-full bg-cyan-300 transition-opacity",
+                  "absolute inset-y-3 left-0 w-[3px] rounded-full bg-[color:var(--violet)] shadow-[0_0_14px_rgba(139,92,246,0.85)] transition-opacity duration-200",
                   active ? "opacity-100" : "opacity-0 group-hover:opacity-60"
                 )}
               />
-              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-cyan-300" : "text-slate-500 group-hover:text-cyan-300")} />
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  active ? "text-[color:var(--violet)]" : "text-[color:var(--text-tertiary)] group-hover:text-[color:var(--violet)]"
+                )}
+              />
               {!collapsed ? <span>{item.label}</span> : null}
             </Link>
           );
@@ -155,6 +171,7 @@ export function AppShellClient({
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
@@ -171,15 +188,26 @@ export function AppShellClient({
     setMobileOpen(false);
   }, [pathname]);
 
+  const initials = userName
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   const topbarSearch = useMemo(() => {
     if (canAccessVisaKnowledge) {
-      return <VisaKnowledgeSearch compact />;
+      return (
+        <div className="app-surface flex h-12 items-center rounded-[14px] px-3 shadow-none">
+          <VisaKnowledgeSearch compact />
+        </div>
+      );
     }
 
     return (
-      <div className="flex h-14 items-center gap-3 rounded-[1.5rem] border border-white/8 bg-white/[0.03] px-4 text-sm text-slate-500">
-        <Search className="h-5 w-5 text-slate-500" />
-        <span>Search becomes available when visa knowledge access is enabled.</span>
+      <div className="app-surface flex h-12 items-center gap-3 rounded-[14px] px-4 text-sm text-[color:var(--text-tertiary)] shadow-none">
+        <Search className="h-4 w-4 text-[color:var(--text-tertiary)]" />
+        <span>Quick search</span>
       </div>
     );
   }, [canAccessVisaKnowledge]);
@@ -187,93 +215,153 @@ export function AppShellClient({
   const sidebar = (
     <aside
       className={cn(
-        "flex h-full flex-col border-r border-white/8 bg-[#070b11]/92 backdrop-blur-xl transition-[width,transform] duration-300",
-        collapsed ? "w-24" : "w-72"
+        "flex h-screen min-h-0 flex-col overflow-hidden px-4 py-5",
+        collapsed ? "w-24" : "w-[17rem]"
       )}
     >
-      <div className="border-b border-white/6 px-4 py-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className={cn("min-w-0", collapsed && "sr-only")}>
-            <p className="text-xs font-medium uppercase tracking-[0.24em] text-cyan-300">Aria OS</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Aria</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className={cn("flex min-w-0 items-center gap-3", collapsed && "justify-center")}>
+          <div className="themed-logo-mark flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-white">
+            <Sparkles className="h-4 w-4" />
           </div>
-          <button
-            type="button"
-            onClick={() => setCollapsed((value) => !value)}
-            className="hidden h-10 w-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.08] hover:text-white xl:inline-flex"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300 xl:hidden"
-            aria-label="Close navigation"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {!collapsed ? (
+            <div className="min-w-0">
+              <p className="truncate text-[2rem] font-semibold leading-none tracking-[-0.03em] text-[color:var(--text-primary)]">
+                aria<span className="ml-1 text-[0.92rem] font-semibold uppercase tracking-[0.12em] text-[color:var(--violet)]">Migration</span>
+              </p>
+              <p className="mt-1 text-[11px] text-[color:var(--text-tertiary)]">{workspacePlanLabel}</p>
+            </div>
+          ) : null}
         </div>
 
-        <div className={cn("mt-8 rounded-[1.75rem] border border-white/8 bg-white/[0.02] p-4", collapsed && "mt-5 p-3")}>
-          <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.45),transparent_50%),linear-gradient(180deg,rgba(12,34,41,0.9),rgba(18,20,30,0.95))] text-cyan-200">
-              <Building2 className="h-5 w-5" />
-            </div>
-            {!collapsed ? (
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{workspaceName}</p>
-                <p className="mt-1 text-xs text-slate-500">{workspacePlanLabel}</p>
-              </div>
-            ) : null}
+        <button
+          type="button"
+          onClick={() => setCollapsed((value) => !value)}
+          className="hidden h-10 w-10 items-center justify-center rounded-[12px] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] hover:-translate-y-[1px] hover:text-[color:var(--violet)] xl:inline-flex"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] xl:hidden"
+          aria-label="Close navigation"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className={cn("mt-5 rounded-[18px] bg-[color:var(--surface-soft)] p-3 shadow-[var(--shadow-sm)]", collapsed && "flex justify-center p-2.5")}>
+        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-[linear-gradient(135deg,var(--violet-dim),rgba(255,255,255,0.02))] text-[color:var(--violet)]">
+            <Building2 className="h-4 w-4" />
           </div>
+          {!collapsed ? (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[color:var(--text-primary)]">{workspaceName}</p>
+              <p className="mt-0.5 text-[11px] text-[color:var(--text-tertiary)]">{scopeLabel} access</p>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
-        <div className="space-y-6">
+      {!collapsed ? (
+        <div className="mt-4 flex h-12 items-center gap-3 rounded-[14px] bg-[color:var(--bg-input)] px-4 shadow-[var(--shadow-sm)]">
+          <Search className="h-4 w-4 text-[color:var(--text-tertiary)]" />
+          <span className="text-sm text-[color:var(--text-tertiary)]">Search clients, cases...</span>
+        </div>
+      ) : (
+        <div className="mt-4 flex justify-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[color:var(--bg-input)] shadow-[var(--shadow-sm)]">
+            <Search className="h-4 w-4 text-[color:var(--text-tertiary)]" />
+          </div>
+        </div>
+      )}
+
+      <div className="aria-sidebar-scroll mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="space-y-6 pb-4">
           <SidebarNavSection title="Workspace" items={workspaceNavItems} pathname={pathname} collapsed={collapsed} />
           <SidebarNavSection title="Account" items={accountNavItems} pathname={pathname} collapsed={collapsed} />
         </div>
       </div>
 
-      <div className="border-t border-white/6 p-4">
-        <div className={cn("space-y-3 rounded-[1.75rem] border border-white/8 bg-white/[0.02] p-4", collapsed && "p-3")}>
+      <div className="mt-4 space-y-4">
+        <div className="rounded-[14px] bg-[color:var(--surface-soft)] p-1 shadow-[var(--shadow-sm)]">
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              type="button"
+              onClick={() => setTheme("light")}
+              className={cn(
+                "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] text-sm font-medium",
+                theme === "light"
+                  ? "bg-[color:var(--bg-surface)] text-[color:var(--text-primary)] shadow-[var(--shadow-sm)]"
+                  : "text-[color:var(--text-tertiary)]"
+              )}
+            >
+              <SunMedium className="h-4 w-4" />
+              {!collapsed ? "Light" : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme("dark")}
+              className={cn(
+                "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] text-sm font-medium",
+                theme === "dark"
+                  ? "bg-[color:var(--bg-surface)] text-[color:var(--text-primary)] shadow-[var(--shadow-sm)]"
+                  : "text-[color:var(--text-tertiary)]"
+              )}
+            >
+              <Moon className="h-4 w-4" />
+              {!collapsed ? "Dark" : null}
+            </button>
+          </div>
+        </div>
+
+        <div className={cn("rounded-[18px] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-card)]", collapsed && "p-2.5")}>
           {!collapsed ? (
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{userName}</p>
-                <p className="mt-1 text-xs text-slate-500">{userRoleLabel}</p>
+            <>
+              <div className="flex items-center gap-3">
+                <div className="themed-logo-mark flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] text-sm font-semibold text-white">
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[color:var(--text-primary)]">{userName}</p>
+                  <p className="mt-0.5 text-[11px] text-[color:var(--text-tertiary)]">{userRoleLabel}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-[color:var(--text-tertiary)]" />
               </div>
-              <StatusPill tone="info">{scopeLabel}</StatusPill>
-            </div>
+              <div className="mt-3 flex items-center justify-between rounded-[12px] bg-[color:var(--surface-soft)] px-3 py-2.5">
+                <div className="flex items-center gap-2 text-[11px] text-[color:var(--text-tertiary)]">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[color:var(--violet)]" />
+                  {scopeLabel}
+                </div>
+                <Link href="/auth/sign-out" className="text-xs font-medium text-[color:var(--violet)]">
+                  Sign out
+                </Link>
+              </div>
+            </>
           ) : (
             <div className="flex justify-center">
-              <StatusPill tone="info">{scopeLabel}</StatusPill>
+              <div className="themed-logo-mark flex h-11 w-11 items-center justify-center rounded-[12px] text-sm font-semibold text-white">
+                {initials}
+              </div>
             </div>
           )}
-          <Link
-            href="/auth/sign-out"
-            className={cn(
-              "inline-flex h-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.04] px-4 text-sm font-medium text-slate-100 hover:bg-white/[0.08]",
-              collapsed && "w-full px-0"
-            )}
-          >
-            {collapsed ? "Out" : "Sign out"}
-          </Link>
         </div>
       </div>
     </aside>
   );
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.22),transparent_32%),radial-gradient(circle_at_top_right,rgba(6,182,212,0.16),transparent_34%),linear-gradient(135deg,#05070b,#090e16_42%,#0d1622)] text-slate-50">
+    <div className="app-shell-bg h-screen overflow-hidden text-[color:var(--text-primary)]">
       <div className="xl:hidden">
-        <div className="flex h-[88px] items-center justify-between border-b border-white/8 bg-[#06090d]/92 px-4 backdrop-blur-xl">
+        <div className="flex h-[78px] items-center justify-between px-4 py-4">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[color:var(--surface)] text-[color:var(--text-secondary)] shadow-[var(--shadow-card)]"
             aria-label="Open navigation"
           >
             <Menu className="h-5 w-5" />
@@ -281,30 +369,30 @@ export function AppShellClient({
           <StatusPill tone="info">{userRoleLabel}</StatusPill>
         </div>
         {mobileOpen ? (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 bg-black/35 backdrop-blur-md">
             <div className="h-full max-w-[22rem]">{sidebar}</div>
           </div>
         ) : null}
       </div>
 
-      <div className={cn("mx-auto grid min-h-screen max-w-[1760px] xl:grid-cols-[288px_minmax(0,1fr)]", collapsed && "xl:grid-cols-[96px_minmax(0,1fr)]")}>
-        <div className="hidden xl:block">{sidebar}</div>
+      <div className={cn("mx-auto grid h-screen max-w-[1800px] xl:grid-cols-[272px_minmax(0,1fr)]", collapsed && "xl:grid-cols-[96px_minmax(0,1fr)]")}>
+        <div className="hidden h-screen xl:block">{sidebar}</div>
 
-        <main className="min-w-0">
-          <div className="hidden h-[88px] items-center border-b border-white/8 bg-[#06090d]/80 px-6 backdrop-blur-xl xl:flex">
-            <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-5">
-              <div className="min-w-0">{topbarSearch}</div>
+        <main className="min-w-0 h-screen overflow-y-auto overflow-x-hidden">
+          <div className="sticky top-0 z-20 hidden px-8 pt-6 xl:block">
+            <div className="flex items-center justify-between gap-5 rounded-[22px] bg-[color:var(--bg-glass)] px-6 py-4 shadow-[var(--shadow-sm)] backdrop-blur-xl">
+              <div className="min-w-0 flex-1">{topbarSearch}</div>
               <div className="flex items-center gap-3">
-                <Link href="/app/updates" className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.08] hover:text-white">
+                <Link href="/app/updates" className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] bg-[color:var(--surface)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] hover:-translate-y-[1px] hover:text-[color:var(--violet)]">
                   <Bell className="h-5 w-5" />
                 </Link>
-                <Link href="/app/settings" className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.08] hover:text-white">
+                <Link href="/app/settings" className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] bg-[color:var(--surface)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] hover:-translate-y-[1px] hover:text-[color:var(--violet)]">
                   <Settings className="h-5 w-5" />
                 </Link>
-                <div className="flex items-center gap-3 rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-4 py-2.5">
+                <div className="flex items-center gap-3 rounded-[16px] bg-[color:var(--surface)] px-4 py-2.5 shadow-[var(--shadow-card)]">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">{workspaceName}</p>
-                    <p className="text-xs text-slate-500">{userName}</p>
+                    <p className="truncate text-sm font-medium text-[color:var(--text-primary)]">{workspaceName}</p>
+                    <p className="text-xs text-[color:var(--text-tertiary)]">{userName}</p>
                   </div>
                   <StatusPill tone="info">{userRoleLabel}</StatusPill>
                 </div>
@@ -312,7 +400,7 @@ export function AppShellClient({
             </div>
           </div>
 
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+          <div className="mx-auto max-w-7xl px-4 pb-12 pt-8 sm:px-6 lg:px-10 xl:pt-10">{children}</div>
         </main>
       </div>
     </div>
