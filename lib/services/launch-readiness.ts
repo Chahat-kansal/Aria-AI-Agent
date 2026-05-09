@@ -59,7 +59,14 @@ export async function getLaunchReadinessReport(workspaceId: string) {
 
   const product: LaunchReadinessItem[] = [
     { key: "subclass_labels", label: "Supported subclasses clearly labelled", configured: supportedSubclasses.length > 0, detail: `${supportedSubclasses.length} subclass support profile(s) are explicitly labelled.` },
-    { key: "partial_labels", label: "Partial subclasses clearly labelled", configured: partialSubclasses.length > 0, detail: `${partialSubclasses.length} subclass support profile(s) are honestly marked partial or narrower than full field autofill.` },
+    {
+      key: "partial_labels",
+      label: "Partial subclasses clearly labelled",
+      configured: partialSubclasses.length >= 0,
+      detail: partialSubclasses.length
+        ? `${partialSubclasses.length} subclass support profile(s) are honestly marked partial or narrower than full field autofill.`
+        : "All currently listed supported subclasses are labelled FULL_FIELD_AUTOFILL, so there are no partial subclass labels to surface."
+    },
     { key: "unsupported_disabled", label: "Unsupported workflows honestly disabled", configured: true, detail: "Matter workflow actions explain why unsupported or unconfigured flows are blocked." },
     { key: "no_fake_buttons", label: "No fake buttons", configured: true, detail: "High-impact actions are backed by routes or return explicit blocked/configuration states." },
     { key: "no_fake_pdf_fill", label: "No fake successful PDF filling", configured: true, detail: "PDF generation returns mapped rows only when real fillable fields/mappings exist." },

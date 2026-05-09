@@ -10,11 +10,12 @@ import {
   ReviewStatus
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getSubclass500Template } from "@/lib/services/subclass-templates";
+import { getTemplateForSubclass } from "@/lib/services/subclass-templates";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { buildClientLink } from "@/lib/services/client-workflows";
 import { detectExtractionSchema } from "@/lib/services/document-extraction-schemas";
 import { buildGroundedResponse, type AriaGroundedResponse } from "@/lib/services/aria-evidence";
+import { inferSubclassFieldCandidates } from "@/lib/services/draft-field-mapping";
 import { decryptJson, decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
 import { hashPortalToken, shortHashPreview } from "@/lib/security/hash";
 
@@ -245,11 +246,19 @@ export function inferExtractedDraftFields(input: {
   category: string;
   extractedText?: string;
   keyValues?: Array<{ key: string; value: string; confidence?: number }>;
+  subclassCode?: string;
 }) {
   const strongestByFieldKey = new Map<string, { key: string; value: string; confidence: number; snippet: string }>();
   const candidates = [
     ...inferredFields(input.fileName, input.category, input.extractedText ?? ""),
-    ...inferredFieldsFromKeyValues(input.fileName, input.category, input.keyValues ?? [])
+    ...inferredFieldsFromKeyValues(input.fileName, input.category, input.keyValues ?? []),
+    ...inferSubclassFieldCandidates({
+      subclassCode: input.subclassCode ?? "500",
+      category: input.category,
+      fileName: input.fileName,
+      extractedText: input.extractedText ?? "",
+      keyValues: input.keyValues ?? []
+    })
   ];
 
   for (const candidate of candidates) {
@@ -269,9 +278,9 @@ function draftStatusForConfidence(confidence?: number | null): DraftFieldStatus 
   return DraftFieldStatus.NEEDS_REVIEW;
 }
 
-export async function createOrGetSubclass500Draft(matterId: string): Promise<any> {
+export async function createOrGetMatterDraft(matterId: string): Promise<any> {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: matterId } });
-  const template = await getSubclass500Template(matter.workspaceId);
+  const template = await getTemplateForSubclass(matter.workspaceId, matter.visaSubclass);
 
   const draft = await prisma.matterApplicationDraft.upsert({
     where: { matterId_templateId: { matterId, templateId: template.id } },
@@ -300,6 +309,10 @@ export async function createOrGetSubclass500Draft(matterId: string): Promise<any
   return getDraftReviewData(matterId);
 }
 
+export async function createOrGetSubclass500Draft(matterId: string): Promise<any> {
+  return createOrGetMatterDraft(matterId);
+}
+
 export async function uploadDocumentToMatter(input: {
   matterId: string;
   fileName: string;
@@ -318,11 +331,14 @@ export async function uploadDocumentToMatter(input: {
     extractedTextPreview?: string;
   };
   uploadedByUserId: string;
+  skipDraftMapping?: boolean;
+  overrideCategory?: string;
 }) {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
-  const category = classifyDocument(input.fileName, input.extractedText);
+  const category = input.overrideCategory ?? classifyDocument(input.fileName, input.extractedText);
   const extractionSchema = detectExtractionSchema(input.fileName, input.extractedText);
   const extractedFields = inferExtractedDraftFields({
+    subclassCode: matter.visaSubclass,
     fileName: input.fileName,
     category,
     extractedText: input.extractedText,
@@ -391,12 +407,14 @@ export async function uploadDocumentToMatter(input: {
     data: { extractionStatus: ExtractionStatus.EXTRACTED }
   });
 
-  await mapDocumentsToDraft(matter.id);
+  if (!input.skipDraftMapping) {
+    await mapDocumentsToDraft(matter.id);
+  }
   return document;
 }
 
 export async function mapDocumentsToDraft(matterId: string) {
-  const reviewData = await createOrGetSubclass500Draft(matterId);
+  const reviewData = await createOrGetMatterDraft(matterId);
   const draft = reviewData.draft;
 
   const documentsWithExtraction = await prisma.document.findMany({
@@ -427,6 +445,7 @@ export async function mapDocumentsToDraft(matterId: string) {
     ].join("\n");
 
     const derivedCandidates = inferExtractedDraftFields({
+      subclassCode: reviewData.matter.visaSubclass,
       fileName: document.fileName,
       category: document.category,
       extractedText: previewText,
@@ -528,7 +547,8 @@ export async function mapDocumentsToDraft(matterId: string) {
     }
   }
 
-  const aiSuggestions = await generateAriaAiResponse({
+  const aiSuggestions = await Promise.race([
+    generateAriaAiResponse({
     system: `
 You are Aria, an AI migration workbench assisting a registered migration agent.
 
@@ -573,7 +593,9 @@ Rules:
         sourceSnippet: field.sourceSnippet
       }))
     }
-  }).catch(() => null);
+  }).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))
+  ]);
 
   if (aiSuggestions?.fieldSuggestions && Array.isArray(aiSuggestions.fieldSuggestions)) {
     for (const suggestion of aiSuggestions.fieldSuggestions) {
@@ -613,7 +635,7 @@ Rules:
     }
   }
 
-  return validateSubclass500Draft(matterId);
+  return validateMatterDraft(matterId);
 }
 
 export async function buildDraftAutofillGroundedResponse(matterId: string): Promise<AriaGroundedResponse> {
@@ -648,14 +670,17 @@ export async function buildDraftAutofillGroundedResponse(matterId: string): Prom
   });
 }
 
-export async function validateSubclass500Draft(matterId: string) {
+export async function validateMatterDraft(matterId: string) {
   const reviewData = await getDraftReviewData(matterId);
   const { matter, template, draft } = reviewData;
 
   await prisma.validationIssue.deleteMany({
     where: {
       matterId,
-      type: { startsWith: "Subclass 500" },
+      OR: [
+        { type: { startsWith: "Draft validation:" } },
+        { type: { startsWith: "Subclass 500" } }
+      ],
       resolutionStatus: { in: [ResolutionStatus.OPEN, ResolutionStatus.IN_PROGRESS] }
     }
   });
@@ -670,7 +695,7 @@ export async function validateSubclass500Draft(matterId: string) {
     if (!draftField?.value || draftField.status === DraftFieldStatus.MISSING) {
       openIssues.push({
         title: `Missing ${field.label}`,
-        description: `${field.label} is required for the Subclass 500 draft and does not have reliable source-linked evidence yet.`,
+        description: `${field.label} is required for the ${matter.visaSubclass} draft and does not have reliable source-linked evidence yet.`,
         severity: IssueSeverity.HIGH,
         relatedFieldKey: field.fieldKey
       });
@@ -710,7 +735,7 @@ export async function validateSubclass500Draft(matterId: string) {
     if (!templateFieldKeys.has(field.fieldKey)) {
       openIssues.push({
         title: `Unsupported extracted field: ${field.fieldLabel}`,
-        description: `${field.fieldLabel} was extracted but is not mapped to the current Subclass 500 template. Review whether it belongs in notes or supporting evidence.`,
+        description: `${field.fieldLabel} was extracted but is not mapped to the current ${matter.visaSubclass} template. Review whether it belongs in notes or supporting evidence.`,
         severity: IssueSeverity.LOW,
         relatedFieldKey: field.fieldKey
       });
@@ -744,7 +769,7 @@ export async function validateSubclass500Draft(matterId: string) {
         data: {
           matterId,
           severity: issue.severity,
-          type: "Subclass 500 validation",
+          type: `Draft validation: ${matter.visaSubclass}`,
           title: issue.title,
           description: issue.description,
           relatedFieldKey: issue.relatedFieldKey,
@@ -771,6 +796,10 @@ export async function validateSubclass500Draft(matterId: string) {
   return getDraftReviewData(matterId);
 }
 
+export async function validateSubclass500Draft(matterId: string) {
+  return validateMatterDraft(matterId);
+}
+
 export async function updateDraftFieldReview(input: {
   draftFieldId: string;
   status: DraftFieldStatus;
@@ -789,7 +818,7 @@ export async function updateDraftFieldReview(input: {
     include: { draft: true }
   });
 
-  await validateSubclass500Draft(field.draft.matterId);
+  await validateMatterDraft(field.draft.matterId);
   return field;
 }
 
@@ -844,7 +873,7 @@ export async function getDraftReviewData(matterId: string): Promise<any> {
     }
   });
 
-  const template = await getSubclass500Template(matter.workspaceId);
+  const template = await getTemplateForSubclass(matter.workspaceId, matter.visaSubclass);
 
   const draft = await prisma.matterApplicationDraft.findUnique({
     where: { matterId_templateId: { matterId, templateId: template.id } },
@@ -861,7 +890,7 @@ export async function getDraftReviewData(matterId: string): Promise<any> {
   });
 
   if (!draft) {
-    return createOrGetSubclass500Draft(matterId);
+    return createOrGetMatterDraft(matterId);
   }
 
   const hydratedDraft = {

@@ -257,6 +257,16 @@ function buildFieldFromCandidate(input: {
   };
 }
 
+function sectionMeta(sectionKey: string) {
+  if (/employment/i.test(sectionKey)) return { icon: "BriefcaseBusiness", description: "Employment, occupation, and sponsor-linked work evidence." };
+  if (/skills|points/i.test(sectionKey)) return { icon: "BadgeCheck", description: "Skills assessments, points claims, and qualification-backed migration evidence." };
+  if (/relationship|witness/i.test(sectionKey)) return { icon: "HeartHandshake", description: "Relationship chronology, witness support, and partner evidence categories." };
+  if (/travel|visitor|home_ties/i.test(sectionKey)) return { icon: "PlaneTakeoff", description: "Travel plans, visitor purpose, itinerary, and home ties evidence." };
+  if (/sponsor|nomination/i.test(sectionKey)) return { icon: "Building2", description: "Sponsor, employer, nomination, and business evidence." };
+  if (/financial/i.test(sectionKey)) return { icon: "WalletCards", description: "Funds, support, and financial capacity evidence." };
+  return { icon: "Files", description: "Subclass-specific extracted evidence and mapped draft fields." };
+}
+
 export async function getMatterExtractionReviewData(workspaceId: string, matterId: string, user: ScopedUser): Promise<ExtractionReviewDashboardData | null> {
   const matter = await prisma.matter.findFirst({
     where: { id: matterId, ...(scopedMatterWhere(user) as Prisma.MatterWhereInput) },
@@ -282,7 +292,7 @@ export async function getMatterExtractionReviewData(workspaceId: string, matterI
       applicationDrafts: {
         orderBy: { updatedAt: "desc" },
         include: {
-          template: true,
+          template: { include: { sections: { include: { fields: true }, orderBy: { sortOrder: "asc" } } } },
           fields: {
             include: {
               templateField: true,
@@ -729,6 +739,40 @@ export async function getMatterExtractionReviewData(workspaceId: string, matterI
       fields: declarationFields.filter((field) => field.value)
     }
   ].filter((section) => section.fields.length);
+
+  const coveredFieldKeys = new Set(sections.flatMap((section) => section.fields.map((field) => field.key)));
+  const templateCatchAllSections = draft?.template.sections
+    .map((section: any) => {
+      const extraFields = section.fields
+        .filter((templateField: any) => !coveredFieldKeys.has(templateField.fieldKey))
+        .map((templateField: any) => {
+          const candidate = candidateFor(templateField.fieldKey);
+          const draftField = draftFieldIndex.get(templateField.fieldKey);
+          return buildFieldFromCandidate({
+            key: templateField.fieldKey,
+            label: templateField.label,
+            candidate,
+            fallbackValue: draftField?.manualOverride ?? draftField?.value ?? null,
+            fallbackSource: draftField?.manualOverride ? "agent" : "system",
+            draftStatus: draftField?.status
+          });
+        })
+        .filter((field: ExtractionReviewField) => field.value || field.status === "missing");
+
+      if (!extraFields.length) return null;
+      const meta = sectionMeta(section.key);
+      return {
+        id: `template-${section.key}`,
+        title: section.title,
+        description: section.description || meta.description,
+        icon: meta.icon,
+        tabIds: ["application", primaryApplicantTab],
+        fields: extraFields
+      } satisfies ExtractionReviewSection;
+    })
+    .filter(Boolean) as ExtractionReviewSection[] | undefined;
+
+  sections.push(...(templateCatchAllSections ?? []));
 
   const missingRequiredFields = sections.reduce((count, section) => count + section.fields.filter((field) => field.status === "missing").length, 0);
   const weakDocuments = documentFacts.filter((document) => document.weakOcr);

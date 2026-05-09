@@ -1,6 +1,6 @@
 import { MatterStage, MatterStatus, UserRole, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ensureSubclass500Template } from "@/lib/services/subclass-templates";
+import { ensureTemplateForSubclass } from "@/lib/services/subclass-templates";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
 import { encryptString } from "@/lib/security/encryption";
 
@@ -115,9 +115,7 @@ export async function createMatter(input: {
     }
   }).catch(() => null);
 
-  if (input.visaSubclass === "500") {
-    await ensureSubclass500Template(input.workspaceId);
-  }
+  await ensureTemplateForSubclass(input.workspaceId, input.visaSubclass);
 
   return matter;
 }

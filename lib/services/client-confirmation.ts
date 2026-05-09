@@ -11,7 +11,10 @@ export type ClientConfirmationCategory =
   | "study_gte"
   | "financial_capacity"
   | "employment"
-  | "insurance";
+  | "insurance"
+  | "visitor_travel_home_ties"
+  | "skilled_points"
+  | "sponsor_nomination";
 
 export type ClientConfirmationItem = {
   key: string;
@@ -67,6 +70,12 @@ function categoryLabel(category: ClientConfirmationCategory) {
       return "Employment confirmation";
     case "insurance":
       return "Insurance confirmation";
+    case "visitor_travel_home_ties":
+      return "Visitor travel purpose / home ties confirmation";
+    case "skilled_points":
+      return "Skilled points claim confirmation";
+    case "sponsor_nomination":
+      return "Sponsor / nomination confirmation";
   }
 }
 
@@ -253,6 +262,118 @@ function buildItemsFromContext(context: MatterConfirmationContext) {
         category: "character_declaration",
         title: "Confirm health and character matters for the partner application",
         detail: "Confirm health disclosures, police clearances, refusals, cancellations, overstays, and any material issues for applicant or sponsor that need agent review.",
+        status: "required"
+      }
+    );
+  }
+
+  if (context.visaSubclass === "482") {
+    items.push(
+      {
+        key: "482.sponsor_nomination",
+        category: "sponsor_nomination",
+        title: "Confirm sponsor and nomination details",
+        detail: "Confirm the sponsor business identity, nomination details, occupation, work location, salary, and any labour market testing evidence the migration agent should rely on.",
+        status: "required"
+      },
+      {
+        key: "482.employment",
+        category: "employment",
+        title: "Confirm employment contract and work history",
+        detail: "Confirm contract details, job title, duties, references, and employment history used to support the Subclass 482 application.",
+        status: "required"
+      }
+    );
+  }
+
+  if (context.visaSubclass === "186") {
+    items.push(
+      {
+        key: "186.nomination",
+        category: "sponsor_nomination",
+        title: "Confirm employer and nomination details",
+        detail: "Confirm employer identity, nomination stream, salary, position details, and how long the applicant has worked with the employer.",
+        status: "required"
+      },
+      {
+        key: "186.skills_english",
+        category: "employment",
+        title: "Confirm skills, English, and work history evidence",
+        detail: "Confirm skills assessment, employment history, qualifications, English evidence, and any age-exemption evidence relevant to the ENS application.",
+        status: "required"
+      }
+    );
+  }
+
+  if (context.visaSubclass === "820/801") {
+    items.push(
+      {
+        key: "820801.relationship_categories",
+        category: "relationship_family",
+        title: "Confirm relationship evidence categories",
+        detail: "Confirm which evidence best supports finances, household, social recognition, commitment, cohabitation, and any periods of separation for the onshore partner application.",
+        status: "required"
+      },
+      {
+        key: "820801.sponsor_status",
+        category: "relationship_family",
+        title: "Confirm sponsor identity and status details",
+        detail: "Confirm the sponsor's citizenship or permanent residence evidence, identity details, and any previous sponsorship or relationship disclosures.",
+        status: "required"
+      }
+    );
+  }
+
+  if (["189", "190", "491"].includes(context.visaSubclass)) {
+    items.push(
+      {
+        key: `${context.visaSubclass}.points_claims`,
+        category: "skilled_points",
+        title: "Confirm skilled points claims",
+        detail: "Confirm age, English, work experience, study, partner, nomination, regional, and other claimed points with the documents the migration agent should rely on.",
+        status: "required"
+      },
+      {
+        key: `${context.visaSubclass}.employment_support`,
+        category: "employment",
+        title: "Confirm employment history and evidence",
+        detail: "Confirm roles, dates, duties, and which payslips, tax, super, and reference documents support the skilled migration claims.",
+        status: "required"
+      }
+    );
+
+    if (context.visaSubclass === "190" || context.visaSubclass === "491") {
+      items.push({
+        key: `${context.visaSubclass}.nomination`,
+        category: "sponsor_nomination",
+        title: "Confirm nomination or sponsorship details",
+        detail: "Confirm the state nomination, regional sponsorship, or related invitation details that the migration agent should rely on.",
+        status: "required"
+      });
+    }
+  }
+
+  if (context.visaSubclass === "600") {
+    items.push(
+      {
+        key: "600.travel",
+        category: "visitor_travel_home_ties",
+        title: "Confirm purpose of visit and itinerary",
+        detail: "Confirm the intended purpose of visit, travel dates, itinerary, accommodation, and any invitation details. Aria must not infer temporary stay claims without client confirmation.",
+        status: "required"
+      },
+      {
+        key: "600.home_ties",
+        category: "visitor_travel_home_ties",
+        title: "Confirm home ties and return incentives",
+        detail: "Confirm employment, family, study, property, business, and any other ties supporting temporary stay intentions.",
+        status: "required"
+      },
+      {
+        key: "600.financial_support",
+        category: "financial_capacity",
+        title: "Confirm funding and support arrangements",
+        detail: "Confirm available funds, source of funds, sponsor support, and the documents the migration agent should rely on for the visitor application.",
         status: "required"
       }
     );

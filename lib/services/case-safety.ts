@@ -11,6 +11,12 @@ const UNSAFE_FIELD_KEYS = new Set([
   "signature.client_signature"
 ]);
 
+function isUnsafeField(field: any) {
+  if (UNSAFE_FIELD_KEYS.has(field.templateField.fieldKey)) return true;
+  const validationRules = field.templateField.validationRules as Record<string, unknown> | null | undefined;
+  return Boolean(validationRules?.unsafe);
+}
+
 type CaseSafetyBlocker = {
   severity: "HARD" | "SOFT";
   code: string;
@@ -88,7 +94,7 @@ export async function assessMatterCaseSafety(matterId: string): Promise<CaseSafe
       continue;
     }
 
-    if (UNSAFE_FIELD_KEYS.has(fieldKey) && field.status !== DraftFieldStatus.VERIFIED) {
+    if (isUnsafeField(field) && field.status !== DraftFieldStatus.VERIFIED) {
       hardBlockers.push(
         buildBlocker(
           "HARD",
@@ -112,6 +118,83 @@ export async function assessMatterCaseSafety(matterId: string): Promise<CaseSafe
         )
       );
     }
+  }
+
+  const byFieldKey = new Map<string, any>(reviewData.draft.fields.map((field: any) => [field.templateField.fieldKey, field]));
+  const hasValue = (fieldKey: string) => {
+    const field = byFieldKey.get(fieldKey);
+    return Boolean(field?.manualOverride || field?.value);
+  };
+  const needsVerified = (fieldKey: string) => {
+    const field = byFieldKey.get(fieldKey);
+    if (!field) return true;
+    return ![DraftFieldStatus.VERIFIED, DraftFieldStatus.HIGH_CONFIDENCE, DraftFieldStatus.SUPPORTED].includes(field.status);
+  };
+
+  switch (reviewData.matter.visaSubclass) {
+    case "485":
+      if (!hasValue("study.qualification") && !hasValue("study.completion_date")) {
+        hardBlockers.push(buildBlocker("HARD", "485_missing_completion", "Missing qualification or completion evidence", "Subclass 485 needs trusted qualification or completion evidence before the matter can move to agent final review.", "study.completion_date"));
+      }
+      if (!hasValue("english.test_type") && !hasValue("english.exemption_evidence")) {
+        hardBlockers.push(buildBlocker("HARD", "485_missing_english", "Missing English evidence", "Subclass 485 requires English evidence or explicit exemption evidence.", "english.test_type"));
+      }
+      break;
+    case "482":
+      if (!hasValue("sponsor.business_name") || !hasValue("sponsor.nomination_details")) {
+        hardBlockers.push(buildBlocker("HARD", "482_missing_sponsor_nomination", "Missing sponsor or nomination evidence", "Subclass 482 requires sponsor business and nomination evidence before agent final review.", "sponsor.business_name"));
+      }
+      if (!hasValue("employment.position_title") || !hasValue("employment.salary")) {
+        hardBlockers.push(buildBlocker("HARD", "482_missing_employment_contract", "Missing occupation or salary evidence", "Subclass 482 requires source-backed role and salary evidence.", "employment.position_title"));
+      }
+      break;
+    case "186":
+      if (!hasValue("employment.employer_name") || !hasValue("sponsor.nomination_details")) {
+        hardBlockers.push(buildBlocker("HARD", "186_missing_nomination", "Missing nomination or employer evidence", "Subclass 186 requires employer identity and nomination evidence.", "employment.employer_name"));
+      }
+      if (!hasValue("skills.assessment") && !hasValue("english.test_type") && !hasValue("english.exemption")) {
+        hardBlockers.push(buildBlocker("HARD", "186_missing_skills_or_english", "Missing skills or English evidence", "Subclass 186 requires skills assessment or English evidence where relevant.", "skills.assessment"));
+      }
+      break;
+    case "820/801":
+    case "309/100":
+      if (!hasValue("sponsor.full_name") || !hasValue("sponsor.status")) {
+        hardBlockers.push(buildBlocker("HARD", "partner_missing_sponsor_identity", "Missing sponsor identity or status evidence", "Partner matters require trusted sponsor identity and status evidence.", "sponsor.full_name"));
+      }
+      if (!hasValue("relationship.start_date") || !hasValue("relationship.financial_evidence")) {
+        hardBlockers.push(buildBlocker("HARD", "partner_missing_relationship_evidence", "Missing relationship evidence categories", "Relationship chronology and category evidence remain incomplete.", "relationship.start_date"));
+      }
+      break;
+    case "189":
+    case "190":
+    case "491":
+      if (!hasValue("skills.assessment_reference")) {
+        hardBlockers.push(buildBlocker("HARD", "skilled_missing_assessment", "Missing skills assessment evidence", "Skilled migration matters require a trusted skills assessment reference.", "skills.assessment_reference"));
+      }
+      if (!hasValue("points.english") && !hasValue("english.test_type")) {
+        hardBlockers.push(buildBlocker("HARD", "skilled_missing_english", "Missing English evidence", "Skilled migration matters require English evidence or an explicit evidenced exemption.", "english.test_type"));
+      }
+      if (reviewData.matter.visaSubclass === "190" && !hasValue("nomination.state")) {
+        hardBlockers.push(buildBlocker("HARD", "skilled_missing_nomination", "Missing nomination evidence", "Subclass 190 matters require state or territory nomination evidence.", "nomination.state"));
+      }
+      if (reviewData.matter.visaSubclass === "491" && !hasValue("nomination.regional_support")) {
+        hardBlockers.push(buildBlocker("HARD", "skilled_missing_nomination", "Missing nomination evidence", "Subclass 491 matters require regional nomination or sponsor evidence.", "nomination.regional_support"));
+      }
+      if (needsVerified("points.total")) {
+        softBlockers.push(buildBlocker("SOFT", "skilled_points_unverified", "Skilled points remain unverified", "Points claims should stay review-required until the migration agent has checked the evidence behind them.", "points.total"));
+      }
+      break;
+    case "600":
+      if (!hasValue("travel.purpose") || !hasValue("travel.itinerary")) {
+        hardBlockers.push(buildBlocker("HARD", "600_missing_travel_plan", "Missing travel purpose or itinerary", "Visitor matters require source-backed purpose-of-visit and itinerary evidence.", "travel.purpose"));
+      }
+      if (!hasValue("financial.available_funds")) {
+        hardBlockers.push(buildBlocker("HARD", "600_missing_financials", "Missing financial evidence", "Visitor matters require funds or sponsor support evidence before agent final review.", "financial.available_funds"));
+      }
+      if (!hasValue("travel.home_ties_employment") && !hasValue("travel.home_ties_family") && !hasValue("travel.home_ties_property")) {
+        softBlockers.push(buildBlocker("SOFT", "600_missing_home_ties", "Home ties evidence is still weak", "Visitor matters should include employment, family, property, or study ties supporting temporary stay intentions.", "travel.home_ties"));
+      }
+      break;
   }
 
   for (const issue of reviewData.openIssues ?? []) {
