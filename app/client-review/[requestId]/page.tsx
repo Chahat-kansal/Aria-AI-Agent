@@ -50,6 +50,20 @@ export default async function ClientReviewPage({ params }: { params: { requestId
         </Card>
 
         <Card>
+          <h2 className="font-semibold">Two draft versions</h2>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-border bg-white/50 p-3 text-sm">
+              <p className="font-medium">Interactive review version</p>
+              <p className="mt-1 text-muted">This page lets you review the fields and confirm information for the migration agent.</p>
+            </div>
+            <a href={`/api/client-review/${params.requestId}/draft-pdf`} className="rounded-lg border border-border bg-white/50 p-3 text-sm transition hover:bg-white">
+              <p className="font-medium">PDF review version</p>
+              <p className="mt-1 text-muted">Download a firm-branded PDF copy with company details, practitioner details, and review terms.</p>
+            </a>
+          </div>
+        </Card>
+
+        <Card>
           <h2 className="font-semibold">Draft fields for confirmation</h2>
           <div className="mt-3 space-y-2">
             {request.draft.fields.slice(0, 12).map((field) => (

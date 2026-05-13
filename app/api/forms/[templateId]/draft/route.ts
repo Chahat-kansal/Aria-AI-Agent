@@ -3,7 +3,7 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { assessMatterCaseSafety } from "@/lib/services/case-safety";
-import { approveMatterFormDraft, generateMatterFormDraft, publishApprovedFormToClient } from "@/lib/services/pdf-form-engine";
+import { approveMatterFormDraft, prepareMatterOfficialFormDraft, publishApprovedFormToClient } from "@/lib/services/pdf-form-engine";
 import { auditAccessDenied, auditEvent, auditMatterAction } from "@/lib/services/audit";
 import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 
@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: { params: { templateId: str
         metadata: { hardBlockers: assessment.hardBlockers.length }
       });
       return NextResponse.json({
-        error: "This matter still has hard blockers. Resolve them before approving a final client-facing form copy.",
+        error: "This matter still has hard blockers. Resolve them before approving a reviewed client-facing form copy.",
         hardBlockers: assessment.hardBlockers
       }, { status: 409 });
     }
@@ -81,9 +81,9 @@ export async function POST(req: Request, { params }: { params: { templateId: str
     return NextResponse.json({ ok: true, draft });
   }
 
-  const result = await generateMatterFormDraft({ matterId: body.matterId, templateId: params.templateId });
+  const result = await prepareMatterOfficialFormDraft({ matterId: body.matterId, templateId: params.templateId });
   if (!result.supported || !result.draft) {
-    return NextResponse.json({ ok: false, reviewRequired: true, reason: result.reason }, { status: 409 });
+    return NextResponse.json({ ok: true, reviewRequired: true, reason: result.reason, draft: result.draft, reviewRows: result.reviewRows });
   }
   await auditEvent({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterOfficialFormDraft", entityId: result.draft.id, action: "generated" });
   return NextResponse.json({ ok: true, reviewRequired: true, draft: result.draft, reviewRows: result.reviewRows });

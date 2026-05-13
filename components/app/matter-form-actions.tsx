@@ -54,7 +54,7 @@ export function MatterFormActions({
   return (
     <div className="flex flex-wrap gap-2">
       <GradientButton type="button" onClick={() => call("generate")} disabled={isPending}>Generate draft PDF</GradientButton>
-      <SubtleButton type="button" onClick={() => call("approve")} disabled={isPending || !draftId}>Approve final copy</SubtleButton>
+      <SubtleButton type="button" onClick={() => call("approve")} disabled={isPending || !draftId}>Approve reviewed copy</SubtleButton>
       <SubtleButton type="button" onClick={() => call("publish")} disabled={isPending || !draftId}>Publish to client portal</SubtleButton>
       {message ? <p className="basis-full text-xs text-slate-400">{message}</p> : null}
     </div>

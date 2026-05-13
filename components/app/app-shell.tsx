@@ -4,6 +4,7 @@ import { AppPage } from "@/components/ui/app-page";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessCompanyWorkspace, canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
+import { isPlatformAdminEmail } from "@/lib/services/platform-admin";
 import { AppShellClient } from "@/components/app/app-shell-client";
 
 const nav: Array<{
@@ -75,6 +76,7 @@ export async function AppShell({ title, children }: { title: string; children: R
   const canOpenTeam = user.role === UserRole.COMPANY_OWNER || canManageTeam(user);
   const workspaceNavItems = nav.filter((item) => !item.permission || hasPermission(user, item.permission));
   const accountNavItems = [
+    ...(isPlatformAdminEmail(user.email) ? [{ label: "Platform Admin", href: "/admin", icon: "settings" as const }] : []),
     ...(canOpenTeam ? [{ label: "Team", href: "/app/team", icon: "team" as const }] : []),
     { label: "Profile", href: "/app/profile", icon: "profile" as const },
     ...(canAccessCompanyWorkspace(user) ? [{ label: "Company", href: "/app/company", icon: "company" as const }] : []),

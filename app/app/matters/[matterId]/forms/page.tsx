@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { MatterFormActions } from "@/components/app/matter-form-actions";
+import { MatterOfficialFormsBatchAction } from "@/components/app/matter-official-forms-batch-action";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
@@ -71,11 +72,12 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
             <StatusPill tone="info">{safety.softBlockers.length} softer review item(s)</StatusPill>
           </div>
           <p className="text-sm text-slate-300">
-            Aria can generate working PDFs now, but approving or publishing a client-visible form copy is blocked until hard blockers are cleared.
+            Aria can generate working PDFs where official fillable PDFs exist. For ImmiAccount online-only workflows, Aria prepares a source-backed field pack for manual/online entry review instead of creating a fake PDF.
           </p>
           <p className="text-xs leading-6 text-slate-500">
             {subclassSupport.notes}
           </p>
+          <MatterOfficialFormsBatchAction matterId={matter.id} canEdit={canEdit} />
         </SectionCard>
 
         <PageSection title="Relevant forms for this matter" description="Supported PDF drafts can be generated where real fillable fields exist. Online-only and manual forms stay explicit.">
@@ -165,7 +167,7 @@ export default async function MatterFormsPage({ params }: { params: { matterId: 
               );
             }) : (
               <SectionCard className="p-4 xl:col-span-2">
-                <p className="text-sm text-slate-400">No official or firm-provided form template currently maps to Subclass {matter.visaSubclass}. Sync official forms or upload a firm template first.</p>
+                <p className="text-sm text-slate-400">No official or firm-provided form template currently maps to Subclass {matter.visaSubclass}. Sync current official forms or upload a firm template first.</p>
               </SectionCard>
             )}
           </div>

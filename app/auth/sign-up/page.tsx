@@ -29,11 +29,12 @@ export default function SignUpPage() {
     const timezone = String(formData.get("timezone") ?? "");
     const businessType = String(formData.get("businessType") ?? "");
     const addressLine1 = String(formData.get("addressLine1") ?? "");
+    const draftPdfTermsText = String(formData.get("draftPdfTermsText") ?? "");
 
     const response = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, workspaceName, contactEmail, contactPhone, timezone, businessType, addressLine1 })
+      body: JSON.stringify({ name, email, password, workspaceName, contactEmail, contactPhone, timezone, businessType, addressLine1, draftPdfTermsText })
     });
 
     if (!response.ok) {
@@ -92,6 +93,13 @@ export default function SignUpPage() {
           </FormField>
           <FormField label="Business address">
             <input name="addressLine1" placeholder="Street address" />
+          </FormField>
+          <FormField className="sm:col-span-2" label="Firm PDF terms / review notice">
+            <textarea
+              name="draftPdfTermsText"
+              placeholder="Optional terms and review wording to print on firm-branded draft PDFs"
+              rows={4}
+            />
           </FormField>
           <FormField className="sm:col-span-2" label="Password">
             <input name="password" required minLength={8} placeholder="Create a secure password" type="password" />

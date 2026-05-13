@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
+import { DraftPdfSettingsForm } from "@/components/app/draft-pdf-settings-form";
 import { FirmTemplateUploadForm } from "@/components/app/firm-template-upload-form";
 import { FormsSyncAction } from "@/components/app/forms-sync-action";
 import { PageHeader } from "@/components/ui/page-header";
@@ -6,6 +7,7 @@ import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canManageTeam } from "@/lib/services/roles";
+import { getWorkspaceDraftPdfSettings } from "@/lib/services/draft-pdf-settings";
 import { prisma } from "@/lib/prisma";
 
 export default async function FormSettingsPage() {
@@ -18,10 +20,13 @@ export default async function FormSettingsPage() {
     );
   }
 
-  const templates = await prisma.officialFormTemplate.findMany({
-    where: { OR: [{ workspaceId: context.workspace.id }, { workspaceId: null }] },
-    orderBy: [{ supportStatus: "asc" }, { formNumber: "asc" }]
-  });
+  const [templates, draftPdfSettings] = await Promise.all([
+    prisma.officialFormTemplate.findMany({
+      where: { OR: [{ workspaceId: context.workspace.id }, { workspaceId: null }] },
+      orderBy: [{ supportStatus: "asc" }, { formNumber: "asc" }]
+    }),
+    getWorkspaceDraftPdfSettings(context.workspace.id)
+  ]);
 
   return (
     <AppShell title="Form settings">
@@ -45,6 +50,11 @@ export default async function FormSettingsPage() {
         <PageSection title="Firm-provided templates" description="Upload a firm-provided PDF template only when it is genuinely part of your workflow. It stays clearly marked as firm-provided.">
           <SectionCard className="p-5">
             <FirmTemplateUploadForm />
+          </SectionCard>
+        </PageSection>
+        <PageSection title="Firm-branded draft PDFs" description="These settings appear on generated PDF draft versions. They do not make a draft final, lodged, or legally reviewed.">
+          <SectionCard className="p-5">
+            <DraftPdfSettingsForm settings={draftPdfSettings} />
           </SectionCard>
         </PageSection>
       </div>

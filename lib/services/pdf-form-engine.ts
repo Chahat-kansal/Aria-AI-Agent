@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { PDFCheckBox, PDFDropdown, PDFForm, PDFRadioGroup, PDFTextField, PDFDocument } from "pdf-lib";
-import { MatterOfficialFormDraftStatus } from "@prisma/client";
+import { MatterOfficialFormDraftStatus, OfficialFormSupportStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { suggestAriaFieldKey } from "@/lib/services/form-template-catalog";
 import { decryptString, encryptBuffer, encryptJson } from "@/lib/security/encryption";
@@ -237,6 +237,134 @@ export async function fillPdfForm(input: { templateId: string; matterId: string;
 
 export async function generateMatterFormDraft(input: { matterId: string; templateId: string }) {
   return fillPdfForm({ matterId: input.matterId, templateId: input.templateId });
+}
+
+async function buildReviewFieldPack(matterId: string) {
+  const { matter, baseValues, draftValues } = await getMatterFieldLookup(matterId);
+  const latestDraft = matter.applicationDrafts[0];
+  const rows = latestDraft?.fields.map((field) => ({
+    fieldName: field.templateField.label,
+    mappedFieldKey: field.templateField.fieldKey,
+    value: readSensitive(field.manualOverride) ?? readSensitive(field.value) ?? null,
+    status: field.status,
+    confidence: field.confidence,
+    reviewRequired: true
+  })) ?? [];
+
+  return {
+    matter,
+    rows,
+    baseValues,
+    draftValues
+  };
+}
+
+async function createUnsupportedOrOnlineOnlyDraft(input: { matterId: string; templateId: string; reason: string }) {
+  const template = await prisma.officialFormTemplate.findUniqueOrThrow({ where: { id: input.templateId } });
+  const { matter, rows } = await buildReviewFieldPack(input.matterId);
+  const generatedFileName = `${template.formNumber.replace(/[^A-Za-z0-9_-]+/g, "_")}-${matter.client.lastName || "client"}-online-field-pack.json`;
+  const warnings = [
+    input.reason,
+    "No generated PDF was created for this template.",
+    "Use this as a source-backed field pack for registered migration agent review and manual/online form entry only.",
+    "Aria does not lodge applications, auto-sign forms, or make final migration decisions."
+  ];
+
+  const draft = await prisma.matterOfficialFormDraft.upsert({
+    where: { matterId_templateId: { matterId: input.matterId, templateId: input.templateId } },
+    create: {
+      workspaceId: matter.workspaceId,
+      matterId: input.matterId,
+      templateId: input.templateId,
+      createdByUserId: matter.assignedToUserId,
+      status: MatterOfficialFormDraftStatus.UNSUPPORTED,
+      generatedFileName,
+      generatedPdfData: null,
+      fieldValuesJson: encryptJson(rows),
+      warningsJson: encryptJson(warnings)
+    },
+    update: {
+      status: MatterOfficialFormDraftStatus.UNSUPPORTED,
+      generatedFileName,
+      generatedPdfData: null,
+      fieldValuesJson: encryptJson(rows),
+      warningsJson: encryptJson(warnings)
+    }
+  });
+
+  return {
+    supported: false,
+    draft,
+    reason: input.reason,
+    reviewRows: rows
+  };
+}
+
+export async function prepareMatterOfficialFormDraft(input: { matterId: string; templateId: string }) {
+  const template = await prisma.officialFormTemplate.findUniqueOrThrow({ where: { id: input.templateId } });
+
+  if (template.supportStatus === OfficialFormSupportStatus.ONLINE_ONLY) {
+    return createUnsupportedOrOnlineOnlyDraft({
+      matterId: input.matterId,
+      templateId: input.templateId,
+      reason: "This Home Affairs workflow is online-only in ImmiAccount. Aria prepared a field pack for manual/online entry review instead of a fake PDF."
+    });
+  }
+
+  if (template.supportStatus === OfficialFormSupportStatus.MANUAL_ONLY) {
+    return createUnsupportedOrOnlineOnlyDraft({
+      matterId: input.matterId,
+      templateId: input.templateId,
+      reason: "This official PDF is not fillable. Aria prepared a review field pack instead of pretending the PDF can be filled."
+    });
+  }
+
+  if (template.supportStatus === OfficialFormSupportStatus.MAPPING_REQUIRED && !template.fileData) {
+    return createUnsupportedOrOnlineOnlyDraft({
+      matterId: input.matterId,
+      templateId: input.templateId,
+      reason: "This template still requires a synced PDF or firm-uploaded template before PDF filling is available."
+    });
+  }
+
+  const result = await generateMatterFormDraft(input);
+  if (!result.supported || !result.draft) {
+    return createUnsupportedOrOnlineOnlyDraft({
+      matterId: input.matterId,
+      templateId: input.templateId,
+      reason: result.reason ?? "This template could not be converted into a fillable PDF draft. Aria prepared a review field pack instead."
+    });
+  }
+
+  return result;
+}
+
+export async function prepareAllMatterOfficialFormDrafts(input: { matterId: string; workspaceId: string }) {
+  const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
+  const templates = await prisma.officialFormTemplate.findMany({
+    where: {
+      OR: [{ workspaceId: input.workspaceId }, { workspaceId: null }],
+      subclassCodes: { has: matter.visaSubclass }
+    },
+    orderBy: [{ supportStatus: "asc" }, { formNumber: "asc" }]
+  });
+
+  const results = [];
+  for (const template of templates) {
+    const prepared = await prepareMatterOfficialFormDraft({ matterId: input.matterId, templateId: template.id });
+    results.push({
+      templateId: template.id,
+      formNumber: template.formNumber,
+      title: template.title,
+      supportStatus: template.supportStatus,
+      draftId: prepared.draft?.id ?? null,
+      pdfGenerated: Boolean(prepared.supported && prepared.draft?.generatedPdfData),
+      reviewPackGenerated: Boolean(prepared.draft && !prepared.draft.generatedPdfData),
+      reason: "reason" in prepared ? prepared.reason ?? null : null
+    });
+  }
+
+  return results;
 }
 
 export async function approveMatterFormDraft(draftId: string, approvedByUserId: string) {

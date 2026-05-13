@@ -150,6 +150,24 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
           </div>
 
           <div className="space-y-6">
+            <PageSection title="Draft versions">
+              <SectionCard className="space-y-4">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Version 1</p>
+                  <p className="mt-2 text-sm font-medium text-white">Interactive Aria field draft</p>
+                  <p className="mt-1 text-xs leading-6 text-slate-400">This screen is the live review workspace with evidence, confidence, and safety status.</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Version 2</p>
+                  <p className="mt-2 text-sm font-medium text-white">Firm-branded PDF draft</p>
+                  <p className="mt-1 text-xs leading-6 text-slate-400">Generate a document, then download it as a PDF with company details, practitioner details, and firm terms.</p>
+                  <Link href={`/app/matters/${matter.id}/generated-documents` as any} className="mt-3 inline-flex text-sm text-cyan-300 transition hover:text-white">
+                    Open PDF draft workspace
+                  </Link>
+                </div>
+              </SectionCard>
+            </PageSection>
+
             <PageSection title="Workflow actions">
               <SectionCard>
                 <DraftWorkflowActions

@@ -18,7 +18,8 @@ const registerSchema = z.object({
   contactPhone: z.string().trim().optional(),
   timezone: z.string().trim().optional(),
   businessType: z.string().trim().optional(),
-  addressLine1: z.string().trim().optional()
+  addressLine1: z.string().trim().optional(),
+  draftPdfTermsText: z.string().trim().max(4000).optional()
 });
 
 function slugify(value: string) {
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
         }
       });
 
-      return tx.user.create({
+      const user = await tx.user.create({
         data: {
           name: parsed.data.name,
           email,
@@ -115,6 +116,22 @@ export async function POST(request: Request) {
           workspaceId: true
         }
       });
+
+      if (parsed.data.draftPdfTermsText) {
+        await tx.workspaceOperationalSettings.create({
+          data: {
+            workspaceId: workspace.id,
+            formsDefaultSettingsJson: {
+              draftPdfSettings: {
+                termsText: parsed.data.draftPdfTermsText,
+                footerText: "AI-assisted output. Registered migration agent review required before use. Aria does not lodge applications."
+              }
+            }
+          }
+        });
+      }
+
+      return user;
     });
 
     return NextResponse.json({ user }, { status: 201 });
