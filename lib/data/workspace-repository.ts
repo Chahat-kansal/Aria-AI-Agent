@@ -135,7 +135,22 @@ export async function getMattersData(workspaceId: string, user?: ScopedUser) {
       assignedToUser: true,
       _count: { select: { documents: true, validationIssues: true, tasks: true } }
     },
-    orderBy: { updatedAt: "desc" }
+    orderBy: { updatedAt: "desc" },
+    take: 100
+  });
+}
+
+export async function getMatterOptionsData(workspaceId: string, user?: ScopedUser) {
+  return prisma.matter.findMany({
+    where: user ? scopedMatterWhere(user) : { workspaceId },
+    select: {
+      id: true,
+      title: true,
+      visaSubclass: true,
+      client: { select: { firstName: true, lastName: true } }
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 120
   });
 }
 
@@ -153,7 +168,8 @@ export async function getDocumentsData(workspaceId: string, user?: ScopedUser) {
       matter: { include: { client: true } },
       uploadedByUser: true
     },
-    orderBy: { createdAt: "desc" }
+    orderBy: { createdAt: "desc" },
+    take: 120
   });
 }
 
@@ -190,7 +206,8 @@ export async function getTasksData(workspaceId: string, user?: ScopedUser) {
       assignedToUser: true,
       matter: { include: { client: true } }
     },
-    orderBy: [{ status: "asc" }, { dueDate: "asc" }]
+    orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+    take: 120
   });
 }
 
@@ -198,7 +215,8 @@ export async function getValidationData(workspaceId: string, user?: ScopedUser) 
   return prisma.validationIssue.findMany({
     where: { matter: user ? scopedMatterWhere(user) : { workspaceId } },
     include: { matter: { include: { client: true } } },
-    orderBy: [{ resolutionStatus: "asc" }, { severity: "asc" }, { createdAt: "desc" }]
+    orderBy: [{ resolutionStatus: "asc" }, { severity: "asc" }, { createdAt: "desc" }],
+    take: 120
   });
 }
 
@@ -232,7 +250,8 @@ export async function getUpdatesData(workspaceId: string, user?: ScopedUser) {
         orderBy: { createdAt: "desc" }
       }
     },
-    orderBy: { publishedAt: "desc" }
+    orderBy: { publishedAt: "desc" },
+    take: 120
   });
 }
 
@@ -259,8 +278,8 @@ export async function getSettingsData(workspaceId: string) {
   return prisma.workspace.findUnique({
     where: { id: workspaceId },
     include: {
-      users: { orderBy: { name: "asc" } },
-      officialSources: { orderBy: { name: "asc" } },
+      users: { orderBy: { name: "asc" }, take: 100 },
+      officialSources: { orderBy: { name: "asc" }, take: 25 },
       _count: { select: { matters: true, documents: true, tasks: true, visaKnowledgeRecords: true } }
     }
   });
@@ -290,7 +309,7 @@ export async function getAssistantData(workspaceId: string, user?: ScopedUser) {
     },
     include: {
       matter: { include: { client: true } },
-      messages: { orderBy: { createdAt: "asc" }, take: 80 }
+      messages: { orderBy: { createdAt: "desc" }, take: 24 }
     },
     orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
     take: 20

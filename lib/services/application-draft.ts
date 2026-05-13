@@ -413,7 +413,7 @@ export async function uploadDocumentToMatter(input: {
   return document;
 }
 
-export async function mapDocumentsToDraft(matterId: string) {
+export async function mapDocumentsToDraft(matterId: string, options?: { skipAiSuggestions?: boolean }) {
   const reviewData = await createOrGetMatterDraft(matterId);
   const draft = reviewData.draft;
 
@@ -547,7 +547,7 @@ export async function mapDocumentsToDraft(matterId: string) {
     }
   }
 
-  const aiSuggestions = await Promise.race([
+  const aiSuggestions = options?.skipAiSuggestions ? null : await Promise.race([
     generateAriaAiResponse({
     system: `
 You are Aria, an AI migration workbench assisting a registered migration agent.

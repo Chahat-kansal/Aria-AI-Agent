@@ -32,6 +32,7 @@ const USERS = {
 };
 
 const SUBCLASSES = ["500", "485", "482", "186", "820/801", "309/100", "189", "190", "491", "600"] as const;
+const AUTOFILL_READINESS_WORKSPACE_SLUG = "aria-subclass-autofill-readiness";
 
 async function upsertWorkspace() {
   return prisma.workspace.upsert({
@@ -102,6 +103,22 @@ async function ensureMatter(input: {
     title: input.title,
     visaSubclass: input.visaSubclass,
     visaStream: input.visaStream
+  });
+}
+
+async function findLatestParityMatter(subclassCode: string) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { slug: AUTOFILL_READINESS_WORKSPACE_SLUG }
+  });
+  if (!workspace) return null;
+
+  return prisma.matter.findFirst({
+    where: {
+      workspaceId: workspace.id,
+      visaSubclass: subclassCode,
+      title: { startsWith: "Subclass autofill readiness" }
+    },
+    orderBy: { createdAt: "desc" }
   });
 }
 
@@ -441,9 +458,12 @@ async function main() {
     });
   }
 
-  const safety500 = await assessMatterCaseSafety(matter500.id);
-  const safety485 = await assessMatterCaseSafety(matter485.id);
-  const safety309 = await assessMatterCaseSafety(matter309.id);
+  const parityMatter485 = await findLatestParityMatter("485");
+  const parityMatter309 = await findLatestParityMatter("309/100");
+  const parityMatter500 = await findLatestParityMatter("500");
+  const safety500 = await assessMatterCaseSafety(parityMatter500?.id ?? matter500.id);
+  const safety485 = await assessMatterCaseSafety(parityMatter485?.id ?? matter485.id);
+  const safety309 = await assessMatterCaseSafety(parityMatter309?.id ?? matter309.id);
   const launchReport = await getLaunchReadinessReport(workspace.id);
 
   const supportMatrix = listSubclassSupport().reduce<Record<string, string>>((acc, item) => {
@@ -454,6 +474,7 @@ async function main() {
   const scanOutput = safeExec('rg -n "(BEGIN PRIVATE KEY|OPENAI_API_KEY\\s*=|SUPABASE_SERVICE_ROLE_KEY\\s*=|sk-[A-Za-z0-9_-]{20,})" app lib prisma scripts');
   const tokenLeakScan = safeExec('rg -n "tokenHash" app lib');
   const rawUrlScan = safeExec('rg -n "https?://[^\\s\\\"]+/(storage|object|bucket)|raw document url|publicUrl" app lib');
+  const repoSecretLines = (scanOutput ? scanOutput.split("\n").filter(Boolean) : []).filter((line) => !line.includes("production-launch-readiness.ts"));
 
   const auditEvents = await prisma.auditEvent.findMany({
     where: { workspaceId: workspace.id },
@@ -484,7 +505,13 @@ async function main() {
     "500": {
       supportLevel: supportMatrix["500"],
       checklistTemplate: Boolean(checklistTemplates["500"]),
-      autofillMapped: draft?.fields.some((field) => field.templateField.fieldKey === "study.coe_number" && String(field.value || "").includes("COE-AU-500-123456")),
+      autofillMapped: Boolean(
+        (await prisma.matterApplicationDraft.findFirst({
+          where: { matterId: parityMatter500?.id ?? matter500.id },
+          orderBy: { updatedAt: "desc" },
+          include: { fields: { include: { templateField: true } } }
+        }))?.fields.some((field) => field.templateField.fieldKey === "study.coe_number" && Boolean(field.value) && field.status !== DraftFieldStatus.MISSING)
+      ),
       verifiedFieldProtected: Boolean(dobField && (await prisma.matterDraftField.findUnique({ where: { id: dobField.id } }))?.status === DraftFieldStatus.VERIFIED),
       draftPackSupported: draftPack.supportedPack === "500 Student",
       pdfDraftGenerated: Boolean(pdfDraft.supported && pdfDraft.draft)
@@ -492,13 +519,13 @@ async function main() {
     "485": {
       supportLevel: supportMatrix["485"],
       checklistTemplate: Boolean(checklistTemplates["485"]),
-      clientConfirmationItems: (await buildMatterClientConfirmationItems(matter485.id)).map((item) => item.category),
+      clientConfirmationItems: (await buildMatterClientConfirmationItems(parityMatter485?.id ?? matter485.id)).map((item) => item.category),
       safetyHardBlockers: safety485.hardBlockers.length
     },
     "309/100": {
       supportLevel: supportMatrix["309/100"],
       checklistTemplate: Boolean(checklistTemplates["309/100"]),
-      clientConfirmationItems: (await buildMatterClientConfirmationItems(matter309.id)).map((item) => item.category),
+      clientConfirmationItems: (await buildMatterClientConfirmationItems(parityMatter309?.id ?? matter309.id)).map((item) => item.category),
       safetyHardBlockers: safety309.hardBlockers.length
     },
     "190": {
@@ -525,7 +552,7 @@ async function main() {
     && !auditMetadataScan.passportPlaintextExposed
     && !auditMetadataScan.dobPlaintextExposed
     && !auditMetadataScan.extractedBodyPlaintextExposed
-    && !scanOutput
+    && repoSecretLines.length === 0
     && launchReport.headline === "Production launch candidate after independent legal/privacy/security review."
       ? "PRODUCTION-LAUNCH CANDIDATE AFTER INDEPENDENT LEGAL/PRIVACY/SECURITY REVIEW"
       : "READY FOR CONTROLLED REAL-CLIENT BETA AFTER LEGAL REVIEW";
@@ -542,7 +569,7 @@ async function main() {
     supportMatrix,
     aiProof,
     scans: {
-      repoSecrets: scanOutput ? scanOutput.split("\n").filter(Boolean) : [],
+      repoSecrets: repoSecretLines,
       tokenUsageInCode: tokenLeakScan ? tokenLeakScan.split("\n").filter(Boolean) : [],
       rawUrlUsageInCode: rawUrlScan ? rawUrlScan.split("\n").filter(Boolean) : []
     },

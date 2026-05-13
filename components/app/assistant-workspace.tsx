@@ -102,13 +102,15 @@ function buildThreadState(thread: PersistedThread): ThreadState {
     matterId: thread.matterId ?? null,
     matterLabel: thread.matter ? `${thread.matter.client.firstName} ${thread.matter.client.lastName} - ${thread.matter.title}` : "Workspace-wide",
     createdAt: thread.createdAt ? new Date(thread.createdAt).toISOString() : undefined,
-    messages: (thread.messages ?? []).map((message) => ({
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : undefined,
-      payload: message.role === "ASSISTANT" ? normalizePayload(message.structuredJson ?? message.citationsJson) : null
-    }))
+    messages: (thread.messages ?? [])
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : undefined,
+        payload: message.role === "ASSISTANT" ? normalizePayload(message.structuredJson ?? message.citationsJson) : null
+      }))
+      .sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime())
   };
 }
 

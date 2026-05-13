@@ -143,6 +143,10 @@ async function maybeAiRefine(
   fallback: AriaIntelligenceResult,
   audit?: { workspaceId: string; userId?: string; feature: string; entityId?: string }
 ) {
+  if (process.env.ARIA_ENABLE_RENDER_AI !== "true") {
+    return fallback;
+  }
+
   if (!isAiConfigured()) {
     return {
       ...fallback,
@@ -276,7 +280,10 @@ async function getScopedMatterBundle(workspaceId: string, user: ScopedUser) {
 
 export async function generateDailyBriefing(workspaceId: string, user: ScopedUser): Promise<OverviewIntelligence> {
   const { matters, draftFields, tasks, appointments, auditEvents, users, canSeeTeam } = await getScopedMatterBundle(workspaceId, user);
-  const retrieval = await retrieveRelevantContext({ workspaceId, query: "recent official updates and visa knowledge", limit: 4 });
+  const retrieval =
+    process.env.ARIA_ENABLE_RENDER_RETRIEVAL === "true"
+      ? await retrieveRelevantContext({ workspaceId, query: "recent official updates and visa knowledge", limit: 4 })
+      : { results: [] as Array<{ content: string; label: string; href: string }> };
 
   const blockedMatters = matters.filter((matter) => matter.readinessScore < 60 || matter.validationIssues.length >= 2);
   const overdueRequests = matters.flatMap((matter) =>
@@ -819,6 +826,77 @@ export async function generateTeamIntelligence(workspaceId: string, user: Scoped
     fallback,
     { workspaceId, userId: user.id, feature: "team-intelligence" }
   );
+}
+
+export function fallbackTeamWorkloadSummary(users: Array<any>): AriaIntelligenceResult {
+  const bottlenecks = users.filter((member) => member._count?.tasksAssigned >= 8 || member._count?.mattersAssigned >= 8);
+  return fallbackResult({
+    summary: bottlenecks.length
+      ? `${bottlenecks.length} team member(s) may need workload review based on assigned matters and open tasks.`
+      : "No major team workload bottleneck is visible from current assignment counts.",
+    urgency: bottlenecks.length ? "medium" : "low",
+    riskScore: clamp(bottlenecks.length * 18),
+    confidence: 0.78,
+    groundedFacts: normalizeLines(users.slice(0, 8).map((member) => `${member.name}: ${member._count?.mattersAssigned ?? 0} matter(s), ${member._count?.tasksAssigned ?? 0} task(s), ${member._count?.clientsAssigned ?? 0} client(s).`)),
+    reasoning: normalizeLines([
+      bottlenecks.length ? "High case counts and task queues can slow review quality and client follow-up speed." : "",
+      "This page uses stored assignment counts for fast navigation; run deeper AI review from the assistant when needed."
+    ]),
+    recommendedActions: bottlenecks.slice(0, 4).map((member) => ({
+      title: `Review workload for ${member.name}`,
+      reason: `${member._count?.mattersAssigned ?? 0} matter(s) and ${member._count?.tasksAssigned ?? 0} task(s) may indicate a bottleneck.`,
+      priority: member._count?.tasksAssigned >= 10 ? "high" : "medium",
+      entityType: "User",
+      entityId: member.id,
+      href: "/app/team"
+    })),
+    securityWarnings: [],
+    missingEvidence: [],
+    clientFollowUps: [],
+    citations: [{ label: "Team", href: "/app/team" }]
+  });
+}
+
+export function fallbackTeamSecuritySummary(users: Array<any>): AriaIntelligenceResult {
+  const broadUsers = users.filter((member) => member.role !== UserRole.COMPANY_OWNER && permissionCount(member) >= 9);
+  const staleInvites = users.filter((member) => member.status === UserStatus.INVITED && member.inviteExpiresAt && member.inviteExpiresAt < new Date());
+  const securityWarnings = normalizeLines([
+    broadUsers.length ? `${broadUsers.length} user(s) currently have broad permission sets that deserve review.` : "",
+    staleInvites.length ? `${staleInvites.length} invite(s) are stale or expired.` : "",
+    !users.some((member) => member.role === UserRole.COMPANY_OWNER && member.status === UserStatus.ACTIVE)
+      ? "No active company owner is present in this workspace."
+      : ""
+  ]);
+
+  return fallbackResult({
+    summary: securityWarnings.length
+      ? `${securityWarnings.length} security or access warning(s) are visible from the team list.`
+      : "No major security or access warning is obvious from the current team list.",
+    urgency: toPriority(securityWarnings.length * 18),
+    riskScore: clamp(securityWarnings.length * 18 + broadUsers.length * 8),
+    confidence: 0.82,
+    groundedFacts: normalizeLines([
+      `${users.length} user record(s) exist in the workspace.`,
+      `${broadUsers.length} user(s) have broad permissions.`,
+      `${staleInvites.length} invite(s) are stale or expired.`
+    ]),
+    reasoning: normalizeLines([
+      broadUsers.length ? "Broad permissions outside owner/admin roles deserve periodic review." : "",
+      staleInvites.length ? "Stale invited users should be resent or deactivated." : ""
+    ]),
+    recommendedActions: broadUsers.slice(0, 3).map((member) => ({
+      title: `Review permissions for ${member.name}`,
+      reason: "This user has broad access relative to a non-owner role.",
+      priority: "high",
+      entityType: "User",
+      entityId: member.id,
+      href: "/app/team"
+    })),
+    securityWarnings,
+    missingEvidence: [],
+    clientFollowUps: [],
+    citations: [{ label: "Team", href: "/app/team" }]
+  });
 }
 
 export async function generateSecurityIntelligence(workspaceId: string, user: ScopedUser): Promise<AriaIntelligenceResult> {

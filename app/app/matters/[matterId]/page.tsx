@@ -16,7 +16,6 @@ import { SubtleButton } from "@/components/ui/subtle-button";
 import { formatDate, formatEnum, getMatterDetailData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { getMatterIntelligence } from "@/lib/services/aria-intelligence";
 import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, roleLabel } from "@/lib/services/roles";
 import { getAiConfigStatus, getEmailConfigStatus, getEncryptionConfigStatus } from "@/lib/services/runtime-config";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
@@ -37,9 +36,37 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   const matter = await getMatterDetailData(context.workspace.id, params.matterId, context.user);
   if (!matter) notFound();
 
-  const intelligence = await getMatterIntelligence({ matterId: matter.id, user: context.user });
   const openTasks = matter.tasks.filter((task) => task.status !== "DONE").length;
   const openIssues = matter.validationIssues.filter((issue) => issue.resolutionStatus !== "RESOLVED" && issue.resolutionStatus !== "DISMISSED");
+  const missingChecklistItems = matter.checklistItems.filter((item) => item.required && !item.documentId);
+  const matterHealth =
+    matter.readinessScore < 55 || openIssues.length >= 3
+      ? "At risk and needs intervention"
+      : matter.readinessScore < 75 || openIssues.length
+        ? "Progressing but blocked in places"
+        : "Stable with review still required";
+  const nextBestAction = openIssues[0]?.title ?? missingChecklistItems[0]?.label ?? "Run final cross-check after confirming source-linked review items.";
+  const intelligence = {
+    matterHealth,
+    summary: `${matter.client.firstName} ${matter.client.lastName} has readiness ${matter.readinessScore}% with ${openIssues.length} unresolved validation issue(s). Registered migration agent review remains required.`,
+    nextBestAction,
+    clientFollowUpSuggestion: missingChecklistItems[0]
+      ? `Request ${missingChecklistItems[0].label} before moving deeper into final review.`
+      : "Confirm the client has reviewed current evidence and draft assumptions.",
+    finalReviewNote: "Ready for agent final review is only available after hard blockers and source-linked review items are resolved.",
+    groundedFacts: [
+      `Matter stage: ${formatEnum(matter.stage)}.`,
+      `Readiness score: ${matter.readinessScore}%.`,
+      `${matter.documents.length} document(s) uploaded.`,
+      `${missingChecklistItems.length} required checklist item(s) still have no linked document.`
+    ],
+    recommendedActions: [
+      { entityId: matter.id, title: nextBestAction }
+    ],
+    evidenceGaps: missingChecklistItems.map((item) => item.label).slice(0, 8),
+    draftWeaknesses: openIssues.map((issue) => issue.title).slice(0, 8),
+    riskWarnings: matter.impacts.map((impact) => impact.reason).slice(0, 8)
+  };
   const pendingClientActions = [
     ...matter.intakeRequests.filter((request) => request.status !== "REVIEWED"),
     ...matter.documentRequests.filter((request) => request.status !== "COMPLETED")

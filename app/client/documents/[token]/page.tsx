@@ -1,10 +1,50 @@
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { attachDocumentToChecklistItem, markDocumentRequestViewed } from "@/lib/services/client-workflows";
+import { attachDocumentToChecklistItem, getDocumentRequestByToken, markDocumentRequestViewed } from "@/lib/services/client-workflows";
 import { prepareMatterDocumentUpload, persistDocumentStorageObject } from "@/lib/services/storage";
 import { extractReadableText } from "@/lib/services/document-extraction";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
+
+async function handleClientDocumentUpload(token: string, formData: FormData) {
+  "use server";
+  const checklistItemId = String(formData.get("checklistItemId") || "");
+  const file = formData.get("file");
+  const consentAccepted = String(formData.get("consent") || "") === "on";
+  const activeRequest = await getDocumentRequestByToken(token);
+
+  if (!(file instanceof File) || !checklistItemId || !consentAccepted || !activeRequest) {
+    redirect(`/client/documents/${token}`);
+  }
+
+  const allowedChecklistItem = activeRequest.items.find((item) => item.checklistItemId === checklistItemId);
+  if (!allowedChecklistItem) {
+    redirect(`/client/documents/${token}`);
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const upload = await prepareMatterDocumentUpload({
+    workspaceId: activeRequest.workspaceId,
+    matterId: activeRequest.matterId,
+    fileName: file.name,
+    bytes,
+    mimeType: file.type || "application/octet-stream"
+  });
+  const extractedText = await extractReadableText(bytes, file.type || "application/octet-stream");
+  const document = await uploadDocumentToMatter({
+    matterId: activeRequest.matterId,
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    storageKey: upload.storageKey,
+    fileSize: upload.fileSize,
+    contentHash: upload.contentHash,
+    extractedText,
+    uploadedByUserId: activeRequest.createdByUserId
+  });
+  await persistDocumentStorageObject({ documentId: document.id, upload });
+  await attachDocumentToChecklistItem(checklistItemId, document.id);
+  redirect(`/client/documents/${token}?uploaded=1`);
+}
 
 export default async function ClientDocumentsPage({ params, searchParams }: { params: { token: string }; searchParams?: { uploaded?: string } }) {
   const request = await markDocumentRequestViewed(params.token);
@@ -21,38 +61,7 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
   }
   const activeRequest = request;
 
-  async function handleUpload(formData: FormData) {
-    "use server";
-    const checklistItemId = String(formData.get("checklistItemId") || "");
-    const file = formData.get("file");
-    const consentAccepted = String(formData.get("consent") || "") === "on";
-    if (!(file instanceof File) || !checklistItemId) {
-      redirect(`/client/documents/${params.token}`);
-    }
-    if (!consentAccepted) {
-      redirect(`/client/documents/${params.token}`);
-    }
-    const allowedChecklistItem = activeRequest.items.find((item) => item.checklistItemId === checklistItemId);
-    if (!allowedChecklistItem) {
-      redirect(`/client/documents/${params.token}`);
-    }
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const upload = await prepareMatterDocumentUpload({ workspaceId: activeRequest.workspaceId, matterId: activeRequest.matterId, fileName: file.name, bytes, mimeType: file.type || "application/octet-stream" });
-    const extractedText = await extractReadableText(bytes, file.type || "application/octet-stream");
-    const document = await uploadDocumentToMatter({
-      matterId: activeRequest.matterId,
-      fileName: file.name,
-      mimeType: file.type || "application/octet-stream",
-      storageKey: upload.storageKey,
-      fileSize: upload.fileSize,
-      contentHash: upload.contentHash,
-      extractedText,
-      uploadedByUserId: activeRequest.createdByUserId
-    });
-    await persistDocumentStorageObject({ documentId: document.id, upload });
-    await attachDocumentToChecklistItem(checklistItemId, document.id);
-    redirect(`/client/documents/${params.token}?uploaded=1`);
-  }
+  const handleUpload = handleClientDocumentUpload.bind(null, params.token);
 
   return (
     <div className="min-h-screen bg-background px-4 py-10">

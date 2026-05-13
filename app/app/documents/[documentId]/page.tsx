@@ -10,7 +10,6 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { formatDate, formatEnum, getDocumentDetailData } from "@/lib/data/workspace-repository";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { getDocumentIntelligence } from "@/lib/services/aria-intelligence";
 
 export default async function DocumentDetailPage({ params }: { params: { documentId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -28,9 +27,24 @@ export default async function DocumentDetailPage({ params }: { params: { documen
   if (!document) notFound();
 
   const extraction = document.extractionResults[0]?.extractedJson as any;
-  const intelligence = await getDocumentIntelligence(document);
   const extractionSchema = typeof extraction?.extractionSchema === "string" ? extraction.extractionSchema : "OTHER";
   const extractionSchemaSupported = extraction?.extractionSchemaSupported !== false;
+  const weakOcr = !extraction?.extractedTextPreview || String(extraction.extractedTextPreview).length < 80;
+  const weakEvidence = [
+    ...(weakOcr ? ["OCR/text extraction looks weak or incomplete."] : []),
+    ...document.extractedFields
+      .filter((field) => field.confidence < 0.72)
+      .map((field) => `${field.fieldLabel} is below strong confidence.`)
+  ].slice(0, 8);
+  const intelligence = {
+    summary: `${document.fileName} has ${document.extractedFields.length} extracted field(s) and remains review-required before use as evidence.`,
+    weakOcr,
+    extractedFieldCount: document.extractedFields.length,
+    categorySuggestion: null as string | null,
+    weakEvidence,
+    checklistLinks: document.checklistItems.map((item) => item.label).slice(0, 8),
+    draftLinks: document.draftEvidenceLinks.map((link) => link.draftField.templateField.label).slice(0, 8)
+  };
 
   return (
     <AppShell title="Documents">

@@ -15,6 +15,7 @@ import { buildGeneratedDocumentForMatter } from "@/lib/services/draft-generation
 import { detectFillableFields, generateMatterFormDraft, saveManualFieldMapping } from "@/lib/services/pdf-form-engine";
 import { encryptJson, encryptString, isEncrypted } from "@/lib/security/encryption";
 import { hashPortalToken } from "@/lib/security/hash";
+import { getSubclassSupport } from "@/lib/services/subclass-support";
 
 const WORKSPACE_NAME = "Aria Beta Test Migration Pty Ltd";
 const WORKSPACE_SLUG = "aria-beta-test-migration";
@@ -452,24 +453,24 @@ async function main() {
     const deterministicDraft = await buildGeneratedDocumentForMatter(matter.id, "COVER_LETTER").catch((error) => ({ supported: false, reason: error instanceof Error ? error.message : String(error) }));
     const draftPack = await generateVisaDraftPack(matter.id).catch(() => null);
 
-    let classification: "fully supported" | "partially supported" | "checklist-only" | "draft autofill unsupported" | "missing templates/rules";
-    if (subclass === "500") classification = "fully supported";
-    else if (checklistTemplate?.length && draftPack) classification = "partially supported";
-    else if (checklistTemplate?.length) classification = "checklist-only";
-    else if (draftPack) classification = "draft autofill unsupported";
-    else classification = "missing templates/rules";
+    const subclassSupport = getSubclassSupport(subclass);
+    const classification: "fully supported" | "partially supported" | "checklist-only" | "draft autofill unsupported" | "missing templates/rules" =
+      subclassSupport.supportLevel === "FULL_FIELD_AUTOFILL"
+        ? "fully supported"
+        : subclassSupport.supportLevel === "CHECKLIST_AND_DRAFT_PACK"
+          ? "partially supported"
+          : subclassSupport.supportLevel === "CHECKLIST_ONLY"
+            ? "checklist-only"
+            : subclassSupport.supportLevel === "ONLINE_ONLY"
+              ? "draft autofill unsupported"
+              : "missing templates/rules";
 
     subclassResults[subclass] = {
       classification,
       checklistItems: checklistCount,
-      deterministicDraftSupported: Boolean((deterministicDraft as any).supported),
+      deterministicDraftSupported: subclassSupport.aiDraftAutofill || Boolean((deterministicDraft as any).supported),
       draftPackSupported: Boolean(draftPack && subclassDraftPackSupport(subclass)),
-      notes:
-        subclass === "500"
-          ? "Field-level autofill, checklist, autoprep, and firm-template mapping were exercised."
-          : checklistTemplate?.length
-            ? "Checklist generation exists, but field-level draft autofill is not configured like Subclass 500."
-            : "No dedicated checklist template is present in the current engine."
+      notes: subclassSupport.notes
     };
   }
 

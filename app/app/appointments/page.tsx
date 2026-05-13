@@ -26,12 +26,14 @@ export default async function AppointmentsPage() {
     prisma.appointment.findMany({
       where: { workspaceId: context.workspace.id, ...(context.user ? { OR: [{ matter: scopedMatterWhere(context.user) }, { assignedToUserId: context.user.id }] } : {}) },
       include: { matter: { include: { client: true } }, assignedToUser: true },
-      orderBy: { startsAt: "asc" }
+      orderBy: { startsAt: "asc" },
+      take: 120
     }),
     prisma.matter.findMany({
       where: scopedMatterWhere(context.user),
       include: { client: true },
-      orderBy: { updatedAt: "desc" }
+      orderBy: { updatedAt: "desc" },
+      take: 120
     }),
     prisma.user.findMany({
       where: { workspaceId: context.workspace.id, status: { not: "DISABLED" } },

@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
+import { cache } from "react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserStatus } from "@prisma/client";
 
-export async function getCurrentWorkspaceContext() {
+export const getCurrentWorkspaceContext = cache(async () => {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase();
 
@@ -17,7 +18,7 @@ export async function getCurrentWorkspaceContext() {
   if (!user || user.status === UserStatus.DISABLED) return null;
 
   return { user, workspace: user.workspace };
-}
+});
 
 export async function requireCurrentWorkspaceContext() {
   const context = await getCurrentWorkspaceContext();

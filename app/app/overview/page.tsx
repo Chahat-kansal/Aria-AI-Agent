@@ -53,6 +53,11 @@ export default async function OverviewPage() {
     );
   }
 
+  const [overviewData, briefing] = await Promise.all([
+    getOverviewData(context.workspace.id, context.user),
+    getOverviewIntelligence(context.workspace.id, context.user)
+  ]);
+
   const {
     matters,
     activeMatterCount,
@@ -63,8 +68,7 @@ export default async function OverviewPage() {
     pendingIntakes,
     pendingDocumentRequests,
     upcomingAppointments
-  } = await getOverviewData(context.workspace.id, context.user);
-  const briefing = await getOverviewIntelligence(context.workspace.id, context.user);
+  } = overviewData;
   const canAccessUpdates = hasPermission(context.user, "can_access_update_monitor");
   const canAccessAi = hasPermission(context.user, "can_access_ai");
   const dashboardScope = hasFirmWideAccess(context.user)

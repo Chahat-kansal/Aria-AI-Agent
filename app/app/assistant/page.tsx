@@ -2,7 +2,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { AssistantWorkspace } from "@/components/app/assistant-workspace";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { getAssistantData, getMattersData } from "@/lib/data/workspace-repository";
+import { getAssistantData, getMatterOptionsData } from "@/lib/data/workspace-repository";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { hasFirmWideAccess, hasPermission, hasTeamOversight } from "@/lib/services/roles";
 import { getAiConfigStatus } from "@/lib/services/runtime-config";
@@ -37,8 +37,12 @@ export default async function AssistantPage() {
     );
   }
 
-  const threads = context ? await getAssistantData(context.workspace.id, context.user) : [];
-  const matters = context ? await getMattersData(context.workspace.id, context.user) : [];
+  const [threads, matters] = context
+    ? await Promise.all([
+        getAssistantData(context.workspace.id, context.user),
+        getMatterOptionsData(context.workspace.id, context.user)
+      ])
+    : [[], []];
   const briefingLabel = context
     ? hasFirmWideAccess(context.user)
       ? "Workspace briefing"

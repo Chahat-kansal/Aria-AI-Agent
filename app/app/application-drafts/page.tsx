@@ -26,10 +26,11 @@ export default async function ApplicationDraftsPage() {
     },
     include: {
       matter: { include: { client: true } },
-      fields: true,
+      fields: { select: { status: true } },
       reviewRequests: { orderBy: { createdAt: "desc" }, take: 1 }
     },
-    orderBy: { updatedAt: "desc" }
+    orderBy: { updatedAt: "desc" },
+    take: 100
   });
 
   return (

@@ -3,13 +3,14 @@ import {
   DraftFieldStatus,
   OfficialFormLifecycleStatus,
   OfficialFormSupportStatus,
+  MatterStage,
+  MatterStatus,
   UserRole,
   UserStatus,
   UserVisibilityScope,
   WorkspacePlan
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { createMatter } from "@/lib/services/matters";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
 import {
   createOrGetMatterDraft,
@@ -236,22 +237,49 @@ async function createHarnessMatter(input: {
   visaStream: string;
   runSuffix: string;
 }) {
-  return createMatter({
-    workspaceId: input.workspaceId,
-    assignedToUserId: input.assignedToUserId,
-    clientFirstName: "Dummy",
-    clientLastName: `${slugFragment(input.subclassCode).toUpperCase()} Applicant`,
-    clientEmail: `dummy-${slugFragment(input.subclassCode)}-${input.runSuffix}@example.com`,
-    clientPhone: "0400000000",
-    clientDob: new Date("1999-08-02T00:00:00.000Z"),
-    nationality: "Indian",
-    title: `Subclass autofill readiness ${input.subclassCode} ${input.runSuffix}`,
-    visaSubclass: input.subclassCode,
-    visaStream: input.visaStream
+  const unique = `${input.runSuffix}-${slugFragment(input.subclassCode)}-${Math.random().toString(36).slice(2, 8)}`;
+  const client = await prisma.client.create({
+    data: {
+      clientReference: `CL-${unique}`.toUpperCase(),
+      workspaceId: input.workspaceId,
+      assignedToUserId: input.assignedToUserId,
+      firstName: "Dummy",
+      lastName: `${slugFragment(input.subclassCode).toUpperCase()} Applicant`,
+      email: `dummy-${slugFragment(input.subclassCode)}-${unique}@example.com`,
+      phone: "0400000000",
+      dob: new Date("1999-08-02T00:00:00.000Z"),
+      nationality: "Indian"
+    }
+  });
+
+  return prisma.matter.create({
+    data: {
+      matterReference: `MAT-${slugFragment(input.subclassCode)}-${unique}`.toUpperCase(),
+      workspaceId: input.workspaceId,
+      clientId: client.id,
+      title: `Subclass autofill readiness ${input.subclassCode} ${unique}`,
+      visaSubclass: input.subclassCode,
+      visaStream: input.visaStream,
+      status: MatterStatus.IN_PROGRESS,
+      stage: MatterStage.INTAKE,
+      assignedToUserId: input.assignedToUserId,
+      readinessScore: 0
+    }
   });
 }
 
 async function ensureTemplateDraft(workspaceId: string, matterId: string, subclassCode: string, userId: string) {
+  const existing = await prisma.officialFormTemplate.findFirst({
+    where: {
+      workspaceId,
+      formNumber: { startsWith: `AUTO-MAP-${slugFragment(subclassCode)}-` }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+  if (existing) {
+    return generateMatterFormDraft({ matterId, templateId: existing.id });
+  }
+
   const fields = listDraftFieldDefinitions(subclassCode).slice(0, 6);
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]);
@@ -334,7 +362,7 @@ async function runSubclassTest(input: {
   }
 
   await createOrGetMatterDraft(matter.id);
-  let reviewData = await mapDocumentsToDraft(matter.id);
+  let reviewData = await mapDocumentsToDraft(matter.id, { skipAiSuggestions: true });
 
   const requiredFields = reviewData.draft.fields.filter((field: any) => field.templateField.required);
   const requiredWithValues = requiredFields.filter((field: any) => field.value || field.manualOverride);
@@ -353,7 +381,7 @@ async function runSubclassTest(input: {
   if (fieldToVerify) {
     const beforeValue = fieldToVerify.value;
     await updateDraftFieldReview({ draftFieldId: fieldToVerify.id, status: DraftFieldStatus.VERIFIED });
-    reviewData = await mapDocumentsToDraft(matter.id);
+    reviewData = await mapDocumentsToDraft(matter.id, { skipAiSuggestions: true });
     const refreshed = reviewData.draft.fields.find((field: any) => field.id === fieldToVerify.id);
     verifiedFieldProtected = Boolean(refreshed && refreshed.status === DraftFieldStatus.VERIFIED && refreshed.value === beforeValue);
   }
@@ -420,16 +448,21 @@ async function main() {
 
   const results = [];
   const subclasses = requestedSubclass ? TARGET_SUBCLASSES.filter((code) => code === requestedSubclass) : TARGET_SUBCLASSES;
-  for (const subclassCode of subclasses) {
-    console.log(`[autofill-harness] starting ${subclassCode}`);
-    results.push(await runSubclassTest({
-      workspaceId: workspace.id,
-      ownerId: owner.id,
-      assignedToUserId: agent.id,
-      subclassCode,
-      runSuffix
-    }));
-    console.log(`[autofill-harness] finished ${subclassCode}`);
+  const batchSize = requestedSubclass ? 1 : 3;
+  for (let i = 0; i < subclasses.length; i += batchSize) {
+    const batch = subclasses.slice(i, i + batchSize);
+    batch.forEach((subclassCode) => console.log(`[autofill-harness] starting ${subclassCode}`));
+    const batchResults = await Promise.all(batch.map((subclassCode) =>
+      runSubclassTest({
+        workspaceId: workspace.id,
+        ownerId: owner.id,
+        assignedToUserId: agent.id,
+        subclassCode,
+        runSuffix
+      })
+    ));
+    results.push(...batchResults);
+    batch.forEach((subclassCode) => console.log(`[autofill-harness] finished ${subclassCode}`));
   }
 
   const failed = results.filter((result) => result.supportLevel !== "FULL_FIELD_AUTOFILL");

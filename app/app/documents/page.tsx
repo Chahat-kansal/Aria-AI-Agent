@@ -9,15 +9,19 @@ import { PageSection } from "@/components/ui/page-section";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
-import { formatDate, formatEnum, getDocumentsData, getMattersData } from "@/lib/data/workspace-repository";
+import { formatDate, formatEnum, getDocumentsData, getMatterOptionsData } from "@/lib/data/workspace-repository";
 import { hasPermission } from "@/lib/services/roles";
 
 const folders = ["Identity", "Travel", "Education", "Employment", "Financial", "Relationship", "Health / Insurance", "Statements / Declarations", "Forms", "Other Evidence"];
 
 export default async function DocumentsPage() {
   const context = await getCurrentWorkspaceContext();
-  const documents = context ? await getDocumentsData(context.workspace.id, context.user) : [];
-  const matters = context ? await getMattersData(context.workspace.id, context.user) : [];
+  const [documents, matters] = context
+    ? await Promise.all([
+        getDocumentsData(context.workspace.id, context.user),
+        getMatterOptionsData(context.workspace.id, context.user)
+      ])
+    : [[], []];
   const canEditMatter = context ? hasPermission(context.user, "can_edit_matters") : false;
   const categories = new Map<string, number>();
   for (const document of documents) categories.set(document.category, (categories.get(document.category) ?? 0) + 1);

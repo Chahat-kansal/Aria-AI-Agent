@@ -127,7 +127,17 @@ export default async function UpdatesPage({
         reviewedByUser: true,
         impacts: {
           where: { matter: scopedMatterWhere(context.user) },
-          include: { matter: { include: { client: true } } }
+          include: {
+            matter: {
+              select: {
+                id: true,
+                title: true,
+                visaSubclass: true,
+                client: { select: { firstName: true, lastName: true } }
+              }
+            }
+          },
+          take: 12
         }
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],

@@ -36,7 +36,8 @@ export default async function FormsPage() {
   const [templates, matters, drafts] = await Promise.all([
     prisma.officialFormTemplate.findMany({
       where: { OR: [{ workspaceId: context.workspace.id }, { workspaceId: null }] },
-      orderBy: [{ lifecycleStatus: "asc" }, { formNumber: "asc" }]
+      orderBy: [{ lifecycleStatus: "asc" }, { formNumber: "asc" }],
+      take: 120
     }),
     prisma.matter.findMany({
       where: scopedMatterWhere(context.user),

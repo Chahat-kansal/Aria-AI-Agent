@@ -7,7 +7,7 @@ import { TeamUserActions } from "@/components/app/team-user-actions";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canManageTeam, defaultPermissionsForRole, defaultVisibilityScope, getUserPermissions, permissionDefinitions, roleDefinitions, roleDescription, roleLabel } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
-import { generateSecurityIntelligence, generateTeamIntelligence } from "@/lib/services/aria-intelligence";
+import { fallbackTeamSecuritySummary, fallbackTeamWorkloadSummary } from "@/lib/services/aria-intelligence";
 
 export default async function TeamPage() {
   const context = await requireCurrentWorkspaceContext();
@@ -33,10 +33,8 @@ export default async function TeamPage() {
     },
     orderBy: [{ status: "asc" }, { name: "asc" }]
   });
-  const [teamIntelligence, securityIntelligence] = await Promise.all([
-    generateTeamIntelligence(context.workspace.id, context.user),
-    generateSecurityIntelligence(context.workspace.id, context.user)
-  ]);
+  const teamIntelligence = fallbackTeamWorkloadSummary(users);
+  const securityIntelligence = fallbackTeamSecuritySummary(users);
 
   return (
     <AppShell title="Team">
