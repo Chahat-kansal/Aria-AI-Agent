@@ -47,19 +47,19 @@ export function VisaKnowledgeSearch({ defaultValue = "", compact = false }: { de
 
   return (
     <form action="/app/knowledge" className={compact ? "relative flex min-w-full items-center gap-3 xl:min-w-[420px]" : "relative flex w-full flex-col gap-3 sm:flex-row"}>
-      <div className="relative flex h-14 flex-1 items-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-300 backdrop-blur-xl">
-        <Search className="h-5 w-5 shrink-0 text-slate-500" />
-        <input name="q" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search visa knowledge" className="w-full bg-transparent p-0 text-sm text-white placeholder:text-slate-500 focus:ring-0" placeholder="Search subclass, visa name, pathway, evidence..." />
+      <div className="relative flex h-14 flex-1 items-center gap-3 rounded-3xl bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] backdrop-blur-xl">
+        <Search className="h-5 w-5 shrink-0 text-[color:var(--text-tertiary)]" />
+        <input name="q" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search visa knowledge" className="h-auto w-full bg-transparent p-0 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:ring-0" placeholder="Search subclass, visa name, pathway, evidence..." />
         {query.trim().length >= 2 ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-glass backdrop-blur-xl">
-            {status === "loading" ? <p className="p-4 text-xs text-slate-400">Searching stored visa knowledge...</p> : null}
-            {status === "error" ? <p className="p-4 text-xs text-slate-400">Search is unavailable for your current session or permissions.</p> : null}
-            {status === "ready" && results.length === 0 ? <p className="p-4 text-xs text-slate-400">No matching records. Try a subclass number, visa name, or evidence term.</p> : null}
+          <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-3xl bg-[color:var(--surface-strong)] shadow-[var(--shadow-lg)] backdrop-blur-xl">
+            {status === "loading" ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">Searching stored visa knowledge...</p> : null}
+            {status === "error" ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">Search is unavailable for your current session or permissions.</p> : null}
+            {status === "ready" && results.length === 0 ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">No matching records. Try a subclass number, visa name, or evidence term.</p> : null}
             {results.map((record) => (
-              <Link key={record.id} href={`/app/knowledge/${record.id}` as any} className="block border-t border-white/5 px-4 py-3 text-left hover:bg-white/[0.04]">
-                <p className="text-sm font-medium text-white">{record.subclassCode ? `Subclass ${record.subclassCode} - ` : ""}{record.title}</p>
-                <p className="line-clamp-2 text-xs text-slate-400">{record.summary}</p>
-                <p className="mt-1 text-[11px] text-slate-500">{record.sourceType} - updated {new Date(record.lastRefreshedAt).toLocaleDateString("en-AU")}</p>
+              <Link key={record.id} href={`/app/knowledge/${record.id}` as any} className="block px-4 py-3 text-left transition hover:bg-[color:var(--surface-soft)]">
+                <p className="text-sm font-medium text-[color:var(--text-primary)]">{record.subclassCode ? `Subclass ${record.subclassCode} - ` : ""}{record.title}</p>
+                <p className="line-clamp-2 text-xs text-[color:var(--text-secondary)]">{record.summary}</p>
+                <p className="mt-1 text-[11px] text-[color:var(--text-tertiary)]">{record.sourceType} - updated {new Date(record.lastRefreshedAt).toLocaleDateString("en-AU")}</p>
               </Link>
             ))}
           </div>

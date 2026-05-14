@@ -144,10 +144,10 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-3xl rounded-[1.6rem] border px-5 py-4 shadow-[0_14px_40px_rgba(0,0,0,0.18)]",
+          "max-w-3xl rounded-[1.6rem] px-5 py-4 shadow-[var(--shadow-md)]",
           isUser
-            ? "border-cyan-400/20 bg-[linear-gradient(135deg,rgba(40,55,76,0.95),rgba(17,111,127,0.45))] text-slate-50"
-            : "border-white/8 bg-[linear-gradient(180deg,rgba(14,17,24,0.98),rgba(11,15,23,0.94))] text-slate-200"
+            ? "bg-[linear-gradient(135deg,var(--violet),var(--violet-600))] text-white"
+            : "bg-[color:var(--surface-strong)] text-[color:var(--text-primary)]"
         )}
       >
         <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
         {!isUser && payload ? (
           <div className="mt-4 space-y-4">
             {payload.setup ? (
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400">
+              <div className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-secondary)]">
                 {payload.setup}
               </div>
             ) : null}
@@ -172,8 +172,8 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
               </div>
             ) : null}
             {typeof payload.confidence === "number" ? (
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-300">
-                <span className="font-medium text-white">Confidence:</span> {Math.round(payload.confidence * 100)}%
+              <div className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-secondary)]">
+                <span className="font-medium text-[color:var(--text-primary)]">Confidence:</span> {Math.round(payload.confidence * 100)}%
               </div>
             ) : null}
             {payload.evidence?.length ? (
@@ -181,18 +181,18 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Evidence used</p>
                 <div className="mt-2 space-y-2">
                   {payload.evidence.map((item, index) => (
-                    <div key={`${item.title}-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                    <div key={`${item.title}-${index}`} className="rounded-2xl bg-[color:var(--surface-soft)] p-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-white">{item.title}</p>
-                          {item.snippet ? <p className="mt-2 text-sm text-slate-300">{item.snippet}</p> : null}
+                          <p className="text-sm font-medium text-[color:var(--text-primary)]">{item.title}</p>
+                          {item.snippet ? <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{item.snippet}</p> : null}
                         </div>
                         <SourceReliabilityBadge reliability={item.reliability} />
                       </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[color:var(--text-tertiary)]">
                         <span>{String(item.sourceType).replace(/_/g, " ")}</span>
                         {typeof item.confidence === "number" ? <span>{Math.round(item.confidence * 100)}% source confidence</span> : null}
-                        {item.url ? <a href={item.url} className="text-cyan-300 transition hover:text-white">Open source</a> : null}
+                        {item.url ? <a href={item.url} className="text-[color:var(--violet)] transition hover:opacity-80">Open source</a> : null}
                       </div>
                     </div>
                   ))}
@@ -204,7 +204,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Grounded facts</p>
                 <ul className="mt-2 space-y-2">
                   {payload.groundedFacts.map((fact) => (
-                    <li key={fact} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-200">
+                    <li key={fact} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-primary)]">
                       {fact}
                     </li>
                   ))}
@@ -216,7 +216,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">AI-assisted reasoning</p>
                 <ul className="mt-2 space-y-2">
                   {payload.reasoning.map((item) => (
-                    <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-300">
+                    <li key={item} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-secondary)]">
                       {item}
                     </li>
                   ))}
@@ -228,7 +228,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Assumptions</p>
                 <ul className="mt-2 space-y-2">
                   {payload.assumptions.map((item) => (
-                    <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-300">
+                    <li key={item} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-secondary)]">
                       {item}
                     </li>
                   ))}
@@ -252,7 +252,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Recommended actions</p>
                 <ul className="mt-2 grid gap-2 sm:grid-cols-2">
                   {payload.recommendedActions.map((action) => (
-                    <li key={action} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-200">
+                    <li key={action} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-primary)]">
                       {action}
                     </li>
                   ))}
@@ -291,7 +291,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
                     <a
                       key={`${citation.label}-${citation.href}`}
                       href={citation.href}
-                      className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-cyan-300 transition hover:bg-white/[0.08]"
+                      className="inline-flex items-center rounded-full bg-[color:var(--surface-soft)] px-3 py-1.5 text-xs font-medium text-[color:var(--violet)] shadow-[var(--shadow-sm)] transition hover:opacity-80"
                     >
                       {citation.label}
                     </a>
@@ -598,7 +598,7 @@ export function AssistantWorkspace({
 
   const rail = (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 border-b border-white/8 bg-[#070b11]/95 px-5 py-5 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 bg-[color:var(--surface-strong)] px-5 py-5 shadow-[var(--shadow-sm)] backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3">
           <GradientButton type="button" onClick={startNewConversation} className="h-12 flex-1 justify-start gap-2 rounded-[1.5rem] px-5 text-slate-950">
             <Plus className="h-4 w-4" />
@@ -607,7 +607,7 @@ export function AssistantWorkspace({
           <button
             type="button"
             onClick={() => setMobileRailOpen(false)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300 md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] md:hidden"
             aria-label="Close conversations"
           >
             <X className="h-4 w-4" />
@@ -647,7 +647,7 @@ export function AssistantWorkspace({
               );
             })
           ) : (
-            <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
+            <div className="rounded-[1.35rem] bg-[color:var(--surface-soft)] p-5 text-sm text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)]">
               No conversations yet.
             </div>
           )}
@@ -657,11 +657,11 @@ export function AssistantWorkspace({
   );
 
   return (
-    <div className="assistant-workspace-surface overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(7,9,13,0.98),rgba(10,12,17,0.97))] shadow-[0_28px_80px_rgba(0,0,0,0.35)]">
+    <div className="assistant-workspace-surface overflow-hidden rounded-[2rem] shadow-[var(--shadow-lg)]">
       <div className="grid min-h-[74vh] lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside
           className={cn(
-            "hidden min-h-[74vh] border-r border-white/8 bg-[#06090d]/96 lg:flex",
+            "hidden min-h-[74vh] bg-[color:var(--surface)] shadow-[var(--shadow-sm)] lg:flex",
             railCollapsed ? "w-[96px]" : "w-full"
           )}
         >
@@ -670,7 +670,7 @@ export function AssistantWorkspace({
               <button
                 type="button"
                 onClick={() => setRailCollapsed(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)]"
                 aria-label="Expand conversations"
               >
                 <PanelLeftOpen className="h-4 w-4" />
@@ -690,8 +690,8 @@ export function AssistantWorkspace({
                     type="button"
                     onClick={() => selectThread(thread.id)}
                     className={cn(
-                      "inline-flex h-12 w-12 items-center justify-center rounded-[1rem] border transition",
-                      thread.id === activeThreadId ? "border-cyan-400/20 bg-cyan-500/10 text-cyan-300" : "border-white/8 bg-white/[0.03] text-slate-500 hover:text-slate-200"
+                      "inline-flex h-12 w-12 items-center justify-center rounded-[1rem] bg-[color:var(--surface-soft)] shadow-[var(--shadow-sm)] transition",
+                      thread.id === activeThreadId ? "text-[color:var(--violet)]" : "text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]"
                     )}
                     aria-label={thread.title}
                     title={thread.title}
@@ -703,11 +703,11 @@ export function AssistantWorkspace({
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">
-              <div className="hidden items-center justify-end border-b border-white/8 px-5 py-4 lg:flex">
+              <div className="hidden items-center justify-end px-5 py-4 shadow-[var(--shadow-sm)] lg:flex">
                 <button
                   type="button"
                   onClick={() => setRailCollapsed(true)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)]"
                   aria-label="Collapse conversations"
                 >
                   <PanelLeftClose className="h-4 w-4" />
@@ -720,24 +720,24 @@ export function AssistantWorkspace({
 
         {mobileRailOpen ? (
           <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden">
-            <div className="h-full max-w-[22rem] bg-[#06090d]/98 shadow-[0_24px_64px_rgba(0,0,0,0.45)]">
+            <div className="h-full max-w-[22rem] bg-[color:var(--surface)] shadow-[var(--shadow-lg)]">
               {rail}
             </div>
           </div>
         ) : null}
 
         <section className="relative flex min-h-[74vh] min-w-0 flex-col">
-          <div className="flex items-center justify-between gap-3 border-b border-white/8 px-5 py-5 sm:px-6">
+          <div className="flex items-center justify-between gap-3 px-5 py-5 shadow-[var(--shadow-sm)] sm:px-6">
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">AI ASSISTANT</p>
-              <h2 className="mt-2 font-serif text-3xl tracking-tight text-white sm:text-4xl">Ask Aria anything about your practice</h2>
+              <h2 className="mt-2 font-serif text-3xl tracking-tight text-[color:var(--text-primary)] sm:text-4xl">Ask Aria anything about your practice</h2>
               <p className="mt-2 text-sm text-slate-500">{briefingLabel}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setMobileRailOpen(true)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03] text-slate-300 lg:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] lg:hidden"
                 aria-label="Open conversations"
               >
                 <Menu className="h-4 w-4" />
@@ -768,7 +768,7 @@ export function AssistantWorkspace({
                 ))}
                 {isLoading ? (
                   <div className="flex justify-start">
-                    <div className="rounded-[1.6rem] border border-white/8 bg-[linear-gradient(180deg,rgba(14,17,24,0.98),rgba(11,15,23,0.94))] px-5 py-4 text-sm text-slate-300">
+                    <div className="rounded-[1.6rem] bg-[color:var(--surface-strong)] px-5 py-4 text-sm text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)]">
                       Aria is reviewing the workspace context...
                     </div>
                   </div>
@@ -777,12 +777,12 @@ export function AssistantWorkspace({
             ) : (
               <div className="flex min-h-full items-center justify-center py-10">
                 <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-cyan-400/20 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.32),transparent_55%),linear-gradient(180deg,rgba(10,28,31,0.95),rgba(18,20,30,0.98))] text-cyan-300 shadow-[0_18px_55px_rgba(34,211,238,0.16)]">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-[1.8rem] bg-[color:var(--surface-strong)] text-[color:var(--violet)] shadow-[var(--shadow-violet)]">
                     <Sparkles className="h-8 w-8" />
                   </div>
                   <p className="mt-6 text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">AI ASSISTANT</p>
-                  <h3 className="mt-4 font-serif text-4xl tracking-tight text-white sm:text-5xl">How can Aria help today?</h3>
-                  <p className="mt-4 max-w-2xl text-base leading-8 text-slate-400">
+                  <h3 className="mt-4 font-serif text-4xl tracking-tight text-[color:var(--text-primary)] sm:text-5xl">How can Aria help today?</h3>
+                  <p className="mt-4 max-w-2xl text-base leading-8 text-[color:var(--text-secondary)]">
                     Draft client letters, explain visa subclasses, summarise policy updates, or review evidence.
                   </p>
                   <div className="mt-10 grid w-full gap-4 sm:grid-cols-2">
@@ -794,7 +794,7 @@ export function AssistantWorkspace({
                           setPrompt(starterPrompt);
                           void submitPrompt(starterPrompt);
                         }}
-                        className="rounded-[1.6rem] border border-white/8 bg-white/[0.02] px-5 py-5 text-left text-base leading-7 text-slate-200 transition hover:bg-white/[0.05]"
+                        className="rounded-[1.6rem] bg-[color:var(--surface-soft)] px-5 py-5 text-left text-base leading-7 text-[color:var(--text-primary)] shadow-[var(--shadow-sm)] transition hover:-translate-y-[1px] hover:bg-[color:var(--surface-strong)]"
                       >
                         {starterPrompt}
                       </button>
@@ -805,9 +805,9 @@ export function AssistantWorkspace({
             )}
           </div>
 
-          <div className="sticky bottom-0 border-t border-white/8 bg-[linear-gradient(180deg,rgba(8,10,14,0.62),rgba(8,10,14,0.96))] px-5 pb-5 pt-4 backdrop-blur-xl sm:px-6">
+          <div className="sticky bottom-0 bg-[color:var(--surface-strong)] px-5 pb-5 pt-4 shadow-[var(--shadow-lg)] backdrop-blur-xl sm:px-6">
             <form onSubmit={ask} className="mx-auto max-w-4xl">
-              <div className="rounded-[1.8rem] border border-white/8 bg-white/[0.03] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+              <div className="rounded-[1.8rem] bg-[color:var(--surface-soft)] p-3 shadow-[var(--shadow-md)]">
                 <div className="mb-3 flex flex-wrap items-center gap-3 px-1">
                   <label className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Context</label>
                   <select
@@ -815,7 +815,7 @@ export function AssistantWorkspace({
                     value={selectedMatterId}
                     onChange={(event) => setSelectedMatterId(event.target.value)}
                     disabled={Boolean(activeThreadId)}
-                    className="h-10 min-w-[180px] rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+                    className="h-10 min-w-[180px] rounded-[1rem] bg-[color:var(--bg-input)] px-3 text-sm text-[color:var(--text-primary)] outline-none transition focus:ring-2 focus:ring-violet-400/20"
                   >
                     <option value="">Workspace mode</option>
                     {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
@@ -838,7 +838,7 @@ export function AssistantWorkspace({
                     }}
                     rows={1}
                     placeholder="Message Aria..."
-                    className="min-h-[52px] flex-1 resize-none rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/15"
+                    className="min-h-[52px] flex-1 resize-none rounded-[1.2rem] bg-[color:var(--bg-input)] px-4 py-3 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] outline-none transition focus:ring-2 focus:ring-violet-400/20"
                   />
                   <GradientButton type="submit" disabled={isLoading || !prompt.trim()} className="h-[52px] w-[52px] rounded-[1.2rem] px-0">
                     <Send className="h-4 w-4" />
