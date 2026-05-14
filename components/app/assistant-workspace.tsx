@@ -144,18 +144,18 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-3xl rounded-[1.6rem] px-5 py-4 shadow-[var(--shadow-md)]",
+          "max-w-[min(48rem,100%)] rounded-[1.45rem] px-5 py-4 shadow-[var(--shadow-md)]",
           isUser
-            ? "bg-[linear-gradient(135deg,var(--violet),var(--violet-600))] text-white"
+            ? "bg-[linear-gradient(135deg,var(--violet),var(--violet-600))] text-white shadow-[var(--shadow-violet)]"
             : "bg-[color:var(--surface-strong)] text-[color:var(--text-primary)]"
         )}
       >
         <div className="flex items-center gap-2">
-          <span className={cn("text-[11px] font-medium uppercase tracking-[0.22em]", isUser ? "text-cyan-200" : "text-cyan-300")}>
+          <span className={cn("text-[11px] font-semibold uppercase tracking-[0.18em]", isUser ? "text-white/80" : "text-[color:var(--accent)]")}>
             {isUser ? "You" : message.role === "SYSTEM" ? "System" : "Aria"}
           </span>
-          {message.createdAt ? <span className="text-[11px] text-slate-500">{formatMessageTime(message.createdAt)}</span> : null}
-          {message.pending ? <span className="text-[11px] text-slate-500">Sending...</span> : null}
+          {message.createdAt ? <span className={cn("text-[11px]", isUser ? "text-white/60" : "text-[color:var(--text-tertiary)]")}>{formatMessageTime(message.createdAt)}</span> : null}
+          {message.pending ? <span className={cn("text-[11px]", isUser ? "text-white/60" : "text-[color:var(--text-tertiary)]")}>Sending...</span> : null}
         </div>
         <div className="mt-3 whitespace-pre-wrap text-sm leading-7">{message.content}</div>
 
@@ -167,7 +167,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
               </div>
             ) : null}
             {payload.error ? (
-              <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
+              <div className="rounded-2xl bg-[color:var(--destructive-bg)] p-3 text-sm text-[color:var(--destructive)] shadow-[var(--shadow-sm)]">
                 {payload.error}
               </div>
             ) : null}
@@ -178,7 +178,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.evidence?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Evidence used</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Evidence used</p>
                 <div className="mt-2 space-y-2">
                   {payload.evidence.map((item, index) => (
                     <div key={`${item.title}-${index}`} className="rounded-2xl bg-[color:var(--surface-soft)] p-3">
@@ -201,7 +201,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.groundedFacts?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Grounded facts</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Grounded facts</p>
                 <ul className="mt-2 space-y-2">
                   {payload.groundedFacts.map((fact) => (
                     <li key={fact} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-primary)]">
@@ -213,7 +213,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.reasoning?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">AI-assisted reasoning</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">AI-assisted reasoning</p>
                 <ul className="mt-2 space-y-2">
                   {payload.reasoning.map((item) => (
                     <li key={item} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-secondary)]">
@@ -225,7 +225,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.assumptions?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Assumptions</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Assumptions</p>
                 <ul className="mt-2 space-y-2">
                   {payload.assumptions.map((item) => (
                     <li key={item} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-secondary)]">
@@ -237,10 +237,10 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.missingInformation?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Missing information</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Missing information</p>
                 <ul className="mt-2 space-y-2">
                   {payload.missingInformation.map((item) => (
-                    <li key={item} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
+                    <li key={item} className="rounded-2xl bg-[color:var(--warning-bg)] p-3 text-sm text-[color:var(--warning)] shadow-[var(--shadow-sm)]">
                       {item}
                     </li>
                   ))}
@@ -249,7 +249,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.recommendedActions?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Recommended actions</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Recommended actions</p>
                 <ul className="mt-2 grid gap-2 sm:grid-cols-2">
                   {payload.recommendedActions.map((action) => (
                     <li key={action} className="rounded-2xl bg-[color:var(--surface-soft)] p-3 text-sm text-[color:var(--text-primary)]">
@@ -261,10 +261,10 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.warnings?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Warnings</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Warnings</p>
                 <ul className="mt-2 space-y-2">
                   {payload.warnings.map((warning) => (
-                    <li key={warning} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">
+                    <li key={warning} className="rounded-2xl bg-[color:var(--warning-bg)] p-3 text-sm text-[color:var(--warning)] shadow-[var(--shadow-sm)]">
                       {warning}
                     </li>
                   ))}
@@ -273,10 +273,10 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.riskWarnings?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Risk warnings</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Risk warnings</p>
                 <ul className="mt-2 space-y-2">
                   {payload.riskWarnings.map((warning) => (
-                    <li key={warning} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">
+                    <li key={warning} className="rounded-2xl bg-[color:var(--warning-bg)] p-3 text-sm text-[color:var(--warning)] shadow-[var(--shadow-sm)]">
                       {warning}
                     </li>
                   ))}
@@ -285,7 +285,7 @@ function AssistantMessageBubble({ message }: { message: ThreadMessage }) {
             ) : null}
             {payload.citations?.length ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Sources</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Sources</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {payload.citations.map((citation) => (
                     <a
@@ -600,7 +600,7 @@ export function AssistantWorkspace({
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 bg-[color:var(--surface-strong)] px-5 py-5 shadow-[var(--shadow-sm)] backdrop-blur-xl">
         <div className="flex items-center justify-between gap-3">
-          <GradientButton type="button" onClick={startNewConversation} className="h-12 flex-1 justify-start gap-2 rounded-[1.5rem] px-5 text-slate-950">
+          <GradientButton type="button" onClick={startNewConversation} className="h-12 flex-1 justify-start gap-2 rounded-[1.35rem] px-5">
             <Plus className="h-4 w-4" />
             New conversation
           </GradientButton>
@@ -616,7 +616,7 @@ export function AssistantWorkspace({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-        <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">Recent</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-tertiary)]">Recent</p>
         <div className="mt-4 space-y-2">
           {threads.length ? (
             threads.map((thread) => {
@@ -627,22 +627,22 @@ export function AssistantWorkspace({
                   type="button"
                   onClick={() => selectThread(thread.id)}
                   className={cn(
-                    "w-full rounded-[1.35rem] border p-4 text-left transition",
+                    "w-full rounded-[1.25rem] p-4 text-left shadow-[var(--shadow-sm)] transition",
                     selected
-                      ? "border-cyan-400/20 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.08)]"
-                      : "border-white/8 bg-white/[0.02] hover:bg-white/[0.05]"
+                      ? "bg-[color:var(--violet-dim)]"
+                      : "bg-[color:var(--surface-soft)] hover:bg-[color:var(--surface-strong)]"
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className={cn("truncate text-sm font-semibold", selected ? "text-white" : "text-slate-200")}>
+                      <p className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                         {thread.title}
                       </p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{thread.matterLabel ?? "Workspace-wide"}</p>
+                      <p className="mt-1 truncate text-xs text-[color:var(--text-tertiary)]">{thread.matterLabel ?? "Workspace-wide"}</p>
                     </div>
-                    <MessageSquare className={cn("mt-0.5 h-4 w-4 shrink-0", selected ? "text-cyan-300" : "text-slate-600")} />
+                    <MessageSquare className={cn("mt-0.5 h-4 w-4 shrink-0", selected ? "text-[color:var(--accent)]" : "text-[color:var(--text-tertiary)]")} />
                   </div>
-                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-400">{previewText(thread)}</p>
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-[color:var(--text-secondary)]">{previewText(thread)}</p>
                 </button>
               );
             })
@@ -658,10 +658,10 @@ export function AssistantWorkspace({
 
   return (
     <div className="assistant-workspace-surface overflow-hidden rounded-[2rem] shadow-[var(--shadow-lg)]">
-      <div className="grid min-h-[74vh] lg:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid h-[min(900px,calc(100vh-8rem))] min-h-[640px] lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside
           className={cn(
-            "hidden min-h-[74vh] bg-[color:var(--surface)] shadow-[var(--shadow-sm)] lg:flex",
+            "hidden h-full bg-[color:var(--surface)] shadow-[var(--shadow-sm)] lg:flex",
             railCollapsed ? "w-[96px]" : "w-full"
           )}
         >
@@ -678,7 +678,7 @@ export function AssistantWorkspace({
               <button
                 type="button"
                 onClick={startNewConversation}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-gradient-to-r from-violet-500 via-violet-400 to-cyan-400 text-slate-950 shadow-[0_14px_48px_rgba(34,211,238,0.22)]"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-[1.2rem] bg-gradient-to-r from-violet-500 via-violet-400 to-cyan-400 text-white shadow-[var(--shadow-violet)]"
                 aria-label="New conversation"
               >
                 <Plus className="h-5 w-5" />
@@ -726,12 +726,12 @@ export function AssistantWorkspace({
           </div>
         ) : null}
 
-        <section className="relative flex min-h-[74vh] min-w-0 flex-col">
-          <div className="flex items-center justify-between gap-3 px-5 py-5 shadow-[var(--shadow-sm)] sm:px-6">
+        <section className="relative flex min-h-0 min-w-0 flex-col">
+          <div className="flex items-center justify-between gap-3 bg-[color:var(--surface-strong)] px-5 py-5 shadow-[var(--shadow-sm)] sm:px-6">
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">AI ASSISTANT</p>
-              <h2 className="mt-2 font-serif text-3xl tracking-tight text-[color:var(--text-primary)] sm:text-4xl">Ask Aria anything about your practice</h2>
-              <p className="mt-2 text-sm text-slate-500">{briefingLabel}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">AI ASSISTANT</p>
+              <h2 className="mt-2 page-title-display font-serif text-3xl text-[color:var(--text-primary)] sm:text-4xl">Ask Aria anything about your practice</h2>
+              <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{briefingLabel}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -748,7 +748,7 @@ export function AssistantWorkspace({
 
           <div ref={messageViewportRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
             {!aiConfigured && aiSetupMessage ? (
-              <div className="mx-auto mb-6 max-w-4xl rounded-[1.4rem] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+              <div className="mx-auto mb-6 max-w-4xl rounded-[1.4rem] bg-[color:var(--warning-bg)] px-4 py-3 text-sm text-[color:var(--warning)] shadow-[var(--shadow-sm)]">
                 {aiSetupMessage}
               </div>
             ) : null}
@@ -757,8 +757,8 @@ export function AssistantWorkspace({
                 {activeThread?.matterLabel ? (
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">Conversation context</p>
-                      <p className="mt-2 text-sm text-slate-400">{activeThread?.matterLabel}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Conversation context</p>
+                      <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{activeThread?.matterLabel}</p>
                     </div>
                     {activeThread?.matterId ? <StatusPill tone="info">Matter aware</StatusPill> : <StatusPill>Workspace</StatusPill>}
                   </div>
@@ -769,7 +769,7 @@ export function AssistantWorkspace({
                 {isLoading ? (
                   <div className="flex justify-start">
                     <div className="rounded-[1.6rem] bg-[color:var(--surface-strong)] px-5 py-4 text-sm text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)]">
-                      Aria is reviewing the workspace context...
+                      Aria is reviewing the permitted context...
                     </div>
                   </div>
                 ) : null}
@@ -780,12 +780,26 @@ export function AssistantWorkspace({
                   <div className="flex h-20 w-20 items-center justify-center rounded-[1.8rem] bg-[color:var(--surface-strong)] text-[color:var(--violet)] shadow-[var(--shadow-violet)]">
                     <Sparkles className="h-8 w-8" />
                   </div>
-                  <p className="mt-6 text-xs font-medium uppercase tracking-[0.22em] text-cyan-300">AI ASSISTANT</p>
-                  <h3 className="mt-4 font-serif text-4xl tracking-tight text-[color:var(--text-primary)] sm:text-5xl">How can Aria help today?</h3>
+                  <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">AI ASSISTANT</p>
+                  <h3 className="mt-4 page-title-display font-serif text-4xl text-[color:var(--text-primary)] sm:text-5xl">How can Aria help today?</h3>
                   <p className="mt-4 max-w-2xl text-base leading-8 text-[color:var(--text-secondary)]">
-                    Draft client letters, explain visa subclasses, summarise policy updates, or review evidence.
+                    Ask for evidence summaries, missing information, policy context, draft review checklists, or client communication support.
                   </p>
-                  <div className="mt-10 grid w-full gap-4 sm:grid-cols-2">
+                  <div className="mt-6 grid w-full gap-3 rounded-[1.6rem] bg-[color:var(--surface-strong)] p-4 text-left shadow-[var(--shadow-sm)] sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Evidence</p>
+                      <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">Aria should cite the sources it used.</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Scope</p>
+                      <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">Answers stay within your permitted workspace or matter access.</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent)]">Review</p>
+                      <p className="mt-2 text-sm leading-6 text-[color:var(--text-secondary)]">Registered migration agent review is required.</p>
+                    </div>
+                  </div>
+                  <div className="mt-8 grid w-full gap-4 sm:grid-cols-2">
                     {starterPrompts.map((starterPrompt) => (
                       <button
                         key={starterPrompt}
@@ -807,9 +821,9 @@ export function AssistantWorkspace({
 
           <div className="sticky bottom-0 bg-[color:var(--surface-strong)] px-5 pb-5 pt-4 shadow-[var(--shadow-lg)] backdrop-blur-xl sm:px-6">
             <form onSubmit={ask} className="mx-auto max-w-4xl">
-              <div className="rounded-[1.8rem] bg-[color:var(--surface-soft)] p-3 shadow-[var(--shadow-md)]">
+              <div className="rounded-[1.65rem] bg-[color:var(--surface-soft)] p-3 shadow-[var(--shadow-md)]">
                 <div className="mb-3 flex flex-wrap items-center gap-3 px-1">
-                  <label className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Context</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--text-tertiary)]">Context</label>
                   <select
                     name="matterId"
                     value={selectedMatterId}
@@ -820,7 +834,7 @@ export function AssistantWorkspace({
                     <option value="">Workspace mode</option>
                     {matters.map((matter) => <option key={matter.id} value={matter.id}>{matter.label}</option>)}
                   </select>
-                  {activeThreadId ? <span className="text-xs text-slate-500">Start a new conversation to change context.</span> : null}
+                  {activeThreadId ? <span className="text-xs text-[color:var(--text-tertiary)]">Start a new conversation to change context.</span> : null}
                 </div>
                 <div className="flex items-end gap-3">
                   <textarea
@@ -845,10 +859,10 @@ export function AssistantWorkspace({
                   </GradientButton>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Aria is AI-assisted. Review required before actioning important migration advice.
+              <p className="mt-3 text-xs text-[color:var(--text-tertiary)]">
+                AI-assisted output. Registered migration agent review required before use. Aria does not guarantee outcomes or lodge applications.
               </p>
-              {threadLoadError ? <p className="mt-2 text-xs text-red-300">{threadLoadError}</p> : null}
+              {threadLoadError ? <p className="mt-2 text-xs text-[color:var(--destructive)]">{threadLoadError}</p> : null}
             </form>
           </div>
         </section>
