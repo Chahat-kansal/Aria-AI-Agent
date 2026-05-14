@@ -14,14 +14,26 @@ const sensitiveKeys = [
   "dateofbirth",
   "birth",
   "address",
+  "answer",
   "documenttext",
+  "documenturl",
   "extractedtext",
+  "filename",
+  "fieldvalue",
+  "grant",
   "snippet",
+  "portal",
   "notes",
   "content",
   "questionnaire",
   "email",
-  "phone"
+  "phone",
+  "rawurl",
+  "response",
+  "source",
+  "storagekey",
+  "submission",
+  "url"
 ];
 
 function isSensitiveKey(key: string) {

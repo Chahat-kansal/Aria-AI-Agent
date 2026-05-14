@@ -1,7 +1,9 @@
+import { redactSensitive } from "@/lib/security/redaction";
+
 export function serverLog(event: string, details: Record<string, unknown> = {}) {
   console.error(`[aria:${event}]`, {
     at: new Date().toISOString(),
-    ...details
+    ...(redactSensitive(details) as Record<string, unknown>)
   });
 }
 

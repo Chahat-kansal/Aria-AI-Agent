@@ -13,7 +13,7 @@ export async function GET(_: Request, { params }: { params: { requestId: string 
     where: {
       expiresAt: { gt: new Date() },
       revokedAt: null,
-      OR: [{ publicTokenHash: hashPortalToken(params.requestId) }, { publicToken: params.requestId }]
+      publicTokenHash: hashPortalToken(params.requestId)
     },
     include: {
       matter: { include: { client: true, workspace: true, assignedToUser: true } },

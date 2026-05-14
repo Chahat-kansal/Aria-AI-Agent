@@ -78,7 +78,9 @@ export async function GET(req: Request, { params }: { params: { documentId: stri
   return new NextResponse(payload, {
     headers: {
       "Content-Type": document.mimeType || "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${safeDownloadName(document.fileName)}"`
+      "Content-Disposition": `attachment; filename="${safeDownloadName(document.fileName)}"`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
     }
   });
 }

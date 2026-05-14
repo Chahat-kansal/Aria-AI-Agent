@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canAccessMatter, hasPermission } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
@@ -28,7 +28,10 @@ function categoryFolder(category: string) {
 }
 
 export async function GET(req: Request) {
-  const context = await requireCurrentWorkspaceContext();
+  const context = await getCurrentWorkspaceContext();
+  if (!context) {
+    return NextResponse.json({ error: "Authentication is required to export secure client folders." }, { status: 401 });
+  }
   if (!hasPermission(context.user, "can_export_data")) {
     await auditAccessDenied({
       workspaceId: context.workspace.id,
@@ -151,7 +154,9 @@ export async function GET(req: Request) {
   return new NextResponse(zip, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${safeName(`${matter.client.firstName}-${matter.visaSubclass}-client-folder`)}.zip"`
+      "Content-Disposition": `attachment; filename="${safeName(`${matter.client.firstName}-${matter.visaSubclass}-client-folder`)}.zip"`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
     }
   });
 }

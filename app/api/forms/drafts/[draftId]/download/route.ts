@@ -44,7 +44,9 @@ export async function GET(req: Request, { params }: { params: { draftId: string 
   return new NextResponse(bytes, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${safeName(draft.generatedFileName || `${draft.template.formNumber}-draft.pdf`)}"`
+      "Content-Disposition": `attachment; filename="${safeName(draft.generatedFileName || `${draft.template.formNumber}-draft.pdf`)}"`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
     }
   });
 }

@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { requestId: str
     where: {
       expiresAt: { gt: new Date() },
       revokedAt: null,
-      OR: [{ publicTokenHash: hashPortalToken(params.requestId) }, { publicToken: params.requestId }]
+      publicTokenHash: hashPortalToken(params.requestId)
     },
     select: { id: true, matterId: true }
   });

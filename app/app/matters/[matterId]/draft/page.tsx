@@ -262,12 +262,7 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
             <PageSection title="Client review state">
               <SectionCard className="space-y-3">
                 {draft.reviewRequests.length ? draft.reviewRequests.map((request: any) => (
-                  request.publicToken ? (
-                    <Link key={request.id} href={`/client-review/${request.publicToken}`} className="block rounded-2xl border border-white/8 bg-white/[0.03] p-3 transition hover:bg-white/[0.06]">
-                      <p className="text-sm font-medium text-white">{request.recipientEmail ?? "Client review link"}</p>
-                      <p className="mt-1 text-xs text-slate-400">{request.status.replaceAll("_", " ").toLowerCase()}</p>
-                    </Link>
-                  ) : request.publicTokenPreview ? (
+                  request.publicTokenPreview ? (
                     <div key={request.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
                       <p className="text-sm font-medium text-white">{request.recipientEmail ?? "Client review link"}</p>
                       <p className="mt-1 text-xs text-slate-400">{request.status.replaceAll("_", " ").toLowerCase()}</p>

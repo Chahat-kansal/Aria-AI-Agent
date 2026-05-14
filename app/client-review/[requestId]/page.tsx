@@ -12,7 +12,7 @@ export default async function ClientReviewPage({ params }: { params: { requestId
     where: {
       expiresAt: { gt: new Date() },
       revokedAt: null,
-      OR: [{ publicTokenHash: hashPortalToken(params.requestId) }, { publicToken: params.requestId }]
+      publicTokenHash: hashPortalToken(params.requestId)
     },
     include: {
       matter: { include: { client: true } },
