@@ -4,7 +4,7 @@ Generated: 15/05/2026
 
 > AI-assisted output. Registered migration agent review required before use. Aria does not provide final migration advice, does not guarantee visa outcomes, and does not lodge applications.
 
-> Screenshot note: screenshot capture was attempted against the local app with dummy data only. Authenticated workspace screenshots require a reachable dummy database/session. If a screenshot is absent, the guide names the closest route and describes the real current feature without inventing data.
+> Screenshot note: screenshots were captured from localhost with dummy guide data only. The guide does not include real client data, secrets, raw tokens, token hashes, or raw document URLs.
 
 ## Table Of Contents
 
@@ -19,19 +19,20 @@ Generated: 15/05/2026
 9. Documents
 10. Extracted Evidence Review
 11. AI Draft Autofill
-12. Subclass Support
-13. Client Confirmations And Portal
-14. Appointments
-15. Official Forms And Company PDF Templates
-16. Generated Documents And Draft Packs
-17. Invoices
-18. Ask Aria Assistant
-19. Visa Knowledge And Migration Updates
-20. Security, Audit, Data Export, And Incidents
-21. Light And Dark Mode
-22. Common Workflow
-23. Troubleshooting
-24. Safety And Legal Reminders
+12. Application Drafts
+13. Subclass Support
+14. Client Confirmations And Portal
+15. Appointments
+16. Official Forms And Company PDF Templates
+17. Generated Documents And Draft Packs
+18. Invoices
+19. Ask Aria Assistant
+20. Visa Knowledge And Migration Updates
+21. Security, Audit, Data Export, And Incidents
+22. Light And Dark Mode
+23. Common Workflow
+24. Troubleshooting
+25. Safety And Legal Reminders
 
 ## 1. Introduction
 
@@ -88,11 +89,18 @@ The owner dashboard lives at /app/overview. It gives the owner a workspace-wide 
 
 Owners can see workspace-wide data according to their role. Agents and staff remain scoped by role and assignment.
 
-Screenshot status: not included in this PDF because the local capture run did not have an authenticated dummy workspace session. Do not use the sign-in redirect as a fake dashboard screenshot.
+The daily briefing highlights priority actions, blocked matters, follow-up queues, review-required evidence, and the standing review warning.
 
 1. Sign in as the workspace owner.
 2. Open Overview from the sidebar.
 3. Use cards and quick actions to move into matters, documents, drafts, updates, and settings.
+
+
+
+![app-overview.png](screenshots/app-overview.png)
+
+
+Caption: Owner Dashboard screen captured from localhost with dummy/local-safe context.
 
 ## 4. Company And Workspace Settings
 
@@ -100,11 +108,32 @@ Workspace settings include company profile, AI settings, document settings, form
 
 Settings pages are owner/admin controlled and should persist only through existing app forms and APIs.
 
-Screenshot status: authenticated settings screenshots require a dummy owner session and were not substituted with repeated auth-required screens.
+Launch readiness records security, privacy, subclass support, operations, and product checks without saying Aria is legally compliant or fully secure.
 
 1. Open /app/company for company profile details.
 2. Open /app/settings for the settings index.
 3. Use /app/settings/security for security status and /app/settings/security/launch-readiness for launch readiness.
+
+
+
+![settings.png](screenshots/settings.png)
+
+
+Caption: Company And Workspace Settings screen captured from localhost with dummy/local-safe context.
+
+
+
+![security-settings.png](screenshots/security-settings.png)
+
+
+Caption: Company And Workspace Settings screen captured from localhost with dummy/local-safe context.
+
+
+
+![launch-readiness.png](screenshots/launch-readiness.png)
+
+
+Caption: Company And Workspace Settings screen captured from localhost with dummy/local-safe context.
 
 ## 5. Team And Agent Management
 
@@ -117,6 +146,13 @@ Agent isolation is central to Aria: one assigned agent should not see another ag
 3. Assign matters to agents from the matter workflow.
 4. Use role permissions and assignment scope to separate agent data.
 
+
+
+![team.png](screenshots/team.png)
+
+
+Caption: Team And Agent Management screen captured from localhost with dummy/local-safe context.
+
 ## 6. Platform Admin Console
 
 The platform admin console lives under /admin and is for the SaaS operator, not normal agency owners.
@@ -127,7 +163,28 @@ Platform admin pages must not show uploaded document contents, extracted text, d
 
 
 
-![admin-auth-required.png](screenshots/admin-auth-required.png)
+![admin-dashboard.png](screenshots/admin-dashboard.png)
+
+
+Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
+
+
+
+![admin-workspaces.png](screenshots/admin-workspaces.png)
+
+
+Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
+
+
+
+![admin-security.png](screenshots/admin-security.png)
+
+
+Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
+
+
+
+![admin-subclass-support.png](screenshots/admin-subclass-support.png)
 
 
 Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
@@ -138,11 +195,18 @@ Client records connect people to matters, documents, client portal links, intake
 
 Client data remains workspace scoped and permission checked.
 
-Screenshot status: authenticated dummy client screenshots were not available in this local run.
+In the current app, client context is visible inside the matter workflow and related client-facing portal flows. A separate /app/clients route was not present in this build.
 
 1. Open the clients area if enabled in the current navigation.
 2. Create or view a client record.
 3. Link the client to matters and portal workflows.
+
+
+
+![matter-detail.png](screenshots/matter-detail.png)
+
+
+Caption: Clients screen captured from localhost with dummy/local-safe context.
 
 ## 8. Matters
 
@@ -150,13 +214,25 @@ Matters are the core workflow hub. A matter has a client, subclass, assignment, 
 
 Matter pages include /app/matters, /app/matters/[matterId], /review, /draft, /forms, /checklist, and /generated-documents.
 
-Screenshot status: authenticated dummy matter screenshots were not available in this local run.
-
 1. Create a matter from the matters page.
 2. Choose the visa subclass honestly.
 3. Assign the responsible agent.
 4. Upload dummy or client-authorised documents.
 5. Use the review and draft pages to prepare the file for agent final review.
+
+
+
+![app-matters.png](screenshots/app-matters.png)
+
+
+Caption: Matters screen captured from localhost with dummy/local-safe context.
+
+
+
+![matter-detail.png](screenshots/matter-detail.png)
+
+
+Caption: Matters screen captured from localhost with dummy/local-safe context.
 
 ## 9. Documents
 
@@ -164,18 +240,30 @@ Documents can be uploaded and linked to clients/matters. Downloads should go thr
 
 Aria stores extraction status, source metadata, checksums, and secure document references without exposing raw public storage URLs.
 
-Screenshot status: authenticated dummy document screenshots were not available in this local run.
-
 1. Open /app/documents.
 2. Upload supported file types only.
 3. Link documents to a matter/client.
 4. Review extraction status and evidence mapping from the matter review dashboard.
+
+
+
+![app-documents.png](screenshots/app-documents.png)
+
+
+Caption: Documents screen captured from localhost with dummy/local-safe context.
 
 ## 10. Extracted Evidence Review
 
 The matter review dashboard shows extracted fields, confidence, source document references, snippets where authorised, missing evidence, conflicts, and safety warnings.
 
 Unsafe declaration fields stay review-required and client-confirmation-required where applicable.
+
+
+
+![matter-review.png](screenshots/matter-review.png)
+
+
+Caption: Extracted Evidence Review screen captured from localhost with dummy/local-safe context.
 
 ## 11. AI Draft Autofill
 
@@ -189,7 +277,41 @@ The app uses the wording Ready for agent final review, not Ready to lodge.
 4. Verify, edit, or reject each field.
 5. Rerun autofill if needed; verified fields should not be overwritten.
 
-## 12. Subclass Support
+
+
+![matter-draft.png](screenshots/matter-draft.png)
+
+
+Caption: AI Draft Autofill screen captured from localhost with dummy/local-safe context.
+
+## 12. Application Drafts
+
+The application drafts area lists draft work across the workspace. A matter draft page shows field readiness, source-linked field evidence, verified fields, conflicts, and draft versions.
+
+Fields can be verified, edited, or rejected by an authorised user. Verified fields are protected from overwrite during later autofill runs.
+
+Drafts remain agent-review-required and use the safety wording Ready for agent final review rather than Ready to lodge.
+
+1. Open /app/application-drafts to review draft activity.
+2. Open a matter draft page for field-level review.
+3. Review each populated value against the evidence panel and confidence status.
+4. Verify only after the agent is satisfied the value is supported.
+
+
+
+![application-drafts.png](screenshots/application-drafts.png)
+
+
+Caption: Application Drafts screen captured from localhost with dummy/local-safe context.
+
+
+
+![matter-draft.png](screenshots/matter-draft.png)
+
+
+Caption: Application Drafts screen captured from localhost with dummy/local-safe context.
+
+## 13. Subclass Support
 
 Current supported subclasses are 500, 485, 482, 186, 820/801, 309/100, 189, 190, 491, and 600.
 
@@ -197,9 +319,21 @@ The launch-readiness/subclass-support pages label support honestly. A subclass s
 
 Unsupported or online-only workflows must be labelled honestly.
 
-Screenshot status: launch-readiness is owner/admin protected. This PDF does not reuse the login redirect as a fake support screenshot.
 
-## 13. Client Confirmations And Portal
+
+![launch-readiness.png](screenshots/launch-readiness.png)
+
+
+Caption: Subclass Support screen captured from localhost with dummy/local-safe context.
+
+
+
+![admin-subclass-support.png](screenshots/admin-subclass-support.png)
+
+
+Caption: Subclass Support screen captured from localhost with dummy/local-safe context.
+
+## 14. Client Confirmations And Portal
 
 Client confirmations are matter-scoped requests for personal details, document accuracy, health/character declarations, family/relationship information, study/GTE, finances, employment, insurance, visitor travel purpose/home ties, skilled points, and sponsor/nomination details where relevant.
 
@@ -210,13 +344,41 @@ The client portal uses secure scoped links. Clients should only see their matter
 3. Client uploads documents or submits confirmations.
 4. Agent reviews the returned answers before using them.
 
-## 14. Appointments
+
+
+![client-portal.png](screenshots/client-portal.png)
+
+
+Caption: Client Confirmations And Portal screen captured from localhost with dummy/local-safe context.
+
+
+
+![client-booking.png](screenshots/client-booking.png)
+
+
+Caption: Client Confirmations And Portal screen captured from localhost with dummy/local-safe context.
+
+## 15. Appointments
 
 Appointments support settings, request/booking flows, and client-facing booking pages where configured.
 
 If availability or email is not configured, Aria should show an honest fallback rather than pretending a booking was confirmed.
 
-## 15. Official Forms And Company PDF Templates
+
+
+![appointments.png](screenshots/appointments.png)
+
+
+Caption: Appointments screen captured from localhost with dummy/local-safe context.
+
+
+
+![client-booking.png](screenshots/client-booking.png)
+
+
+Caption: Appointments screen captured from localhost with dummy/local-safe context.
+
+## 16. Official Forms And Company PDF Templates
 
 Aria tracks official forms and firm PDF templates with labels such as fillable, manual, online-only, unsupported, or needs review.
 
@@ -224,25 +386,58 @@ Companies can upload firm templates, detect PDF fields, map canonical Aria field
 
 Aria must not auto-sign, auto-lodge, or claim a form was submitted.
 
-## 16. Generated Documents And Draft Packs
+
+
+![app-forms.png](screenshots/app-forms.png)
+
+
+Caption: Official Forms And Company PDF Templates screen captured from localhost with dummy/local-safe context.
+
+
+
+![matter-forms.png](screenshots/matter-forms.png)
+
+
+Caption: Official Forms And Company PDF Templates screen captured from localhost with dummy/local-safe context.
+
+## 17. Generated Documents And Draft Packs
 
 Generated documents and draft packs may include checklists, draft PDFs, summaries, covering letters, and missing-evidence warnings depending on the matter and configured templates.
 
 Every generated output remains agent-review-required and permission checked.
 
-## 17. Invoices
+
+
+![generated-documents.png](screenshots/generated-documents.png)
+
+
+Caption: Generated Documents And Draft Packs screen captured from localhost with dummy/local-safe context.
+
+## 18. Invoices
 
 If enabled, invoices include setup, manual invoice creation, generated invoice drafts, logo/signature settings where present, and invoice detail pages.
 
 Invoices should document billing metadata only and avoid exposing unrelated client private data.
 
-## 18. Ask Aria Assistant
+
+
+![invoices.png](screenshots/invoices.png)
+
+
+Caption: Invoices screen captured from localhost with dummy/local-safe context.
+
+
+
+![invoice-new.png](screenshots/invoice-new.png)
+
+
+Caption: Invoices screen captured from localhost with dummy/local-safe context.
+
+## 19. Ask Aria Assistant
 
 Ask Aria is an AI-assisted workspace/matter assistant with source/evidence panels, confidence, missing information, warnings, and recommended next actions.
 
 Aria should answer within the user's permission scope only. It should not reveal hidden matters, guarantee outcomes, provide final legal advice, or say an application can be lodged without review.
-
-Screenshot status: authenticated assistant screenshots require a dummy workspace session and were not substituted with an unrelated screenshot.
 
 1. Open /app/assistant.
 2. Choose workspace or matter context.
@@ -250,15 +445,34 @@ Screenshot status: authenticated assistant screenshots require a dummy workspace
 4. Read the answer, evidence used, confidence, missing information, and review warning.
 5. Treat the response as agent-review-required.
 
-## 19. Visa Knowledge And Migration Updates
+
+
+![assistant.png](screenshots/assistant.png)
+
+
+Caption: Ask Aria Assistant screen captured from localhost with dummy/local-safe context.
+
+## 20. Visa Knowledge And Migration Updates
 
 Visa Knowledge and Updates distinguish official source material, workspace notes, migration intelligence, and news/intel where configured.
 
 Search, filters, badges, source labels, and update sweeps must remain readable in both light and dark mode.
 
-Screenshot status: authenticated knowledge/update screenshots were not available in this local run.
 
-## 20. Security, Audit, Data Export, And Incidents
+
+![knowledge.png](screenshots/knowledge.png)
+
+
+Caption: Visa Knowledge And Migration Updates screen captured from localhost with dummy/local-safe context.
+
+
+
+![updates.png](screenshots/updates.png)
+
+
+Caption: Visa Knowledge And Migration Updates screen captured from localhost with dummy/local-safe context.
+
+## 21. Security, Audit, Data Export, And Incidents
 
 Security pages show runtime booleans and status, not secrets. Launch readiness tracks encryption, AI, cron, permissions, portal scoping, audit logging, legal/privacy review, support levels, and operational controls.
 
@@ -268,24 +482,52 @@ Data export and secure client folder exports require permission and should conta
 
 
 
-![security.png](screenshots/security.png)
+![security-settings.png](screenshots/security-settings.png)
 
 
 Caption: Security, Audit, Data Export, And Incidents screen captured from localhost with dummy/local-safe context.
 
-## 21. Light And Dark Mode
+
+
+![launch-readiness.png](screenshots/launch-readiness.png)
+
+
+Caption: Security, Audit, Data Export, And Incidents screen captured from localhost with dummy/local-safe context.
+
+
+
+![admin-security.png](screenshots/admin-security.png)
+
+
+Caption: Security, Audit, Data Export, And Incidents screen captured from localhost with dummy/local-safe context.
+
+## 22. Light And Dark Mode
 
 The sidebar theme toggle persists the selected theme locally. Light mode uses pale lavender/off-white backgrounds with dark readable text; dark mode uses near-black purple surfaces with light readable text.
 
 Inputs, selects, textareas, dropdowns, tables, assistant panels, Visa Knowledge, client portal, auth pages, and admin pages should remain readable in both themes.
 
-## 22. Common Workflow
+
+
+![app-overview.png](screenshots/app-overview.png)
+
+
+Caption: Light And Dark Mode screen captured from localhost with dummy/local-safe context.
+
+
+
+![app-overview-dark.png](screenshots/app-overview-dark.png)
+
+
+Caption: Light And Dark Mode screen captured from localhost with dummy/local-safe context.
+
+## 23. Common Workflow
 
 A normal controlled workflow is: owner creates workspace, owner invites agent, agent creates matter, agent uploads documents, Aria extracts evidence, agent reviews evidence, agent runs draft autofill, agent verifies fields, agent requests client confirmation, client responds in the portal, agent runs final cross-check, agent generates draft PDF/pack, and owner exports a secure client folder if needed.
 
 AI-assisted output. Registered migration agent review required before use. Aria does not provide final migration advice, does not guarantee visa outcomes, and does not lodge applications.
 
-## 23. Troubleshooting
+## 24. Troubleshooting
 
 AI not configured: assistant/draft features show an honest setup message or disabled state.
 
@@ -303,7 +545,7 @@ Staff cannot access matter: check assignment, visibility scope, and role permiss
 
 No extracted fields found: upload clearer documents or review OCR/extraction confidence.
 
-## 24. Safety And Legal Reminders
+## 25. Safety And Legal Reminders
 
 Review by a qualified Australian lawyer/privacy professional before commercial use.
 
