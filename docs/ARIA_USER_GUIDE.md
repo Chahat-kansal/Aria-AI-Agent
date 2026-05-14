@@ -13,26 +13,25 @@ Generated: 15/05/2026
 3. Owner Dashboard
 4. Company And Workspace Settings
 5. Team And Agent Management
-6. Platform Admin Console
-7. Clients
-8. Matters
-9. Documents
-10. Extracted Evidence Review
-11. AI Draft Autofill
-12. Application Drafts
-13. Subclass Support
-14. Client Confirmations And Portal
-15. Appointments
-16. Official Forms And Company PDF Templates
-17. Generated Documents And Draft Packs
-18. Invoices
-19. Ask Aria Assistant
-20. Visa Knowledge And Migration Updates
-21. Security, Audit, Data Export, And Incidents
-22. Light And Dark Mode
-23. Common Workflow
-24. Troubleshooting
-25. Safety And Legal Reminders
+6. Clients
+7. Matters
+8. Documents
+9. Extracted Evidence Review
+10. AI Draft Autofill
+11. Application Drafts
+12. Subclass Support
+13. Client Confirmations And Portal
+14. Appointments
+15. Official Forms And Company PDF Templates
+16. Generated Documents And Draft Packs
+17. Invoices
+18. Ask Aria Assistant
+19. Visa Knowledge And Migration Updates
+20. Security, Audit, Data Export, And Incidents
+21. Light And Dark Mode
+22. Common Workflow
+23. Troubleshooting
+24. Safety And Legal Reminders
 
 ## 1. Introduction
 
@@ -180,53 +179,7 @@ When adding a new staff member, confirm the invite email, role, visibility scope
 
 Caption: Team And Agent Management screen captured from localhost with dummy/local-safe context.
 
-## 6. Platform Admin Console
-
-The platform admin console lives under /admin and is for the SaaS operator, not normal agency owners.
-
-Platform admin views are privacy-safe by design: they show workspace/user metadata, counts, statuses, launch controls, system health, deployment info, subclass support, billing/plan metadata, and redacted audit summaries.
-
-Platform admin pages must not show uploaded document contents, extracted text, draft field values, passport numbers, DOBs, visa grant numbers, raw document URLs, raw tokens, token hashes, or secrets.
-
-Use the platform admin console for operational support: checking whether a workspace is active, whether feature flags are enabled, whether runtime services are configured, whether subclass support labels are current, and whether a deployment is healthy.
-
-If a customer needs support with private matter content, use a controlled support process. Do not use platform admin screens to read private client documents or draft answers.
-
-1. Open /admin as a platform-admin allowlisted user.
-2. Use Workspaces to inspect safe metadata, plan, status, and feature flags.
-3. Use Security and System Health to review configured/not-configured status without secret values.
-4. Use Subclass Support to confirm support labels match the actual harness-tested product state.
-5. Use redacted audit views for operational diagnosis without exposing private client content.
-
-
-
-![admin-dashboard.png](screenshots/admin-dashboard.png)
-
-
-Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
-
-
-
-![admin-workspaces.png](screenshots/admin-workspaces.png)
-
-
-Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
-
-
-
-![admin-security.png](screenshots/admin-security.png)
-
-
-Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
-
-
-
-![admin-subclass-support.png](screenshots/admin-subclass-support.png)
-
-
-Caption: Platform Admin Console screen captured from localhost with dummy/local-safe context.
-
-## 7. Clients
+## 6. Clients
 
 Client records connect people to matters, documents, client portal links, intake requests, confirmations, appointments, and generated documents.
 
@@ -249,7 +202,7 @@ Be careful with names, dates of birth, passports, grant numbers, addresses, and 
 
 Caption: Clients screen captured from localhost with dummy/local-safe context.
 
-## 8. Matters
+## 7. Matters
 
 Matters are the core workflow hub. A matter has a client, subclass, assignment, status, review dashboard, checklist, draft fields, forms, generated documents, and safety gate status.
 
@@ -281,7 +234,7 @@ Caption: Matters screen captured from localhost with dummy/local-safe context.
 
 Caption: Matters screen captured from localhost with dummy/local-safe context.
 
-## 9. Documents
+## 8. Documents
 
 Documents can be uploaded and linked to clients/matters. Downloads should go through permission-checked app routes.
 
@@ -305,7 +258,7 @@ Use clear scans and correctly labelled document categories where possible. Poor 
 
 Caption: Documents screen captured from localhost with dummy/local-safe context.
 
-## 10. Extracted Evidence Review
+## 9. Extracted Evidence Review
 
 The matter review dashboard shows extracted fields, confidence, source document references, snippets where authorised, missing evidence, conflicts, and safety warnings.
 
@@ -328,7 +281,7 @@ Conflicts matter. If two documents disagree on a name, date, passport number, gr
 
 Caption: Extracted Evidence Review screen captured from localhost with dummy/local-safe context.
 
-## 11. AI Draft Autofill
+## 10. AI Draft Autofill
 
 AI draft autofill maps evidence-backed extracted fields into application draft fields. It preserves verified fields and keeps unsafe or unsupported fields in review-required states.
 
@@ -353,7 +306,7 @@ Every populated value should be traceable to a source, confidence level, and rev
 
 Caption: AI Draft Autofill screen captured from localhost with dummy/local-safe context.
 
-## 12. Application Drafts
+## 11. Application Drafts
 
 The application drafts area lists draft work across the workspace. A matter draft page shows field readiness, source-linked field evidence, verified fields, conflicts, and draft versions.
 
@@ -386,7 +339,7 @@ Caption: Application Drafts screen captured from localhost with dummy/local-safe
 
 Caption: Application Drafts screen captured from localhost with dummy/local-safe context.
 
-## 13. Subclass Support
+## 12. Subclass Support
 
 Current supported subclasses are 500, 485, 482, 186, 820/801, 309/100, 189, 190, 491, and 600.
 
@@ -410,14 +363,7 @@ For skilled subclasses, pay particular attention to points claims, skills assess
 
 Caption: Subclass Support screen captured from localhost with dummy/local-safe context.
 
-
-
-![admin-subclass-support.png](screenshots/admin-subclass-support.png)
-
-
-Caption: Subclass Support screen captured from localhost with dummy/local-safe context.
-
-## 14. Client Confirmations And Portal
+## 13. Client Confirmations And Portal
 
 Client confirmations are matter-scoped requests for personal details, document accuracy, health/character declarations, family/relationship information, study/GTE, finances, employment, insurance, visitor travel purpose/home ties, skilled points, and sponsor/nomination details where relevant.
 
@@ -448,7 +394,7 @@ Caption: Client Confirmations And Portal screen captured from localhost with dum
 
 Caption: Client Confirmations And Portal screen captured from localhost with dummy/local-safe context.
 
-## 15. Appointments
+## 14. Appointments
 
 Appointments support settings, request/booking flows, and client-facing booking pages where configured.
 
@@ -477,7 +423,7 @@ Caption: Appointments screen captured from localhost with dummy/local-safe conte
 
 Caption: Appointments screen captured from localhost with dummy/local-safe context.
 
-## 16. Official Forms And Company PDF Templates
+## 15. Official Forms And Company PDF Templates
 
 Aria tracks official forms and firm PDF templates with labels such as fillable, manual, online-only, unsupported, or needs review.
 
@@ -509,7 +455,7 @@ Caption: Official Forms And Company PDF Templates screen captured from localhost
 
 Caption: Official Forms And Company PDF Templates screen captured from localhost with dummy/local-safe context.
 
-## 17. Generated Documents And Draft Packs
+## 16. Generated Documents And Draft Packs
 
 Generated documents and draft packs may include checklists, draft PDFs, summaries, covering letters, and missing-evidence warnings depending on the matter and configured templates.
 
@@ -531,7 +477,7 @@ If a generated document includes client-facing text, ensure it includes the corr
 
 Caption: Generated Documents And Draft Packs screen captured from localhost with dummy/local-safe context.
 
-## 18. Invoices
+## 17. Invoices
 
 If enabled, invoices include setup, manual invoice creation, generated invoice drafts, logo/signature settings where present, and invoice detail pages.
 
@@ -560,7 +506,7 @@ Caption: Invoices screen captured from localhost with dummy/local-safe context.
 
 Caption: Invoices screen captured from localhost with dummy/local-safe context.
 
-## 19. Ask Aria Assistant
+## 18. Ask Aria Assistant
 
 Ask Aria is an AI-assisted workspace/matter assistant with source/evidence panels, confidence, missing information, warnings, and recommended next actions.
 
@@ -585,7 +531,7 @@ Every answer involving migration facts should include evidence used, source type
 
 Caption: Ask Aria Assistant screen captured from localhost with dummy/local-safe context.
 
-## 20. Visa Knowledge And Migration Updates
+## 19. Visa Knowledge And Migration Updates
 
 Visa Knowledge and Updates distinguish official source material, workspace notes, migration intelligence, and news/intel where configured.
 
@@ -614,7 +560,7 @@ Caption: Visa Knowledge And Migration Updates screen captured from localhost wit
 
 Caption: Visa Knowledge And Migration Updates screen captured from localhost with dummy/local-safe context.
 
-## 21. Security, Audit, Data Export, And Incidents
+## 20. Security, Audit, Data Export, And Incidents
 
 Security pages show runtime booleans and status, not secrets. Launch readiness tracks encryption, AI, cron, permissions, portal scoping, audit logging, legal/privacy review, support levels, and operational controls.
 
@@ -645,14 +591,7 @@ Caption: Security, Audit, Data Export, And Incidents screen captured from localh
 
 Caption: Security, Audit, Data Export, And Incidents screen captured from localhost with dummy/local-safe context.
 
-
-
-![admin-security.png](screenshots/admin-security.png)
-
-
-Caption: Security, Audit, Data Export, And Incidents screen captured from localhost with dummy/local-safe context.
-
-## 22. Light And Dark Mode
+## 21. Light And Dark Mode
 
 The sidebar theme toggle persists the selected theme locally. Light mode uses pale lavender/off-white backgrounds with dark readable text; dark mode uses near-black purple surfaces with light readable text.
 
@@ -680,7 +619,7 @@ Caption: Light And Dark Mode screen captured from localhost with dummy/local-saf
 
 Caption: Light And Dark Mode screen captured from localhost with dummy/local-safe context.
 
-## 23. Common Workflow
+## 22. Common Workflow
 
 A normal controlled workflow is: owner creates workspace, owner invites agent, agent creates matter, agent uploads documents, Aria extracts evidence, agent reviews evidence, agent runs draft autofill, agent verifies fields, agent requests client confirmation, client responds in the portal, agent runs final cross-check, agent generates draft PDF/pack, and owner exports a secure client folder if needed.
 
@@ -701,7 +640,7 @@ AI-assisted output. Registered migration agent review required before use. Aria 
 9. Agent reruns checks, resolves blockers, and prepares generated documents or mapped PDFs.
 10. Agent completes final review before any use outside Aria.
 
-## 24. Troubleshooting
+## 23. Troubleshooting
 
 AI not configured: assistant/draft features show an honest setup message or disabled state.
 
@@ -719,7 +658,7 @@ Staff cannot access matter: check assignment, visibility scope, and role permiss
 
 No extracted fields found: upload clearer documents or review OCR/extraction confidence.
 
-## 25. Safety And Legal Reminders
+## 24. Safety And Legal Reminders
 
 Review by a qualified Australian lawyer/privacy professional before commercial use.
 

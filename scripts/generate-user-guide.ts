@@ -105,24 +105,6 @@ const sections: GuideSection[] = [
     ]
   },
   {
-    title: "Platform Admin Console",
-    screenshots: ["admin-dashboard.png", "admin-workspaces.png", "admin-security.png", "admin-subclass-support.png"],
-    body: [
-      "The platform admin console lives under /admin and is for the SaaS operator, not normal agency owners.",
-      "Platform admin views are privacy-safe by design: they show workspace/user metadata, counts, statuses, launch controls, system health, deployment info, subclass support, billing/plan metadata, and redacted audit summaries.",
-      "Platform admin pages must not show uploaded document contents, extracted text, draft field values, passport numbers, DOBs, visa grant numbers, raw document URLs, raw tokens, token hashes, or secrets.",
-      "Use the platform admin console for operational support: checking whether a workspace is active, whether feature flags are enabled, whether runtime services are configured, whether subclass support labels are current, and whether a deployment is healthy.",
-      "If a customer needs support with private matter content, use a controlled support process. Do not use platform admin screens to read private client documents or draft answers."
-    ],
-    steps: [
-      "Open /admin as a platform-admin allowlisted user.",
-      "Use Workspaces to inspect safe metadata, plan, status, and feature flags.",
-      "Use Security and System Health to review configured/not-configured status without secret values.",
-      "Use Subclass Support to confirm support labels match the actual harness-tested product state.",
-      "Use redacted audit views for operational diagnosis without exposing private client content."
-    ]
-  },
-  {
     title: "Clients",
     screenshots: ["matter-detail.png"],
     body: [
@@ -232,7 +214,7 @@ const sections: GuideSection[] = [
   },
   {
     title: "Subclass Support",
-    screenshots: ["launch-readiness.png", "admin-subclass-support.png"],
+    screenshots: ["launch-readiness.png"],
     body: [
       "Current supported subclasses are 500, 485, 482, 186, 820/801, 309/100, 189, 190, 491, and 600.",
       "The launch-readiness/subclass-support pages label support honestly. A subclass should show FULL_FIELD_AUTOFILL only when field definitions, extraction mappings, draft autofill, client confirmations, safety gate, review sections, PDF/template mapping, and dummy end-to-end checks exist.",
@@ -368,7 +350,7 @@ const sections: GuideSection[] = [
   },
   {
     title: "Security, Audit, Data Export, And Incidents",
-    screenshots: ["security-settings.png", "launch-readiness.png", "admin-security.png"],
+    screenshots: ["security-settings.png", "launch-readiness.png"],
     body: [
       "Security pages show runtime booleans and status, not secrets. Launch readiness tracks encryption, AI, cron, permissions, portal scoping, audit logging, legal/privacy review, support levels, and operational controls.",
       "Audit logs should record important actions while redacting raw tokens, tokenHash, raw document URLs, passport numbers, DOB plaintext, extracted text, draft answers, and source snippets.",
