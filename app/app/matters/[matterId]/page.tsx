@@ -149,6 +149,14 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
       reason: latestDraft ? `Latest draft status: ${formatEnum(latestDraft.status)}.` : subclassSupport.fieldLevelDraftKeys ? "Open the draft workspace to create or review the matter draft." : `This matter currently uses ${supportLevelLabel(subclassSupport.supportLevel)} until field-level draft keys are configured.`
     },
     {
+      label: "Generate Full Application Draft",
+      href: `/app/matters/${matter.id}/full-draft`,
+      status: matter.documents.length || latestDraft ? "ready" : "blocked",
+      reason: matter.documents.length || latestDraft
+        ? "Create a staff review record-of-responses draft with required documents, missing fields, source status, and safety flags."
+        : "Upload evidence or create the field-level draft before generating the full staff review draft."
+    },
+    {
       label: "Open checklist",
       href: `/app/matters/${matter.id}/checklist`,
       status: "ready",

@@ -165,6 +165,14 @@ export default async function Subclass500DraftPage({ params }: { params: { matte
                     Open PDF draft workspace
                   </Link>
                 </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Version 3</p>
+                  <p className="mt-2 text-sm font-medium text-white">Full staff review draft</p>
+                  <p className="mt-1 text-xs leading-6 text-slate-400">Open a section-based record-of-responses draft with required documents, missing markers, source status, safety flags, and print layout.</p>
+                  <Link href={`/app/matters/${matter.id}/full-draft` as any} className="mt-3 inline-flex text-sm text-cyan-300 transition hover:text-white">
+                    Generate Full Application Draft
+                  </Link>
+                </div>
               </SectionCard>
             </PageSection>
 
