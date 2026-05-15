@@ -29,14 +29,27 @@ export function field(
 
 export const coverSections: FullDraftSectionTemplate[] = [
   {
+    key: "terms_application_context",
+    title: "Terms and application context",
+    description: "Terms, application-context and online application items are shown for staff review only. Aria does not treat these as legal conclusions.",
+    fields: [
+      field("terms.client_understands_online_application", "Client understands the application is prepared for online/manual entry review", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+      field("terms.information_true_correct_acknowledged", "Information true/correct acknowledgement", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+      field("terms.review_required_before_use", "Registered migration agent review required", { manualReview: true, sourceRequired: true }),
+      field("application.context.current_location", "Applicant current location", { aliases: ["contact.current_location", "current_location"], sourceRequired: true, clientConfirmationCategory: "personal_details" }),
+      field("application.context.application_type", "Application type / first application / renewal / subsequent entrant", { aliases: ["matter.application_type", "application_type", "application_kind"], sourceRequired: true, clientConfirmationCategory: "document_accuracy" }),
+      field("application.context.online_form_state", "Official form / online-only state", { onlineOnly: true, manualReview: true })
+    ]
+  },
+  {
     key: "application_context",
     title: "Application context",
     description: "Matter-level context used to orient the staff review draft.",
     fields: [
       field("matter.visaSubclass", "Visa subclass", { fallback: "matter", required: true }),
       field("matter.visaStream", "Stream", { fallback: "matter" }),
-      field("contact.current_location", "Current location / onshore-offshore context", { sourceRequired: true }),
-      field("visa.current_visa_subclass", "Current visa status", { sourceRequired: true }),
+      field("contact.current_location", "Current location / onshore-offshore context", { aliases: ["application.context.current_location", "current_location", "location"], sourceRequired: true }),
+      field("visa.current_visa_subclass", "Current visa status", { aliases: ["current_visa_subclass", "current_visa", "visa_subclass"], sourceRequired: true }),
       field("matter.stage", "Current matter stage", { fallback: "matter" }),
       field("matter.status", "Current matter status", { fallback: "matter" })
     ]
@@ -46,18 +59,18 @@ export const coverSections: FullDraftSectionTemplate[] = [
     title: "Primary applicant identity",
     description: "Identity facts should be verified against approved passport or identity evidence.",
     fields: [
-      field("applicant.full_name", "Family and given names", { fallback: "client", required: true, sourceRequired: true }),
-      field("applicant.date_of_birth", "Date of birth", { fallback: "client", required: true, sourceRequired: true }),
-      field("applicant.sex", "Sex", { sourceRequired: true }),
-      field("applicant.nationality", "Nationality", { fallback: "client", required: true, sourceRequired: true }),
-      field("applicant.country_of_birth", "Country of birth", { sourceRequired: true }),
-      field("applicant.place_of_birth", "Place of birth", { sourceRequired: true }),
-      field("applicant.passport_number", "Passport number", { required: true, sourceRequired: true }),
-      field("applicant.passport_country", "Passport country", { sourceRequired: true }),
-      field("applicant.passport_issue_date", "Passport issue date", { sourceRequired: true }),
-      field("applicant.passport_expiry", "Passport expiry", { sourceRequired: true }),
-      field("applicant.relationship_status", "Relationship status", { clientConfirmationCategory: "relationship_family" }),
-      field("applicant.aliases", "Aliases / other names", { sourceRequired: true })
+      field("applicant.full_name", "Family and given names", { aliases: ["full_name", "name", "applicant_name"], fallback: "client", required: true, sourceRequired: true }),
+      field("applicant.date_of_birth", "Date of birth", { aliases: ["dob", "date_of_birth"], fallback: "client", required: true, sourceRequired: true }),
+      field("applicant.sex", "Sex", { aliases: ["gender", "sex"], sourceRequired: true }),
+      field("applicant.nationality", "Nationality", { aliases: ["nationality", "citizenship"], fallback: "client", required: true, sourceRequired: true }),
+      field("applicant.country_of_birth", "Country of birth", { aliases: ["country_of_birth", "birth_country"], sourceRequired: true }),
+      field("applicant.place_of_birth", "Place of birth", { aliases: ["place_of_birth", "birth_place"], sourceRequired: true }),
+      field("applicant.passport_number", "Passport number", { aliases: ["passport_number", "passport_no"], required: true, sourceRequired: true }),
+      field("applicant.passport_country", "Passport country", { aliases: ["passport_country", "passport_issuing_country"], sourceRequired: true }),
+      field("applicant.passport_issue_date", "Passport issue date", { aliases: ["passport_issue_date", "passport_issued"], sourceRequired: true }),
+      field("applicant.passport_expiry", "Passport expiry", { aliases: ["passport_expiry", "passport_expiry_date"], sourceRequired: true }),
+      field("applicant.relationship_status", "Relationship status", { aliases: ["relationship_status", "marital_status"], clientConfirmationCategory: "relationship_family" }),
+      field("applicant.aliases", "Aliases / other names", { aliases: ["aliases", "other_names"], sourceRequired: true })
     ]
   },
   {
@@ -108,16 +121,33 @@ export const englishSection: FullDraftSectionTemplate = {
   key: "english_language",
   title: "English language",
   fields: [
-    field("english.test_type", "Test type", { sourceRequired: true }),
-    field("english.test_date", "Test date", { sourceRequired: true }),
-    field("english.reference_number", "Reference number", { sourceRequired: true }),
-    field("english.overall_score", "Overall score", { sourceRequired: true }),
-    field("english.listening", "Listening", { sourceRequired: true }),
-    field("english.reading", "Reading", { sourceRequired: true }),
-    field("english.writing", "Writing", { sourceRequired: true }),
-    field("english.speaking", "Speaking", { sourceRequired: true }),
-    field("english.validity", "Expiry / validity", { sourceRequired: true }),
+    field("english.test_type", "Test type", { aliases: ["test_type", "english_type"], sourceRequired: true }),
+    field("english.test_date", "Test date", { aliases: ["test_date", "english_test_date"], sourceRequired: true }),
+    field("english.reference_number", "Reference number", { aliases: ["reference_number", "test_reference"], sourceRequired: true }),
+    field("english.overall_score", "Overall score", { aliases: ["overall_score", "test_overall"], sourceRequired: true }),
+    field("english.listening", "Listening", { aliases: ["listening", "listening_score"], sourceRequired: true }),
+    field("english.reading", "Reading", { aliases: ["reading", "reading_score"], sourceRequired: true }),
+    field("english.writing", "Writing", { aliases: ["writing", "writing_score"], sourceRequired: true }),
+    field("english.speaking", "Speaking", { aliases: ["speaking", "speaking_score"], sourceRequired: true }),
+    field("english.validity", "Expiry / validity", { aliases: ["validity", "expiry", "english_expiry"], sourceRequired: true }),
+    field("english.score_warning", "Automated score warning for staff review", { manualReview: true, sourceRequired: true }),
     field("english.exemption", "English exemption evidence", { sourceRequired: true, clientConfirmationCategory: "document_accuracy" })
+  ]
+};
+
+export const coeSection: FullDraftSectionTemplate = {
+  key: "confirmation_of_enrolment",
+  title: "Confirmation of Enrolment (CoE)",
+  description: "Dedicated CoE details for Student visa staff review. Missing or uncertain CoE data stays source-required.",
+  fields: [
+    field("study.coe_number", "CoE code", { aliases: ["coe_code", "coe_number", "confirmation_of_enrolment"], sourceRequired: true }),
+    field("study.provider", "Provider", { aliases: ["provider", "education_provider", "institution"], sourceRequired: true }),
+    field("study.course_name", "Course", { aliases: ["course", "course_name", "program"], sourceRequired: true }),
+    field("study.cricos", "CRICOS / provider code", { aliases: ["cricos", "provider_code", "cricos_code"], sourceRequired: true }),
+    field("study.course_start_date", "Course start date", { aliases: ["course_start", "start_date"], sourceRequired: true }),
+    field("study.course_end_date", "Course end date", { aliases: ["course_end", "end_date"], sourceRequired: true }),
+    field("study.sector", "Education sector", { aliases: ["sector", "education_sector"], sourceRequired: true }),
+    field("study.coe_status", "CoE status", { aliases: ["coe_status"], sourceRequired: true, clientConfirmationCategory: "document_accuracy" })
   ]
 };
 
@@ -125,16 +155,16 @@ export const educationSection: FullDraftSectionTemplate = {
   key: "education_study",
   title: "Education / study",
   fields: [
-    field("study.coe_number", "CoE code", { sourceRequired: true }),
-    field("study.provider", "Provider / institution", { sourceRequired: true }),
-    field("study.course_name", "Course / program", { sourceRequired: true }),
-    field("study.cricos", "CRICOS", { sourceRequired: true }),
-    field("study.course_start_date", "Course start date", { sourceRequired: true }),
-    field("study.course_end_date", "Course end date", { sourceRequired: true }),
-    field("study.qualification", "Qualification", { sourceRequired: true }),
-    field("study.completion_date", "Completion date", { sourceRequired: true }),
-    field("study.transcripts", "Transcripts / completion evidence", { sourceRequired: true }),
-    field("study.two_academic_year_requirement", "Two academic year evidence", { sourceRequired: true })
+    field("study.coe_number", "CoE code", { aliases: ["coe_code", "coe_number"], sourceRequired: true }),
+    field("study.provider", "Provider / institution", { aliases: ["provider", "institution"], sourceRequired: true }),
+    field("study.course_name", "Course / program", { aliases: ["course", "course_name"], sourceRequired: true }),
+    field("study.cricos", "CRICOS", { aliases: ["cricos", "provider_code"], sourceRequired: true }),
+    field("study.course_start_date", "Course start date", { aliases: ["course_start", "start_date"], sourceRequired: true }),
+    field("study.course_end_date", "Course end date", { aliases: ["course_end", "end_date"], sourceRequired: true }),
+    field("study.qualification", "Qualification", { aliases: ["qualification", "degree"], sourceRequired: true }),
+    field("study.completion_date", "Completion date", { aliases: ["completion_date", "award_date"], sourceRequired: true }),
+    field("study.transcripts", "Transcripts / completion evidence", { aliases: ["transcript", "transcripts", "completion_letter"], sourceRequired: true }),
+    field("study.two_academic_year_requirement", "Two academic year evidence", { aliases: ["two_academic_year_requirement"], sourceRequired: true })
   ]
 };
 
@@ -247,8 +277,37 @@ export const declarationSections: FullDraftSectionTemplate[] = [
   }
 ];
 
+export const policeClearanceSection: FullDraftSectionTemplate = {
+  key: "police_clearance_certificate",
+  title: "Police clearance / PCC detected",
+  description: "Police/AFP/PCC evidence is detected for staff review only. Character declarations are still never guessed.",
+  fields: [
+    field("police.clearance_type", "PCC / AFP type", { aliases: ["pcc_type", "afp_type", "police_clearance_type"], sourceRequired: true }),
+    field("police.country", "Issuing country / jurisdiction", { aliases: ["pcc_country", "police_country"], sourceRequired: true }),
+    field("police.issue_date", "Issue date", { aliases: ["pcc_issue_date", "afp_issue_date"], sourceRequired: true }),
+    field("police.reference_number", "Reference number", { aliases: ["pcc_reference", "afp_reference"], sourceRequired: true }),
+    field("police.result_status", "Result / disclosure status", { aliases: ["pcc_result", "afp_result"], unsafe: true, clientConfirmationCategory: "character_declaration" })
+  ]
+};
+
+export const applicantDeclarationsSection: FullDraftSectionTemplate = {
+  key: "applicant_declarations",
+  title: "Applicant declarations",
+  description: "Applicant declarations require explicit client confirmation and registered migration agent review. Aria does not infer declaration answers.",
+  fields: [
+    field("declaration.information_true_correct", "Information is true and correct", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+    field("declaration.notify_changes", "Applicant will notify changes", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+    field("declaration.privacy_notice", "Privacy notice / collection statement acknowledged", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+    field("declaration.biometric_collection", "Biometrics / identity collection acknowledgement", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+    field("declaration.values_statement", "Australian values statement acknowledgement", { unsafe: true, clientConfirmationCategory: "document_accuracy" }),
+    field("declaration.no_false_or_misleading_info", "No false or misleading information declaration", { unsafe: true, clientConfirmationCategory: "character_declaration" }),
+    field("declaration.no_fraudulent_documents", "No fraudulent documents declaration", { unsafe: true, clientConfirmationCategory: "character_declaration" }),
+    field("declaration.signature_ready", "Signature / submission declaration readiness", { unsafe: true, clientConfirmationCategory: "document_accuracy" })
+  ]
+};
+
 export function withCommonSections(sections: FullDraftSectionTemplate[]) {
-  return [...coverSections, ...sections, familySection, ...declarationSections];
+  return [...coverSections, ...sections, familySection, policeClearanceSection, ...declarationSections, applicantDeclarationsSection];
 }
 
 export function createTemplate(

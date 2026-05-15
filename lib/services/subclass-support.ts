@@ -228,6 +228,9 @@ const expandedWorkflowSupportMatrix: Record<string, AriaSubclassSupport> = {
   "188": workflowSupport({ code: "188", label: "Business Innovation and Investment visa (Subclass 188 legacy)", supportLevel: "CHECKLIST_AND_INTAKE", notes: "Legacy/support-mode business evidence preparation workflow configured; no full automation claim." }),
   "858": workflowSupport({ code: "858", label: "Global Talent / National Innovation style workflow (Subclass 858)", supportLevel: "CHECKLIST_AND_INTAKE", notes: "Talent/business preparation matrix configured with agent-review narrative requirements." }),
   "494": workflowSupport({ code: "494", label: "Skilled Employer Sponsored Regional (Subclass 494)", supportLevel: "FULL_STAFF_DRAFT", notes: "Full staff-review draft structure configured with employer, regional, skills, English, safety, and declaration sections." }),
+  "485_SUBSEQUENT_ENTRANT": workflowSupport({ code: "485_SUBSEQUENT_ENTRANT", label: "Subclass 485 subsequent entrant preparation", supportLevel: "FULL_STAFF_DRAFT", notes: "Uses the 485 staff-review draft with subsequent entrant relationship, primary-holder, insurance, and custody/parental responsibility checks. No declaration is guessed." }),
+  "EOI": workflowSupport({ code: "EOI", label: "Expression of Interest / SkillSelect preparation", supportLevel: "FULL_STAFF_DRAFT", notes: "Skilled-points staff draft structure configured for evidence-backed EOI/ROI preparation. Invitation outcomes are not predicted or guaranteed." }),
+  "ROI": workflowSupport({ code: "ROI", label: "Registration of Interest preparation", supportLevel: "FULL_STAFF_DRAFT", notes: "Skilled-points staff draft structure configured for evidence-backed ROI preparation. State/territory strategy remains agent-review required." }),
   "BRIDGING": workflowSupport({ code: "BRIDGING", label: "Bridging visa A/B/C/E preparation checklist", supportLevel: "CHECKLIST_ONLY", notes: "Checklist-only preparation support for bridging workflows; no full application-draft automation claim.", officialFormState: "ONLINE_ONLY" }),
   "REVIEW": workflowSupport({ code: "REVIEW", label: "AAT/ART review support pack", supportLevel: "CHECKLIST_AND_INTAKE", notes: "Review support-pack workflow configured for chronology, issue summary, and evidence organisation." }),
   "MINISTERIAL": workflowSupport({ code: "MINISTERIAL", label: "Ministerial intervention support pack", supportLevel: "CHECKLIST_AND_INTAKE", notes: "Support-pack workflow configured. Agent/legal strategy remains manual review." }),
@@ -244,13 +247,16 @@ const allSupportMatrix: Record<string, AriaSubclassSupport> = {
 
 function normalizeSubclassCode(value: string) {
   const trimmed = value.trim();
+  const upper = trimmed.toUpperCase();
   if (allSupportMatrix[trimmed]) return trimmed;
+  if (allSupportMatrix[upper]) return upper;
   if (trimmed === "820" || trimmed === "801") return "820/801";
   if (trimmed === "309" || trimmed === "100") return "309/100";
-  if (trimmed === "BVA" || trimmed === "BVB" || trimmed === "BVC" || trimmed === "BVE") return "BRIDGING";
-  if (trimmed === "AAT" || trimmed === "ART") return "REVIEW";
-  if (trimmed === "PIC 4020") return "PIC4020";
-  if (trimmed.toUpperCase() === "SECTION 56") return "S56";
+  if (upper === "BVA" || upper === "BVB" || upper === "BVC" || upper === "BVE") return "BRIDGING";
+  if (upper === "AAT" || upper === "ART") return "REVIEW";
+  if (upper === "PIC 4020") return "PIC4020";
+  if (upper === "SECTION 56") return "S56";
+  if (upper === "SUBSEQ" || upper === "485 SUBSEQUENT ENTRANT") return "485_SUBSEQUENT_ENTRANT";
   return trimmed;
 }
 

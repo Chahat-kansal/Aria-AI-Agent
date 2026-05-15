@@ -49,12 +49,16 @@ const templates = [
 
 function normalizeSubclassCode(value: string) {
   const trimmed = value.trim();
+  const upper = trimmed.toUpperCase();
   if (trimmed === "820" || trimmed === "801") return "820/801";
   if (trimmed === "309" || trimmed === "100") return "309/100";
-  if (trimmed === "BVA" || trimmed === "BVB" || trimmed === "BVC" || trimmed === "BVE") return "BRIDGING";
-  if (trimmed === "ART" || trimmed === "AAT") return "REVIEW";
-  if (trimmed === "PIC 4020" || trimmed === "PIC4020") return "PIC4020";
-  if (trimmed.toUpperCase() === "SECTION 56") return "S56";
+  if (upper === "BVA" || upper === "BVB" || upper === "BVC" || upper === "BVE") return "BRIDGING";
+  if (upper === "ART" || upper === "AAT") return "REVIEW";
+  if (upper === "PIC 4020" || upper === "PIC4020") return "PIC4020";
+  if (upper === "SECTION 56") return "S56";
+  if (upper === "EOI") return "EOI";
+  if (upper === "ROI") return "ROI";
+  if (upper === "SUBSEQ" || upper === "485 SUBSEQUENT ENTRANT" || upper === "485_SUBSEQUENT_ENTRANT") return "485_SUBSEQUENT_ENTRANT";
   return trimmed;
 }
 

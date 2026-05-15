@@ -39,7 +39,44 @@ function displayValue(value: unknown) {
 }
 
 function markerLabel(marker: FullDraftMarker) {
+  if (marker === "OFFICIAL_FORM_ONLINE_ONLY") return "[OFFICIAL FORM / ONLINE ONLY]";
   return `[${marker.replaceAll("_", " ")}]`;
+}
+
+function findDraftField(field: FullDraftFieldTemplate, context: FullDraftContext) {
+  const aliases = new Set([field.key, ...(field.aliases ?? [])]);
+  return context.draftFields.find((item) => aliases.has(item.key));
+}
+
+function findApprovedDraftValue(keys: string[], context: FullDraftContext) {
+  const match = context.draftFields.find((item) => keys.includes(item.key) && approvedDraftStatuses.has(item.status));
+  const value = displayValue(match?.manualOverride || match?.value || "");
+  return value ? { field: match, value } : null;
+}
+
+function buildEnglishScoreWarning(field: FullDraftFieldTemplate, context: FullDraftContext): FullDraftField | null {
+  if (field.key !== "english.score_warning") return null;
+
+  const score = findApprovedDraftValue(["english.overall_score", "test_overall", "overall_score"], context);
+  const testType = findApprovedDraftValue(["english.test_type", "test_type", "english_type"], context);
+  if (!score) return null;
+
+  const numericScore = Number(String(score.value).match(/\d+(\.\d+)?/)?.[0]);
+  const warning = Number.isFinite(numericScore) && numericScore < 50
+    ? "English score appears below common threshold ranges. Agent must verify the subclass and stream requirement before use."
+    : "No automated English score warning from stored score. Agent must verify the subclass and stream requirement before use.";
+
+  return {
+    key: field.key,
+    label: field.label,
+    value: testType?.value ? `${warning} Test type: ${testType.value}. Stored score: ${score.value}.` : `${warning} Stored score: ${score.value}.`,
+    sourceDocument: score.field?.sourceDocument || testType?.field?.sourceDocument || undefined,
+    sourceType: "Derived staff review warning",
+    sourceReference: score.field?.sourcePageRef || score.field?.sourceSnippet || undefined,
+    confidence: confidenceLabel(score.field?.confidence),
+    status: "MANUAL_REVIEW_REQUIRED",
+    markers: ["MANUAL_REVIEW_REQUIRED", "AGENT_REVIEW_REQUIRED", "SOURCE_REQUIRED"]
+  };
 }
 
 function getMatterFallback(context: FullDraftContext, key: string) {
@@ -100,7 +137,8 @@ function buildMissingField(field: FullDraftFieldTemplate, reason: "missing" | "u
 }
 
 function buildField(field: FullDraftFieldTemplate, context: FullDraftContext): FullDraftField {
-  const draftField = context.draftFields.find((item) => item.key === field.key);
+  const draftField = findDraftField(field, context);
+  const derivedField = buildEnglishScoreWarning(field, context);
 
   if (field.unsafe && draftField?.status !== DraftFieldStatus.VERIFIED) {
     return buildMissingField(field, "unsafe");
@@ -132,6 +170,8 @@ function buildField(field: FullDraftFieldTemplate, context: FullDraftContext): F
       markers
     };
   }
+
+  if (derivedField) return derivedField;
 
   const fallbackValue = getMatterFallback(context, field.key);
   if (fallbackValue) {

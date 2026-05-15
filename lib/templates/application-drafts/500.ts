@@ -1,4 +1,4 @@
-import { createTemplate, educationSection, englishSection, field, insuranceFundingSections, req, withCommonSections } from "./common";
+import { coeSection, createTemplate, educationSection, englishSection, field, insuranceFundingSections, req, withCommonSections } from "./common";
 
 export const subclass500FullDraftTemplate = createTemplate(
   ["500"],
@@ -16,6 +16,7 @@ export const subclass500FullDraftTemplate = createTemplate(
   ],
   withCommonSections([
     englishSection,
+    coeSection,
     educationSection,
     ...insuranceFundingSections,
     {

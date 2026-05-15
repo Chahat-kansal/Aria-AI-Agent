@@ -1,7 +1,20 @@
-import { createTemplate, educationSection, englishSection, employmentSection, insuranceFundingSections, req, skillsSection, withCommonSections } from "./common";
+import { createTemplate, educationSection, englishSection, employmentSection, field, insuranceFundingSections, req, skillsSection, withCommonSections } from "./common";
+
+const subsequentEntrantSection = {
+  key: "subsequent_entrant_context",
+  title: "485 subsequent entrant context",
+  description: "Only use this section where the matter is explicitly a subsequent entrant workflow. Relationship and custody facts stay source-backed and review-required.",
+  fields: [
+    field("subsequent.primary_holder_name", "Primary visa holder", { aliases: ["primary_holder", "primary_applicant"], sourceRequired: true, clientConfirmationCategory: "relationship_family" }),
+    field("subsequent.primary_holder_visa_grant", "Primary holder visa grant evidence", { aliases: ["primary_visa_grant", "primary_holder_grant"], sourceRequired: true }),
+    field("subsequent.relationship_to_primary", "Relationship to primary holder", { aliases: ["relationship_to_primary", "dependant_relationship"], sourceRequired: true, clientConfirmationCategory: "relationship_family" }),
+    field("subsequent.birth_or_relationship_evidence", "Birth / relationship evidence", { aliases: ["birth_certificate", "relationship_evidence"], sourceRequired: true, clientConfirmationCategory: "relationship_family" }),
+    field("subsequent.custody_parental_responsibility", "Custody / parental responsibility if relevant", { aliases: ["custody", "parental_responsibility"], unsafe: true, clientConfirmationCategory: "relationship_family" })
+  ]
+};
 
 export const subclass485FullDraftTemplate = createTemplate(
-  ["485"],
+  ["485", "485_SUBSEQUENT_ENTRANT", "subseq"],
   "Temporary Graduate visa (Subclass 485) staff review application draft",
   [
     req("passport", "Passport", "Identity", "REQUIRED", ["passport", "identity"]),
@@ -17,6 +30,7 @@ export const subclass485FullDraftTemplate = createTemplate(
   ],
   withCommonSections([
     englishSection,
+    subsequentEntrantSection,
     educationSection,
     employmentSection,
     skillsSection,

@@ -22,6 +22,11 @@ function markerTone(marker: string) {
   return "info";
 }
 
+function markerLabel(marker: string) {
+  if (marker === "OFFICIAL_FORM_ONLINE_ONLY") return "[OFFICIAL FORM / ONLINE ONLY]";
+  return `[${marker.replaceAll("_", " ")}]`;
+}
+
 export default async function FullApplicationDraftPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
   if (!context) {
@@ -38,6 +43,17 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
   const draft = await buildFullApplicationDraftForMatter(params.matterId, context.user);
   const folderConfirmation = await getAgentClientFolderConfirmation(params.matterId);
   const isAssignedAgentFolderUser = isAssignedAgentForPrivateFolder(context.user, allowedMatter);
+  const requiredMissingCount = draft.documentMatrix.filter((item) => item.status === "REQUIRED" && !item.uploaded).length;
+  const uploadedCount = draft.documentMatrix.filter((item) => item.uploaded).length;
+  const approvedDocumentCount = draft.documentMatrix.filter((item) => item.approvedForAiWorkingCopy).length;
+  const fieldCount = draft.sections.reduce((total, section) => total + section.fields.length, 0);
+  const missingFieldCount = draft.sections.flatMap((section) => section.fields).filter((field) => field.markers.includes("MISSING")).length;
+  const reviewFieldCount = draft.sections.flatMap((section) => section.fields).filter((field) =>
+    field.markers.includes("CLIENT_CONFIRMATION_REQUIRED")
+    || field.markers.includes("AGENT_REVIEW_REQUIRED")
+    || field.markers.includes("MANUAL_REVIEW_REQUIRED")
+    || field.markers.includes("UNSAFE_TO_AUTOFILL")
+  ).length;
 
   return (
     <AppShell title="Full Application Draft">
@@ -59,14 +75,15 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
           }
         />
 
-        <SectionCard className="space-y-4 bg-gradient-to-br from-violet-500/10 via-[color:var(--surface)] to-[color:var(--surface)] print:border print:border-slate-300 print:bg-white print:shadow-none">
+        <SectionCard className="overflow-hidden p-0 print:border print:border-slate-300 print:bg-white print:shadow-none">
+          <div className="space-y-5 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_35%),linear-gradient(135deg,rgba(124,58,237,0.10),rgba(255,255,255,0))] p-6 dark:bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.18),transparent_35%),linear-gradient(135deg,rgba(124,58,237,0.16),rgba(3,7,18,0))] print:bg-white">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Record of responses draft</p>
-              <h2 className="mt-3 text-2xl font-semibold text-[color:var(--text-primary)]">Draft cover / masthead</h2>
+              <h2 className="mt-3 text-3xl font-semibold text-[color:var(--text-primary)]">Draft cover / masthead</h2>
               <p className="mt-3 max-w-4xl text-sm leading-6 text-[color:var(--text-secondary)]">{draft.disclaimer}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex max-w-md flex-wrap gap-2 lg:justify-end">
               <StatusPill tone={draft.supportLevel === "FULL_STAFF_DRAFT" ? "success" : draft.supportLevel === "CHECKLIST_AND_INTAKE" ? "info" : "warning"}>
                 {draft.supportLevel.replaceAll("_", " ")}
               </StatusPill>
@@ -83,8 +100,27 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
           ) : null}
           <AIReviewNotice />
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl bg-[color:var(--surface)] p-4 shadow-[var(--shadow-sm)] ring-1 ring-[color:var(--hairline)] print:border print:border-slate-200 print:bg-white print:shadow-none">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Document readiness</p>
+              <p className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">{uploadedCount}/{draft.documentMatrix.length} uploaded, {approvedDocumentCount} approved</p>
+            </div>
+            <div className="rounded-2xl bg-[color:var(--surface)] p-4 shadow-[var(--shadow-sm)] ring-1 ring-[color:var(--hairline)] print:border print:border-slate-200 print:bg-white print:shadow-none">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Missing pressure</p>
+              <p className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">{requiredMissingCount} required docs, {missingFieldCount} draft fields</p>
+            </div>
+            <div className="rounded-2xl bg-[color:var(--surface)] p-4 shadow-[var(--shadow-sm)] ring-1 ring-[color:var(--hairline)] print:border print:border-slate-200 print:bg-white print:shadow-none">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Review scope</p>
+              <p className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">{reviewFieldCount} review markers across {fieldCount} fields</p>
+            </div>
+            <div className="rounded-2xl bg-[color:var(--surface)] p-4 shadow-[var(--shadow-sm)] ring-1 ring-[color:var(--hairline)] print:border print:border-slate-200 print:bg-white print:shadow-none">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Safety position</p>
+              <p className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">{draft.safety.status}</p>
+            </div>
+          </div>
+          </div>
+          <div className="grid gap-3 border-t border-[color:var(--hairline)] bg-[color:var(--surface)] p-6 md:grid-cols-2 xl:grid-cols-4 print:bg-white">
             {draft.cover.map((item) => (
-              <div key={item.label} className="rounded-2xl bg-[color:var(--surface-soft)] p-4 shadow-[var(--shadow-sm)] print:border print:border-slate-200 print:bg-white print:shadow-none">
+              <div key={item.label} className="rounded-2xl bg-[color:var(--surface-soft)] p-4 shadow-[var(--shadow-sm)] ring-1 ring-[color:var(--hairline)] print:border print:border-slate-200 print:bg-white print:shadow-none">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-[color:var(--text-muted)]">{item.label}</p>
                 <p className="mt-2 text-sm font-semibold text-[color:var(--text-primary)]">{item.value || "Not set"}</p>
               </div>
@@ -93,9 +129,9 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
         </SectionCard>
 
         <PageSection title="Staff action flags" description="Hard blockers, soft blockers, missing evidence, confirmations, conflicts, and next actions.">
-          <SectionCard className="space-y-3 print:border print:border-slate-300 print:bg-white print:shadow-none">
+          <SectionCard className="print:border print:border-slate-300 print:bg-white print:shadow-none">
             {draft.actionFlags.length ? draft.actionFlags.slice(0, 18).map((flag) => (
-              <div key={`${flag.title}-${flag.detail}`} className="rounded-2xl bg-[color:var(--surface-soft)] p-4 print:border print:border-slate-200 print:bg-white">
+              <div key={`${flag.title}-${flag.detail}`} className="mb-3 rounded-2xl bg-[color:var(--surface-soft)] p-4 shadow-[var(--shadow-sm)] ring-1 ring-[color:var(--hairline)] last:mb-0 print:border print:border-slate-200 print:bg-white">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusPill tone={flag.severity === "hard" ? "danger" : flag.severity === "soft" ? "warning" : "info"}>{flag.severity}</StatusPill>
                   <p className="font-semibold text-[color:var(--text-primary)]">{flag.title}</p>
@@ -112,7 +148,7 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
           <SectionCard className="overflow-hidden p-0 print:border print:border-slate-300 print:bg-white print:shadow-none">
             <div className="divide-y divide-[color:var(--hairline)]">
               {draft.documentMatrix.map((item) => (
-                <div key={item.key} className="grid gap-3 p-4 lg:grid-cols-[1.2fr_1fr_auto] lg:items-center">
+                <div key={item.key} className="grid gap-4 p-5 transition hover:bg-[color:var(--surface-soft)] lg:grid-cols-[1.15fr_1.15fr_minmax(180px,0.8fr)] lg:items-center">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill tone={item.status === "REQUIRED" ? "danger" : item.status === "CONDITIONAL" ? "warning" : "info"}>{item.status}</StatusPill>
@@ -137,21 +173,21 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
 
         {draft.sections.map((section) => (
           <PageSection key={section.key} title={section.title} description={section.description}>
-            <SectionCard className="overflow-hidden p-0 print:border print:border-slate-300 print:bg-white print:shadow-none">
-              <div className="divide-y divide-[color:var(--hairline)]">
+            <SectionCard className="space-y-3 print:border print:border-slate-300 print:bg-white print:shadow-none">
+              <div className="space-y-3">
                 {section.fields.map((field) => (
-                  <div key={field.key} className="grid gap-4 p-4 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
+                  <div key={field.key} className="grid gap-4 rounded-2xl bg-[color:var(--surface-soft)] p-4 ring-1 ring-[color:var(--hairline)] xl:grid-cols-[260px_minmax(0,1fr)_280px] print:border print:border-slate-200 print:bg-white">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]">{field.key}</p>
                       <p className="mt-2 font-semibold text-[color:var(--text-primary)]">{field.label}</p>
                     </div>
                     <div>
-                      <p className="whitespace-pre-wrap rounded-2xl bg-[color:var(--surface-soft)] p-4 text-sm leading-6 text-[color:var(--text-primary)] print:border print:border-slate-200 print:bg-white">
+                      <p className="whitespace-pre-wrap rounded-2xl bg-[color:var(--surface)] p-4 text-sm leading-6 text-[color:var(--text-primary)] shadow-[var(--shadow-sm)] print:border print:border-slate-200 print:bg-white">
                         {field.value}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {field.markers.map((marker) => (
-                          <StatusPill key={`${field.key}-${marker}`} tone={markerTone(marker) as any}>[{marker.replaceAll("_", " ")}]</StatusPill>
+                          <StatusPill key={`${field.key}-${marker}`} tone={markerTone(marker) as any}>{markerLabel(marker)}</StatusPill>
                         ))}
                       </div>
                     </div>

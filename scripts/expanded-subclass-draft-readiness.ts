@@ -31,8 +31,12 @@ const expected: Array<{ code: string; level: FullDraftSupportLevel }> = [
   { code: "600_SPONSORED_FAMILY", level: "FULL_STAFF_DRAFT" },
   { code: "600_BUSINESS_VISITOR", level: "FULL_STAFF_DRAFT" },
   { code: "491_FAMILY_SPONSORED", level: "FULL_STAFF_DRAFT" },
+  { code: "485_SUBSEQUENT_ENTRANT", level: "FULL_STAFF_DRAFT" },
+  { code: "subseq", level: "FULL_STAFF_DRAFT" },
   { code: "EOI", level: "FULL_STAFF_DRAFT" },
-  { code: "ROI", level: "FULL_STAFF_DRAFT" }
+  { code: "ROI", level: "FULL_STAFF_DRAFT" },
+  { code: "eoi", level: "FULL_STAFF_DRAFT" },
+  { code: "roi", level: "FULL_STAFF_DRAFT" }
 ];
 
 function assertCondition(condition: unknown, message: string) {
@@ -128,6 +132,12 @@ async function main() {
     assertCondition(draft.supportLevel === item.level, `${item.code}: draft support level mismatch`);
     assertCondition(draft.documentMatrix.length >= 5, `${item.code}: document matrix too thin`);
     assertCondition(draft.sections.some((section) => section.key === "primary_applicant_identity"), `${item.code}: identity section missing`);
+    assertCondition(draft.sections.some((section) => section.key === "terms_application_context"), `${item.code}: terms/application context section missing`);
+    assertCondition(draft.sections.some((section) => section.key === "applicant_declarations"), `${item.code}: applicant declarations section missing`);
+    assertCondition(draft.sections.some((section) => section.key === "police_clearance_certificate"), `${item.code}: PCC detected section missing`);
+    if (item.code === "485_SUBSEQUENT_ENTRANT" || item.code === "subseq") {
+      assertCondition(draft.sections.some((section) => section.key === "subsequent_entrant_context"), `${item.code}: 485 subsequent entrant section missing`);
+    }
     assertCondition(serialized.includes("[MISSING]") || serialized.includes("NOT_FOUND_IN_APPROVED_EVIDENCE"), `${item.code}: missing markers absent`);
     assertCondition(serialized.includes("AGENT_REVIEW_REQUIRED"), `${item.code}: agent review marker absent`);
     assertCondition(serialized.includes("CLIENT_CONFIRMATION_REQUIRED"), `${item.code}: client confirmation marker absent`);

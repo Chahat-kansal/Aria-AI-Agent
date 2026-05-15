@@ -93,6 +93,16 @@ function baseContext(subclassCode: string): FullDraftContext {
         sourceSnippet: "PTE Academic"
       },
       {
+        key: "english.overall_score",
+        label: "Overall score",
+        value: "64",
+        status: "SUPPORTED",
+        confidence: 0.88,
+        sourceDocument: "dummy-english-test.pdf",
+        sourcePageRef: "p.1",
+        sourceSnippet: "Overall score: 64"
+      },
+      {
         key: "health.declarations",
         label: "Health declarations",
         value: "No",
@@ -149,7 +159,16 @@ async function main() {
     assertCondition(draft.supportLevel === "FULL_STAFF_DRAFT", `${subclassCode}: core subclass is not marked FULL_STAFF_DRAFT`);
     assertCondition(draft.documentMatrix.length >= 6, `${subclassCode}: document matrix too thin`);
     assertCondition(draft.sections.some((section) => section.key === "primary_applicant_identity"), `${subclassCode}: identity section missing`);
+    assertCondition(draft.sections.some((section) => section.key === "terms_application_context"), `${subclassCode}: terms/application context section missing`);
     assertCondition(draft.sections.some((section) => section.key === "health_character_declarations"), `${subclassCode}: unsafe declaration section missing`);
+    assertCondition(draft.sections.some((section) => section.key === "applicant_declarations"), `${subclassCode}: applicant declarations section missing`);
+    assertCondition(draft.sections.some((section) => section.key === "police_clearance_certificate"), `${subclassCode}: PCC detected section missing`);
+    if (subclassCode === "500") {
+      assertCondition(draft.sections.some((section) => section.key === "confirmation_of_enrolment"), `${subclassCode}: dedicated CoE section missing`);
+    }
+    if (draft.sections.some((section) => section.key === "english_language")) {
+      assertCondition(serialized.includes("Automated score warning for staff review"), `${subclassCode}: English score/warning presentation missing`);
+    }
     assertCondition(draft.sections.some((section) => section.key === "client_confirmations"), `${subclassCode}: client confirmation section missing`);
     assertCondition(serialized.includes("Dummy Applicant"), `${subclassCode}: approved field did not appear`);
     assertCondition(serialized.includes("[MISSING]") || serialized.includes("NOT_FOUND_IN_APPROVED_EVIDENCE"), `${subclassCode}: missing markers not present`);
