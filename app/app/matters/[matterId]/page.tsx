@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AgentClientFolderActions } from "@/components/app/agent-client-folder-actions";
 import { AppShell } from "@/components/app/app-shell";
 import { AriaAutoprepPanel } from "@/components/app/aria-autoprep-panel";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
@@ -20,6 +21,7 @@ import { canManageTeam, hasFirmWideAccess, hasPermission, hasTeamOversight, role
 import { getAiConfigStatus, getEmailConfigStatus, getEncryptionConfigStatus } from "@/lib/services/runtime-config";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 import { getSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-support";
+import { getAgentClientFolderConfirmation, isAssignedAgentForPrivateFolder } from "@/lib/services/agent-client-folder";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -109,6 +111,8 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   ]);
   const emailConfigured = getEmailConfigStatus().configured;
   const subclassSupport = getSubclassSupport(matter.visaSubclass);
+  const folderConfirmation = await getAgentClientFolderConfirmation(matter.id);
+  const isAssignedAgentFolderUser = isAssignedAgentForPrivateFolder(context.user, matter);
   const workflowItems = [
     {
       label: "Upload documents for this matter",
@@ -495,6 +499,18 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                 </div>
                 {matter.visaSubclass === "500" ? <Link href={`/app/matters/${matter.id}/draft`}><GradientButton className="w-full">Run AI Draft Autofill</GradientButton></Link> : null}
                 {latestDraft ? <p className="text-xs text-slate-500">Latest draft status: {formatEnum(latestDraft.status)}</p> : <p className="text-xs text-slate-500">No matter draft exists yet. Open the draft workspace to start review.</p>}
+              </SectionCard>
+            </PageSection>
+
+            <PageSection title="Assigned agent private folder" description="Client-named folder shown only after the assigned agent confirms access.">
+              <SectionCard>
+                <AgentClientFolderActions
+                  matterId={matter.id}
+                  isAssignedAgent={isAssignedAgentFolderUser}
+                  confirmed={Boolean(folderConfirmation)}
+                  confirmedBy={folderConfirmation?.actorUser?.name ?? folderConfirmation?.actorUser?.email ?? null}
+                  confirmedAt={folderConfirmation?.createdAt.toLocaleString("en-AU") ?? null}
+                />
               </SectionCard>
             </PageSection>
           </div>

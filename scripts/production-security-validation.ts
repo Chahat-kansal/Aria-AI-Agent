@@ -20,6 +20,8 @@ const RESULT = {
   auditMetadataRedactionPass: false,
   aiContextStaticScopingPass: false,
   exportRouteScopedAndNoStore: false,
+  assignedAgentPrivateFolderScoped: false,
+  assignedAgentFolderConfirmationGated: false,
   generatedFileRoutesScopedAndNoStore: false,
   emailPayloadStaticMinimizationPass: false,
   thirdPartyNoClientDataStaticPass: false,
@@ -59,6 +61,7 @@ async function validatePublicSurface() {
     "/admin/audit",
     "/api/documents/guess-document-id/download",
     "/api/settings/data/export-folder?matterId=guess-matter-id",
+    "/api/matters/guess-matter-id/agent-client-folder",
     "/client-review/invalid-token-security-test"
   ];
 
@@ -231,6 +234,25 @@ async function validateLocalPrivacyModel() {
     !canAccessMatter(agentTwo, { workspaceId: workspace.id, assignedToUserId: agentOne.id }) &&
     canAccessMatter(admin, { workspaceId: workspace.id, assignedToUserId: agentOne.id }) &&
     canAccessMatter(owner, { workspaceId: workspace.id, assignedToUserId: agentTwo.id });
+  const { isAssignedAgentForPrivateFolder, confirmAgentClientFolder, getAgentClientFolderConfirmation } = await import("@/lib/services/agent-client-folder");
+  RESULT.assignedAgentPrivateFolderScoped =
+    isAssignedAgentForPrivateFolder(agentOne, matterA) &&
+    !isAssignedAgentForPrivateFolder(agentOne, matterB) &&
+    isAssignedAgentForPrivateFolder(agentTwo, matterB) &&
+    !isAssignedAgentForPrivateFolder(agentTwo, matterA) &&
+    !isAssignedAgentForPrivateFolder(owner, matterA);
+  const preConfirmation = await getAgentClientFolderConfirmation(matterA.id);
+  const confirmation = preConfirmation ?? await confirmAgentClientFolder({
+    workspaceId: workspace.id,
+    matterId: matterA.id,
+    userId: agentOne.id,
+    documentCount: 0,
+    generatedDocumentCount: 0
+  });
+  RESULT.assignedAgentFolderConfirmationGated =
+    Boolean(confirmation) &&
+    confirmation.actorUserId === agentOne.id &&
+    confirmation.eventType === "agent_client_folder.confirmed";
 
   const platformText = safeJson({
     workspaces: await getWorkspaceRows(),
@@ -267,6 +289,7 @@ async function validateSourceHardening() {
     matterDraftPage,
     documentDownloadRoute,
     exportRoute,
+    agentClientFolderRoute,
     formDraftDownloadRoute,
     nextConfig,
     generatedDocumentDownloadRoute,
@@ -281,6 +304,7 @@ async function validateSourceHardening() {
     readRepoFile("app/app/matters/[matterId]/draft/page.tsx"),
     readRepoFile("app/api/documents/[documentId]/download/route.ts"),
     readRepoFile("app/api/settings/data/export-folder/route.ts"),
+    readRepoFile("app/api/matters/[matterId]/agent-client-folder/route.ts"),
     readRepoFile("app/api/forms/drafts/[draftId]/download/route.ts"),
     readRepoFile("next.config.mjs"),
     readRepoFile("app/api/generated-documents/[documentId]/download/route.ts"),
@@ -305,6 +329,16 @@ async function validateSourceHardening() {
     exportRoute.includes("canAccessMatter(context.user, matter)") &&
     exportRoute.includes('"Cache-Control": "private, no-store"') &&
     !exportRoute.includes("storageKey");
+  RESULT.assignedAgentPrivateFolderScoped =
+    RESULT.assignedAgentPrivateFolderScoped &&
+    agentClientFolderRoute.includes("isAssignedAgentForPrivateFolder(context.user, matter)") &&
+    agentClientFolderRoute.includes("agent_client_folder_assigned_agent_only") &&
+    agentClientFolderRoute.includes('"Cache-Control": "private, no-store"') &&
+    !agentClientFolderRoute.includes("storageKey");
+  RESULT.assignedAgentFolderConfirmationGated =
+    RESULT.assignedAgentFolderConfirmationGated &&
+    agentClientFolderRoute.includes("getAgentClientFolderConfirmation") &&
+    agentClientFolderRoute.includes("Assigned agent confirmation is required");
   RESULT.generatedFileRoutesScopedAndNoStore =
     generatedDocumentDownloadRoute.includes("canAccessMatter(context.user, generatedDocument.matter)") &&
     generatedDocumentDownloadRoute.includes('"Cache-Control": "private, no-store"') &&
@@ -402,8 +436,8 @@ async function scanPublicBundlesForConfiguredSecretValues() {
 }
 
 async function main() {
-  await validateSourceHardening();
   await validateLocalPrivacyModel();
+  await validateSourceHardening();
   await validatePublicSurface();
   const pass = Object.entries(RESULT)
     .filter(([key]) => key !== "target" && key !== "publicSurfaceChecked")

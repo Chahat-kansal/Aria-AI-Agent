@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AgentClientFolderActions } from "@/components/app/agent-client-folder-actions";
 import { AppShell } from "@/components/app/app-shell";
 import { FullDraftPrintButton } from "@/components/app/full-draft-print-button";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
@@ -10,6 +11,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { SubtleButton } from "@/components/ui/subtle-button";
 import { getMatterDetailData } from "@/lib/data/workspace-repository";
+import { getAgentClientFolderConfirmation, isAssignedAgentForPrivateFolder } from "@/lib/services/agent-client-folder";
 import { buildFullApplicationDraftForMatter } from "@/lib/services/full-application-draft";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 
@@ -34,6 +36,8 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
   if (!allowedMatter) notFound();
 
   const draft = await buildFullApplicationDraftForMatter(params.matterId, context.user);
+  const folderConfirmation = await getAgentClientFolderConfirmation(params.matterId);
+  const isAssignedAgentFolderUser = isAssignedAgentForPrivateFolder(context.user, allowedMatter);
 
   return (
     <AppShell title="Full Application Draft">
@@ -186,6 +190,21 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
                 </ul>
               </div>
             </div>
+          </SectionCard>
+        </PageSection>
+
+        <PageSection
+          title="Assigned agent private folder"
+          description="A client-named folder can be revealed only after the assigned agent confirms it. Aria generates the archive through a private route instead of exposing a raw storage link."
+        >
+          <SectionCard className="print:hidden">
+            <AgentClientFolderActions
+              matterId={params.matterId}
+              isAssignedAgent={isAssignedAgentFolderUser}
+              confirmed={Boolean(folderConfirmation)}
+              confirmedBy={folderConfirmation?.actorUser?.name ?? folderConfirmation?.actorUser?.email ?? null}
+              confirmedAt={folderConfirmation?.createdAt.toLocaleString("en-AU") ?? null}
+            />
           </SectionCard>
         </PageSection>
 
