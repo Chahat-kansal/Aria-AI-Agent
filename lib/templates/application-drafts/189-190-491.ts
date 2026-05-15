@@ -34,7 +34,7 @@ const skilledRequirements = [
 ];
 
 export const subclass189190491FullDraftTemplate = createTemplate(
-  ["189", "190", "491"],
+  ["189", "190", "491", "491_FAMILY_SPONSORED", "EOI", "ROI"],
   "Skilled visa staff review application draft",
   [
     ...skilledRequirements,

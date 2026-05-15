@@ -18,7 +18,7 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 function markerTone(marker: string) {
   if (marker === "VERIFIED" || marker === "APPROVED_FOR_AI") return "success";
   if (marker === "CONFLICTING_EVIDENCE" || marker === "MISSING") return "danger";
-  if (marker === "CLIENT_CONFIRMATION_REQUIRED" || marker === "AGENT_REVIEW_REQUIRED" || marker === "SOURCE_REQUIRED") return "warning";
+  if (marker === "CLIENT_CONFIRMATION_REQUIRED" || marker === "AGENT_REVIEW_REQUIRED" || marker === "SOURCE_REQUIRED" || marker === "UNSAFE_TO_AUTOFILL" || marker === "MANUAL_REVIEW_REQUIRED") return "warning";
   return "info";
 }
 
@@ -66,10 +66,16 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
               <h2 className="mt-3 text-2xl font-semibold text-[color:var(--text-primary)]">Draft cover / masthead</h2>
               <p className="mt-3 max-w-4xl text-sm leading-6 text-[color:var(--text-secondary)]">{draft.disclaimer}</p>
             </div>
-            <StatusPill tone={draft.safety.status === "Ready for agent final review" ? "success" : "warning"}>
-              {draft.safety.status}
-            </StatusPill>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill tone={draft.supportLevel === "FULL_STAFF_DRAFT" ? "success" : draft.supportLevel === "CHECKLIST_AND_INTAKE" ? "info" : "warning"}>
+                {draft.supportLevel.replaceAll("_", " ")}
+              </StatusPill>
+              <StatusPill tone={draft.safety.status === "Ready for agent final review" ? "success" : "warning"}>
+                {draft.safety.status}
+              </StatusPill>
+            </div>
           </div>
+          {draft.supportNotes ? <p className="text-sm leading-6 text-[color:var(--text-secondary)]">{draft.supportNotes}</p> : null}
           {!draft.canGenerate ? (
             <div className="rounded-2xl bg-amber-500/10 p-4 text-sm leading-6 text-amber-700 dark:text-amber-200">
               {draft.notEnoughEvidenceReason}
@@ -166,6 +172,7 @@ export default async function FullApplicationDraftPage({ params }: { params: { m
         <PageSection title="Safety / blocker assessment" description="Aria can prepare a staff review draft, but it does not lodge applications or provide final legal advice.">
           <SectionCard className="space-y-5 print:border print:border-slate-300 print:bg-white print:shadow-none">
             <div className="flex flex-wrap gap-2">
+              <StatusPill tone={draft.supportLevel === "FULL_STAFF_DRAFT" ? "success" : draft.supportLevel === "CHECKLIST_AND_INTAKE" ? "info" : "warning"}>{draft.supportLevel.replaceAll("_", " ")}</StatusPill>
               <StatusPill tone={draft.safety.status === "Ready for agent final review" ? "success" : "warning"}>{draft.safety.status}</StatusPill>
               <StatusPill tone="danger">{draft.safety.hardBlockers.length} hard blocker(s)</StatusPill>
               <StatusPill tone="warning">{draft.safety.softBlockers.length} soft blocker(s)</StatusPill>

@@ -18,7 +18,7 @@ const ensNominationSection = {
 };
 
 export const subclass186FullDraftTemplate = createTemplate(
-  ["186"],
+  ["186", "186_TRT", "186_DIRECT_ENTRY"],
   "Employer Nomination Scheme (Subclass 186) staff review application draft",
   [
     req("passport", "Passport", "Identity", "REQUIRED", ["passport", "identity"]),

@@ -21,7 +21,7 @@ const visitorSection = {
 };
 
 export const subclass600FullDraftTemplate = createTemplate(
-  ["600"],
+  ["600", "600_TOURIST", "600_SPONSORED_FAMILY", "600_BUSINESS_VISITOR", "600_FREQUENT_TRAVELLER"],
   "Visitor visa (Subclass 600) staff review application draft",
   [
     req("passport", "Passport", "Identity", "REQUIRED", ["passport", "identity"]),

@@ -3,7 +3,8 @@ import type {
   FullDraftDocumentRequirement,
   FullDraftDocumentRequirementStatus,
   FullDraftFieldTemplate,
-  FullDraftSectionTemplate
+  FullDraftSectionTemplate,
+  FullDraftSupportLevel
 } from "@/lib/services/full-application-draft-types";
 
 export function req(
@@ -254,7 +255,9 @@ export function createTemplate(
   subclassCodes: string[],
   title: string,
   documentRequirements: FullDraftDocumentRequirement[],
-  sections: FullDraftSectionTemplate[]
+  sections: FullDraftSectionTemplate[],
+  supportLevel: FullDraftSupportLevel = "FULL_STAFF_DRAFT",
+  supportNotes?: string
 ): FullApplicationDraftTemplate {
-  return { subclassCodes, title, documentRequirements, sections };
+  return { subclassCodes, title, supportLevel, supportNotes, documentRequirements, sections };
 }

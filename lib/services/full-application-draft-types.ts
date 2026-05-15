@@ -7,7 +7,17 @@ export type FullDraftMarker =
   | "AGENT_TO_INSERT_NARRATIVE"
   | "CONFLICTING_EVIDENCE"
   | "VERIFIED"
-  | "APPROVED_FOR_AI";
+  | "APPROVED_FOR_AI"
+  | "UNSAFE_TO_AUTOFILL"
+  | "OFFICIAL_FORM_ONLINE_ONLY"
+  | "MANUAL_REVIEW_REQUIRED";
+
+export type FullDraftSupportLevel =
+  | "FULL_STAFF_DRAFT"
+  | "CHECKLIST_AND_INTAKE"
+  | "CHECKLIST_ONLY"
+  | "ONLINE_ONLY"
+  | "NOT_CONFIGURED";
 
 export type FullDraftDocumentRequirementStatus =
   | "REQUIRED"
@@ -45,6 +55,8 @@ export type FullDraftFieldTemplate = {
   required?: boolean;
   sourceRequired?: boolean;
   unsafe?: boolean;
+  manualReview?: boolean;
+  onlineOnly?: boolean;
   clientConfirmationCategory?: string;
   agentNarrative?: boolean;
   fallback?: "client" | "matter" | "workspace" | "agent";
@@ -60,6 +72,8 @@ export type FullDraftSectionTemplate = {
 export type FullApplicationDraftTemplate = {
   subclassCodes: string[];
   title: string;
+  supportLevel: FullDraftSupportLevel;
+  supportNotes?: string;
   documentRequirements: FullDraftDocumentRequirement[];
   sections: FullDraftSectionTemplate[];
 };
@@ -86,6 +100,8 @@ export type FullDraftSection = {
 export type FullApplicationDraft = {
   matterId: string;
   title: string;
+  supportLevel: FullDraftSupportLevel;
+  supportNotes?: string;
   generatedAt: string;
   generatedBy: string;
   canGenerate: boolean;

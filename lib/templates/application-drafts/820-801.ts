@@ -1,6 +1,6 @@
 import { createTemplate, field, req, withCommonSections } from "./common";
 
-const relationshipSection = {
+export const partnerRelationshipSection = {
   key: "relationship_partner_evidence",
   title: "Relationship / partner evidence",
   fields: [
@@ -41,5 +41,5 @@ export const subclass820801FullDraftTemplate = createTemplate(
     req("health", "Health examination", "Health / Insurance", "CONDITIONAL", ["health", "medical"], undefined, "health_declaration"),
     req("form956", "Form 956", "Forms", "CONDITIONAL", ["form 956", "956", "agent"])
   ],
-  withCommonSections([relationshipSection])
+  withCommonSections([partnerRelationshipSection])
 );

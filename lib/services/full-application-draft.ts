@@ -79,12 +79,14 @@ function confidenceLabel(confidence?: number | null) {
 function buildMissingField(field: FullDraftFieldTemplate, reason: "missing" | "unsafe" | "conflicting" = "missing"): FullDraftField {
   const markers: FullDraftMarker[] =
     reason === "unsafe"
-      ? ["CLIENT_CONFIRMATION_REQUIRED", "AGENT_REVIEW_REQUIRED"]
+      ? ["UNSAFE_TO_AUTOFILL", "CLIENT_CONFIRMATION_REQUIRED", "AGENT_REVIEW_REQUIRED"]
       : reason === "conflicting"
         ? ["CONFLICTING_EVIDENCE", "AGENT_REVIEW_REQUIRED"]
         : ["MISSING", "NOT_FOUND_IN_APPROVED_EVIDENCE", "SOURCE_REQUIRED"];
 
   if (field.agentNarrative && !markers.includes("AGENT_TO_INSERT_NARRATIVE")) markers.push("AGENT_TO_INSERT_NARRATIVE");
+  if (field.manualReview && !markers.includes("MANUAL_REVIEW_REQUIRED")) markers.push("MANUAL_REVIEW_REQUIRED");
+  if (field.onlineOnly && !markers.includes("OFFICIAL_FORM_ONLINE_ONLY")) markers.push("OFFICIAL_FORM_ONLINE_ONLY");
   if (field.clientConfirmationCategory && !markers.includes("CLIENT_CONFIRMATION_REQUIRED")) markers.push("CLIENT_CONFIRMATION_REQUIRED");
 
   return {
@@ -136,6 +138,8 @@ function buildField(field: FullDraftFieldTemplate, context: FullDraftContext): F
     const markers: FullDraftMarker[] = ["AGENT_REVIEW_REQUIRED"];
     if (field.sourceRequired) markers.push("SOURCE_REQUIRED");
     if (field.clientConfirmationCategory) markers.push("CLIENT_CONFIRMATION_REQUIRED");
+    if (field.manualReview) markers.push("MANUAL_REVIEW_REQUIRED");
+    if (field.onlineOnly) markers.push("OFFICIAL_FORM_ONLINE_ONLY");
     return {
       key: field.key,
       label: field.label,
@@ -201,6 +205,8 @@ export function buildFullApplicationDraftFromContext(context: FullDraftContext):
     return {
       matterId: context.matter.id,
       title: "Full Application Draft",
+      supportLevel: "NOT_CONFIGURED",
+      supportNotes: "No configured full draft or checklist workflow is available for this subclass.",
       generatedAt: new Date().toISOString(),
       generatedBy: context.agent?.name || "Aria",
       canGenerate: false,
@@ -256,6 +262,8 @@ export function buildFullApplicationDraftFromContext(context: FullDraftContext):
   const draft: FullApplicationDraft = {
     matterId: context.matter.id,
     title: template.title,
+    supportLevel: template.supportLevel,
+    supportNotes: template.supportNotes,
     generatedAt: new Date().toISOString(),
     generatedBy: context.agent?.name || "Aria",
     canGenerate,

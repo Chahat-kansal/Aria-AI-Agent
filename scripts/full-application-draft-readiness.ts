@@ -146,6 +146,7 @@ async function main() {
     const serialized = JSON.stringify(draft);
 
     assertCondition(draft.disclaimer === FULL_APPLICATION_DRAFT_DISCLAIMER, `${subclassCode}: disclaimer missing`);
+    assertCondition(draft.supportLevel === "FULL_STAFF_DRAFT", `${subclassCode}: core subclass is not marked FULL_STAFF_DRAFT`);
     assertCondition(draft.documentMatrix.length >= 6, `${subclassCode}: document matrix too thin`);
     assertCondition(draft.sections.some((section) => section.key === "primary_applicant_identity"), `${subclassCode}: identity section missing`);
     assertCondition(draft.sections.some((section) => section.key === "health_character_declarations"), `${subclassCode}: unsafe declaration section missing`);
@@ -154,6 +155,7 @@ async function main() {
     assertCondition(serialized.includes("[MISSING]") || serialized.includes("NOT_FOUND_IN_APPROVED_EVIDENCE"), `${subclassCode}: missing markers not present`);
     assertCondition(serialized.includes("CLIENT_CONFIRMATION_REQUIRED"), `${subclassCode}: client confirmation marker missing`);
     assertCondition(serialized.includes("AGENT_REVIEW_REQUIRED"), `${subclassCode}: agent review marker missing`);
+    assertCondition(serialized.includes("UNSAFE_TO_AUTOFILL"), `${subclassCode}: unsafe autofill marker missing`);
     assertCondition(serialized.includes("Ready for agent final review") || serialized.includes("Blocked - missing critical evidence"), `${subclassCode}: safety wording missing`);
     scanNoForbiddenText(serialized, subclassCode);
     console.log(`PASS ${subclassCode}: ${draft.sections.length} sections, ${draft.documentMatrix.length} document requirements`);

@@ -17,7 +17,7 @@ const sponsorNominationSection = {
 };
 
 export const subclass482FullDraftTemplate = createTemplate(
-  ["482"],
+  ["482", "482_SUBSEQUENT_ENTRANT"],
   "Skills in Demand / TSS (Subclass 482) staff review application draft",
   [
     req("passport", "Passport", "Identity", "REQUIRED", ["passport", "identity"]),
