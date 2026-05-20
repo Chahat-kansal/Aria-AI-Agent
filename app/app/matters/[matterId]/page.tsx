@@ -22,6 +22,7 @@ import { getAiConfigStatus, getEmailConfigStatus, getEncryptionConfigStatus } fr
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 import { getSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-support";
 import { getAgentClientFolderConfirmation, isAssignedAgentForPrivateFolder } from "@/lib/services/agent-client-folder";
+import { buildMatterDeadlineIntelligence } from "@/lib/services/deadline-intelligence";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -110,6 +111,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     getWorkspaceOperationalSettingsView(context.workspace.id)
   ]);
   const emailConfigured = getEmailConfigStatus().configured;
+  const deadlineIntelligence = buildMatterDeadlineIntelligence(matter, { emailConfigured });
   const subclassSupport = getSubclassSupport(matter.visaSubclass);
   const folderConfirmation = await getAgentClientFolderConfirmation(matter.id);
   const isAssignedAgentFolderUser = isAssignedAgentForPrivateFolder(context.user, matter);
@@ -303,6 +305,72 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           <MetricCard label="Validation issues" value={openIssues.length} hint="Open issues still needing review." accent={openIssues.length ? "red" : "emerald"} />
           <MetricCard label="Pending client actions" value={pendingClientActions} hint="Intake, doc requests, and linked review items." accent={pendingClientActions ? "amber" : "emerald"} />
         </section>
+
+        <PageSection
+          eyebrow="DEADLINES"
+          title="Deadline intelligence"
+          description="Operational reminders for the matter team. The agent must verify legal deadlines before relying on any date."
+        >
+          <SectionCard className="space-y-5 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-white">{deadlineIntelligence.summary}</p>
+                <p className="mt-2 text-xs text-slate-400">{deadlineIntelligence.disclaimer}</p>
+              </div>
+              <StatusPill tone={deadlineIntelligence.status === "ACTION_REQUIRED" ? "danger" : deadlineIntelligence.status === "WATCH" ? "warning" : "success"}>
+                {formatEnum(deadlineIntelligence.status)}
+              </StatusPill>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="space-y-3 lg:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Active alerts</h3>
+                  <StatusPill tone={deadlineIntelligence.alerts.length ? "warning" : "success"}>{deadlineIntelligence.alerts.length} alert(s)</StatusPill>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {deadlineIntelligence.alerts.length ? deadlineIntelligence.alerts.slice(0, 6).map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-white">{item.title}</p>
+                        <StatusPill tone={item.severity === "OVERDUE" || item.severity === "URGENT_48_HOURS" ? "danger" : "warning"}>{formatEnum(item.severity)}</StatusPill>
+                      </div>
+                      <p className="mt-2 text-xs text-amber-100/90">Due {formatDate(item.dueAt)} · {item.daysUntil < 0 ? `${Math.abs(item.daysUntil)} day(s) overdue` : `${item.daysUntil} day(s)`}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-300">{item.recommendedAction}</p>
+                    </div>
+                  )) : (
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400 md:col-span-2">No operational deadline alert is inside the 30-day window.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Client nudges</h3>
+                {deadlineIntelligence.clientNudges.length ? deadlineIntelligence.clientNudges.slice(0, 4).map((nudge) => (
+                  <div key={nudge.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                    <p className="text-sm font-medium text-white">{nudge.title}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">{nudge.message}</p>
+                  </div>
+                )) : <p className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400">No missing-document nudge is needed right now.</p>}
+              </div>
+            </div>
+
+            {deadlineIntelligence.reverseTimeline.length ? (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">Reverse timeline</h3>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {deadlineIntelligence.reverseTimeline.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                      <p className="text-sm font-medium text-white">{item.title}</p>
+                      <p className="mt-1 text-xs text-cyan-200">{formatDate(item.targetDate)}</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">{item.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </SectionCard>
+        </PageSection>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_360px]">
           <div className="space-y-6">
