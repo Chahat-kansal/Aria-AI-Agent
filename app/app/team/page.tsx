@@ -8,6 +8,7 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { canManageTeam, defaultPermissionsForRole, defaultVisibilityScope, getUserPermissions, permissionDefinitions, roleDefinitions, roleDescription, roleLabel } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { fallbackTeamSecuritySummary, fallbackTeamWorkloadSummary } from "@/lib/services/aria-intelligence";
+import { buildFirmWorkflowSummary } from "@/lib/services/firm-workflow";
 
 export default async function TeamPage() {
   const context = await requireCurrentWorkspaceContext();
@@ -25,16 +26,65 @@ export default async function TeamPage() {
     );
   }
 
-  const users = await prisma.user.findMany({
-    where: { workspaceId: context.workspace.id },
-    include: {
-      supervisor: true,
-      _count: { select: { mattersAssigned: true, tasksAssigned: true, uploadedDocuments: true, clientsAssigned: true } }
-    },
-    orderBy: [{ status: "asc" }, { name: "asc" }]
-  });
+  const [users, matters, tasks, duplicateEmails, duplicateNames] = await Promise.all([
+    prisma.user.findMany({
+      where: { workspaceId: context.workspace.id },
+      include: {
+        supervisor: true,
+        _count: { select: { mattersAssigned: true, tasksAssigned: true, uploadedDocuments: true, clientsAssigned: true } }
+      },
+      orderBy: [{ status: "asc" }, { name: "asc" }]
+    }),
+    prisma.matter.findMany({
+      where: { workspaceId: context.workspace.id, archivedAt: null },
+      select: { id: true, assignedToUserId: true, status: true, readinessScore: true, criticalDeadline: true, lodgementTargetDate: true }
+    }),
+    prisma.task.findMany({
+      where: { workspaceId: context.workspace.id },
+      select: { id: true, assignedToUserId: true, status: true, priority: true, dueDate: true }
+    }),
+    prisma.client.groupBy({
+      by: ["email"],
+      where: { workspaceId: context.workspace.id, archivedAt: null },
+      _count: { email: true },
+      having: { email: { _count: { gt: 1 } } },
+      orderBy: { email: "asc" },
+      take: 5
+    }),
+    prisma.client.groupBy({
+      by: ["firstName", "lastName"],
+      where: { workspaceId: context.workspace.id, archivedAt: null },
+      _count: { id: true },
+      having: { id: { _count: { gt: 1 } } },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      take: 5
+    })
+  ]);
   const teamIntelligence = fallbackTeamWorkloadSummary(users);
   const securityIntelligence = fallbackTeamSecuritySummary(users);
+  const firmWorkflow = buildFirmWorkflowSummary({
+    users: users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      visibilityScope: user.visibilityScope,
+      supervisorId: user.supervisorId,
+      counts: {
+        mattersAssigned: user._count.mattersAssigned,
+        clientsAssigned: user._count.clientsAssigned,
+        tasksAssigned: user._count.tasksAssigned,
+        uploadedDocuments: user._count.uploadedDocuments
+      }
+    })),
+    matters,
+    tasks,
+    possibleClientDuplicates: [
+      ...duplicateEmails.map((item) => ({ field: "email" as const, label: item.email, count: item._count.email })),
+      ...duplicateNames.map((item) => ({ field: "name" as const, label: `${item.firstName} ${item.lastName}`, count: item._count.id }))
+    ]
+  });
 
   return (
     <AppShell title="Team">
@@ -107,6 +157,68 @@ export default async function TeamPage() {
           </Card>
         </section>
 
+        <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <Card>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-100">Firm workflow and supervision</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Operational workload signals for owners and supervisors. Counts stay permission-scoped and review-required.</p>
+              </div>
+              <StatusChip label={`${firmWorkflow.aggregate.supervisionReviews} reviews`} />
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm"><p className="text-slate-400">Active users</p><p className="mt-1 text-xl font-semibold text-white">{firmWorkflow.aggregate.activeUsers}</p></div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm"><p className="text-slate-400">Open matters</p><p className="mt-1 text-xl font-semibold text-white">{firmWorkflow.aggregate.openMatters}</p></div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm"><p className="text-slate-400">Overdue tasks</p><p className="mt-1 text-xl font-semibold text-white">{firmWorkflow.aggregate.overdueTasks}</p></div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm"><p className="text-slate-400">Low readiness</p><p className="mt-1 text-xl font-semibold text-white">{firmWorkflow.aggregate.lowReadinessMatters}</p></div>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+              <table className="w-full text-sm">
+                <thead className="bg-white/[0.05] text-xs uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="p-3 text-left">Team member</th>
+                    <th className="p-3 text-left">Mode</th>
+                    <th className="p-3 text-center">Matters</th>
+                    <th className="p-3 text-center">Tasks</th>
+                    <th className="p-3 text-left">Signal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {firmWorkflow.workloadRows.map((row) => (
+                    <tr key={row.userId} className="text-slate-300">
+                      <td className="p-3"><p className="font-medium text-white">{row.name}</p><p className="text-xs text-slate-500">{roleLabel(row.role)}</p></td>
+                      <td className="p-3">{row.supervisionMode}</td>
+                      <td className="p-3 text-center">{row.matterCount}</td>
+                      <td className="p-3 text-center">{row.openTaskCount}{row.overdueTaskCount ? ` / ${row.overdueTaskCount} overdue` : ""}</td>
+                      <td className="p-3"><StatusChip label={row.reviewSignal} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card>
+            <h3 className="text-sm font-semibold text-slate-100">Conflict and approval prompts</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">These are operational prompts only. A senior agent or owner must verify actual conflict obligations before client-facing work.</p>
+            <div className="mt-4 space-y-3">
+              {firmWorkflow.supervisionRows.length ? firmWorkflow.supervisionRows.map((row) => (
+                <div key={row.supervisorId} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
+                  <p className="font-medium text-white">{row.supervisorName}</p>
+                  <p className="mt-1 text-slate-400">{row.superviseeCount} supervised users, {row.assignedMatterCount} matters, {row.overdueTaskCount} overdue tasks.</p>
+                  {row.reviewRequired ? <p className="mt-2 text-xs text-amber-300">Senior review recommended before reassigning or sending client-facing drafts.</p> : null}
+                </div>
+              )) : <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No supervisor review queue is visible from current assignments.</p>}
+              {firmWorkflow.conflictSignals.length ? firmWorkflow.conflictSignals.map((signal) => (
+                <div key={signal.label} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-100">{signal.label}</div>
+              )) : <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No duplicate-client conflict prompt is visible from current records.</p>}
+              <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-3 text-xs leading-5 text-cyan-100">
+                Approval-required workflows remain controlled by matter permissions, client portal security, and audit logs. Aria does not replace practitioner conflict checks.
+              </div>
+            </div>
+          </Card>
+        </section>
+
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl">
           {users.length ? (
             <div className="divide-y divide-white/5">
@@ -126,7 +238,7 @@ export default async function TeamPage() {
                     {user.status === "INVITED" ? <p>Invite expires: {user.inviteExpiresAt ? user.inviteExpiresAt.toLocaleDateString("en-AU") : "Not set"}</p> : null}
                     <p>Scope: {user.visibilityScope.replaceAll("_", " ").toLowerCase()}</p>
                     <p>Supervisor: {user.supervisor?.name ?? "Not set"}</p>
-                    <p>{user._count.mattersAssigned} matters · {user._count.clientsAssigned} clients · {user._count.tasksAssigned} tasks · {user._count.uploadedDocuments} uploads</p>
+                    <p>{user._count.mattersAssigned} matters - {user._count.clientsAssigned} clients - {user._count.tasksAssigned} tasks - {user._count.uploadedDocuments} uploads</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {permissionDefinitions.map((permission) => (
                         <span key={permission.key} className={`rounded-full border px-2 py-1 text-[11px] ${getUserPermissions(user)[permission.key] ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : "border-white/10 bg-white/[0.04] text-slate-400"}`}>
