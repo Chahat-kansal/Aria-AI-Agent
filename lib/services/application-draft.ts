@@ -14,6 +14,7 @@ import { getTemplateForSubclass } from "@/lib/services/subclass-templates";
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { buildClientLink } from "@/lib/services/client-workflows";
 import { detectExtractionSchema } from "@/lib/services/document-extraction-schemas";
+import { isCriticalExtractionFieldKey, type DocumentQualityResult } from "@/lib/services/document-quality";
 import { buildGroundedResponse, type AriaGroundedResponse } from "@/lib/services/aria-evidence";
 import { inferSubclassFieldCandidates } from "@/lib/services/draft-field-mapping";
 import { decryptJson, decryptString, encryptJson, encryptString } from "@/lib/security/encryption";
@@ -328,6 +329,8 @@ export async function uploadDocumentToMatter(input: {
     warnings?: string[];
     configured?: boolean;
     keyValues?: Array<{ key: string; value: string; confidence?: number }>;
+    normalizedKeyValues?: Array<{ key: string; originalValue: string; normalizedValue: string; redactedDisplayValue: string; confidence?: number }>;
+    documentQuality?: DocumentQualityResult;
     extractedTextPreview?: string;
   };
   uploadedByUserId: string;
@@ -337,12 +340,21 @@ export async function uploadDocumentToMatter(input: {
   const matter = await prisma.matter.findUniqueOrThrow({ where: { id: input.matterId } });
   const category = input.overrideCategory ?? classifyDocument(input.fileName, input.extractedText);
   const extractionSchema = detectExtractionSchema(input.fileName, input.extractedText);
+  const documentQuality = input.extractionMetadata?.documentQuality;
+  const blocksCriticalAutofill = documentQuality?.autofillCriticalFieldsAllowed === false;
   const extractedFields = inferExtractedDraftFields({
     subclassCode: matter.visaSubclass,
     fileName: input.fileName,
     category,
     extractedText: input.extractedText,
     keyValues: input.extractionMetadata?.keyValues
+  }).map((field) => {
+    if (!blocksCriticalAutofill || !isCriticalExtractionFieldKey(field.key)) return field;
+    return {
+      ...field,
+      confidence: Math.min(field.confidence, 0.6),
+      snippet: `${field.snippet}\nQuality gate: critical field requires re-upload/agent override before use.`
+    };
   });
 
   const document = await prisma.document.create({
@@ -380,6 +392,9 @@ export async function uploadDocumentToMatter(input: {
         extractionSchemaSupported: extractionSchema.supported,
         extractionConfigured: input.extractionMetadata?.configured ?? true,
         keyValues: input.extractionMetadata?.keyValues ?? [],
+        normalizedKeyValues: input.extractionMetadata?.normalizedKeyValues ?? [],
+        documentQuality: documentQuality ?? null,
+        autofillCriticalFieldsAllowed: documentQuality?.autofillCriticalFieldsAllowed ?? true,
         reviewRequired: true
       })
     }
@@ -396,7 +411,7 @@ export async function uploadDocumentToMatter(input: {
         confidence: field.confidence,
         sourceSnippet: encryptString(field.snippet),
         sourcePageRef: encryptString("document metadata"),
-        status: field.confidence >= 0.75 ? FieldStatus.SUPPORTED : FieldStatus.NEEDS_REVIEW,
+        status: field.confidence >= 0.75 && (!blocksCriticalAutofill || !isCriticalExtractionFieldKey(field.key)) ? FieldStatus.SUPPORTED : FieldStatus.NEEDS_REVIEW,
         needsReview: true
       }
     });
@@ -437,6 +452,8 @@ export async function mapDocumentsToDraft(matterId: string, options?: { skipAiSu
     const extractedPayload = decryptJson<{
       extractedTextPreview?: string;
       keyValues?: Array<{ key: string; value: string; confidence?: number }>;
+      documentQuality?: DocumentQualityResult | null;
+      autofillCriticalFieldsAllowed?: boolean;
     }>(String(latestExtraction.extractedJson));
 
     const previewText = [
@@ -444,13 +461,14 @@ export async function mapDocumentsToDraft(matterId: string, options?: { skipAiSu
       ...(extractedPayload.keyValues ?? []).map((item) => `${item.key}: ${item.value}`)
     ].join("\n");
 
+    const blocksCriticalAutofill = extractedPayload.autofillCriticalFieldsAllowed === false || extractedPayload.documentQuality?.autofillCriticalFieldsAllowed === false;
     const derivedCandidates = inferExtractedDraftFields({
       subclassCode: reviewData.matter.visaSubclass,
       fileName: document.fileName,
       category: document.category,
       extractedText: previewText,
       keyValues: extractedPayload.keyValues ?? []
-    });
+    }).filter((candidate) => !blocksCriticalAutofill || !isCriticalExtractionFieldKey(candidate.key));
 
     for (const candidate of derivedCandidates) {
       const existing = document.extractedFields.find((field) => field.fieldKey === candidate.key);

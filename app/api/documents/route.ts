@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     if (file.size > launchControls.maxFileSizeMb * 1024 * 1024) {
       return NextResponse.json({ error: `File is too large for current launch controls. Maximum allowed size is ${launchControls.maxFileSizeMb} MB.` }, { status: 413 });
     }
-    const extraction = await extractDocumentResult(bytes, mimeType);
+    const extraction = await extractDocumentResult(bytes, mimeType, fileName);
 
     const upload = await prepareMatterDocumentUpload({ workspaceId: context.workspace.id, matterId, fileName, bytes, mimeType });
 
@@ -69,6 +69,8 @@ export async function POST(req: Request) {
         warnings: extraction.warnings,
         configured: extraction.configured,
         keyValues: extraction.keyValues,
+        normalizedKeyValues: extraction.normalizedKeyValues,
+        documentQuality: extraction.documentQuality,
         extractedTextPreview: extraction.extractedTextPreview
       },
       uploadedByUserId: context.user.id
@@ -94,7 +96,9 @@ export async function POST(req: Request) {
         matterId,
         provider: extraction.provider,
         confidence: extraction.confidence,
-        warningCount: extraction.warnings.length
+        warningCount: extraction.warnings.length,
+        qualityStatus: extraction.documentQuality?.status,
+        qualityScore: extraction.documentQuality?.score
       }
     });
     if (checklistItemId) {
@@ -107,7 +111,10 @@ export async function POST(req: Request) {
       extraction: {
         provider: extraction.provider,
         confidence: extraction.confidence,
-        warnings: extraction.warnings
+        warnings: extraction.warnings,
+        qualityStatus: extraction.documentQuality?.status,
+        qualityScore: extraction.documentQuality?.score,
+        reuploadMessage: extraction.documentQuality?.reuploadMessage
       },
       document
     });

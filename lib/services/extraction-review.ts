@@ -66,6 +66,11 @@ export type ExtractionReviewDocument = {
   reviewStatus: string;
   extractionConfidence: number | null;
   weakOcr: boolean;
+  qualityStatus: string | null;
+  qualityScore: number | null;
+  qualityWarnings: string[];
+  reuploadMessage: string | null;
+  autofillCriticalFieldsAllowed: boolean;
   linkedDraftFields: number;
   linkedChecklistItems: number;
   downloadHref: string;
@@ -321,11 +326,17 @@ export async function getMatterExtractionReviewData(workspaceId: string, matterI
     const flattened = flattenExtractionFields(document);
     const extraction = flattened.extraction;
     const extractionConfidence = typeof extraction.extractionConfidence === "number" ? extraction.extractionConfidence : null;
+    const quality = extraction.documentQuality && typeof extraction.documentQuality === "object" ? extraction.documentQuality : null;
     return {
       ...document,
       extraction,
       extractionConfidence,
       weakOcr: !safeString(extraction.extractedTextPreview) || String(extraction.extractedTextPreview).length < 100,
+      qualityStatus: safeString(quality?.status),
+      qualityScore: typeof quality?.score === "number" ? quality.score : null,
+      qualityWarnings: maybeArray(quality?.warnings).map(String),
+      reuploadMessage: safeString(quality?.reuploadMessage),
+      autofillCriticalFieldsAllowed: quality?.autofillCriticalFieldsAllowed !== false,
       flattenedFields: flattened.fields
     };
   });
@@ -775,7 +786,7 @@ export async function getMatterExtractionReviewData(workspaceId: string, matterI
   sections.push(...(templateCatchAllSections ?? []));
 
   const missingRequiredFields = sections.reduce((count, section) => count + section.fields.filter((field) => field.status === "missing").length, 0);
-  const weakDocuments = documentFacts.filter((document) => document.weakOcr);
+  const weakDocuments = documentFacts.filter((document) => document.weakOcr || document.autofillCriticalFieldsAllowed === false);
   const conflictingDraftFields = draft?.fields.filter((field) => field.status === "CONFLICTING") ?? [];
 
   const flags: ExtractionReviewFlag[] = [
@@ -804,10 +815,10 @@ export async function getMatterExtractionReviewData(workspaceId: string, matterI
     ...weakDocuments.map((document) => ({
       id: `weak-ocr-${document.id}`,
       severity: "warning" as const,
-      title: `Weak OCR / scanned warning: ${document.fileName}`,
-      reason: "The stored extraction preview is weak or limited.",
-      evidence: `${document.fileName} does not yet provide strong readable text evidence.`,
-      recommendedAction: "Review the original upload manually or request a clearer copy.",
+      title: `Document quality warning: ${document.fileName}`,
+      reason: document.qualityStatus ?? "The stored extraction preview is weak or limited.",
+      evidence: document.qualityWarnings[0] ?? `${document.fileName} does not yet provide strong readable text evidence.`,
+      recommendedAction: document.reuploadMessage ?? "Review the original upload manually or request a clearer copy.",
       href: `/app/documents/${document.id}`,
       reviewEnabled: false,
       reviewReason: "OCR quality review is routed through the document detail page."
@@ -875,6 +886,11 @@ export async function getMatterExtractionReviewData(workspaceId: string, matterI
     reviewStatus: document.reviewStatus,
     extractionConfidence: document.extractionConfidence,
     weakOcr: document.weakOcr,
+    qualityStatus: document.qualityStatus,
+    qualityScore: document.qualityScore,
+    qualityWarnings: document.qualityWarnings,
+    reuploadMessage: document.reuploadMessage,
+    autofillCriticalFieldsAllowed: document.autofillCriticalFieldsAllowed,
     linkedDraftFields: document.draftEvidenceLinks.length,
     linkedChecklistItems: document.checklistItems.length,
     downloadHref: `/api/documents/${document.id}/download`

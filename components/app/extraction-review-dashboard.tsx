@@ -174,11 +174,22 @@ export function ExtractionReviewDashboard({ data }: { data: ExtractionReviewDash
                     <div className="rounded-2xl border border-white/8 bg-black/20 p-3 text-sm text-slate-200">Draft links: {document.linkedDraftFields}</div>
                     <div className="rounded-2xl border border-white/8 bg-black/20 p-3 text-sm text-slate-200">Checklist links: {document.linkedChecklistItems}</div>
                   </div>
+                  <div className="mt-3 rounded-2xl border border-white/8 bg-black/20 p-3 text-sm text-slate-200">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>Document quality: {document.qualityStatus?.replaceAll("_", " ") ?? "Not assessed"}</span>
+                      <StatusPill tone={document.autofillCriticalFieldsAllowed ? "success" : "warning"}>
+                        {document.autofillCriticalFieldsAllowed ? "Autofill review allowed" : "Do not use for autofill yet"}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-400">Quality score: {document.qualityScore == null ? "Not scored" : `${Math.round(document.qualityScore * 100)}%`}</p>
+                    {document.reuploadMessage ? <p className="mt-2 text-xs text-amber-300">{document.reuploadMessage}</p> : null}
+                  </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link href={`/app/documents/${document.id}` as any}><StatusPill tone="info">Open document</StatusPill></Link>
                     <Link href={document.downloadHref as any}><StatusPill>Secure download</StatusPill></Link>
                   </div>
                   {document.weakOcr ? <p className="mt-3 text-xs text-amber-300">OCR/scanned warning: this file may not provide strong text extraction.</p> : null}
+                  {document.qualityWarnings.length ? <p className="mt-2 text-xs text-amber-300">{document.qualityWarnings[0]}</p> : null}
                 </div>
               )) : <p className="text-sm text-slate-400">No documents are linked to this matter yet.</p>}
             </div>

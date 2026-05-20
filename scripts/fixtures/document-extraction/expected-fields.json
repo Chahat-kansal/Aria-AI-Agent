@@ -1,0 +1,268 @@
+{
+  "passport": {
+    "fileName": "golden-passport.pdf",
+    "mimeType": "application/pdf",
+    "category": "Identity",
+    "critical": ["applicant.full_name", "applicant.date_of_birth", "applicant.passport_number", "applicant.nationality"],
+    "fields": {
+      "Full Name": "ARIA TEST PERSON",
+      "Date of Birth": "12/03/1998",
+      "Passport Number": "PA 1234567",
+      "Nationality": "Testland",
+      "Passport Country": "Testland",
+      "Passport Issue Date": "01/01/2024",
+      "Passport Expiry Date": "01/01/2034"
+    }
+  },
+  "visa_grant_notice": {
+    "fileName": "golden-visa-grant-notice.pdf",
+    "mimeType": "application/pdf",
+    "category": "Travel",
+    "critical": ["visa.current_subclass", "visa.grant_number"],
+    "fields": {
+      "Full Name": "ARIA TEST PERSON",
+      "Visa Subclass": "500",
+      "Visa Grant Number": "GR 987654321",
+      "Visa Grant Date": "15/02/2025",
+      "Visa Expiry": "15/03/2027"
+    }
+  },
+  "coe": {
+    "fileName": "golden-coe.pdf",
+    "mimeType": "application/pdf",
+    "category": "Education",
+    "critical": ["study.coe_number", "study.provider", "study.course_name"],
+    "fields": {
+      "COE Number": "COE-ABC-123456",
+      "Provider": "Aria Test University",
+      "Course Name": "Bachelor of Dummy Data",
+      "CRICOS": "01234A",
+      "Course Start": "20/07/2026",
+      "Course End": "20/07/2028"
+    }
+  },
+  "pte_score_report": {
+    "fileName": "golden-pte-score-report.pdf",
+    "mimeType": "application/pdf",
+    "category": "Other Evidence",
+    "critical": ["english.test_type", "english.overall_score"],
+    "fields": {
+      "English Test Type": "PTE Academic",
+      "Test Date": "10/01/2026",
+      "Reference Number": "PTE-REF-123",
+      "Overall Score": "65",
+      "Listening": "66",
+      "Reading": "65",
+      "Writing": "64",
+      "Speaking": "67"
+    }
+  },
+  "ielts_score_report": {
+    "fileName": "golden-ielts-score-report.pdf",
+    "mimeType": "application/pdf",
+    "category": "Other Evidence",
+    "critical": ["english.test_type", "english.overall_score"],
+    "fields": {
+      "English Test Type": "IELTS",
+      "Test Date": "12/01/2026",
+      "Reference Number": "IELTS-REF-456",
+      "Overall Score": "7.0",
+      "Listening": "7.0",
+      "Reading": "7.0",
+      "Writing": "6.5",
+      "Speaking": "7.5"
+    }
+  },
+  "oshc_certificate": {
+    "fileName": "golden-oshc-certificate.pdf",
+    "mimeType": "application/pdf",
+    "category": "Health / Insurance",
+    "critical": ["health.oshc_provider"],
+    "fields": {
+      "OSHC Provider": "Aria Health Cover",
+      "Policy Number": "OSHC 123 456",
+      "Cover Start": "20/07/2026",
+      "Cover End": "20/07/2028"
+    }
+  },
+  "academic_transcript": {
+    "fileName": "golden-academic-transcript.pdf",
+    "mimeType": "application/pdf",
+    "category": "Education",
+    "critical": ["study.course_name", "study.provider"],
+    "fields": {
+      "Student Name": "ARIA TEST PERSON",
+      "Institution": "Aria Test University",
+      "Qualification": "Bachelor of Dummy Data",
+      "Completion Date": "01/12/2025"
+    }
+  },
+  "completion_letter": {
+    "fileName": "golden-completion-letter.pdf",
+    "mimeType": "application/pdf",
+    "category": "Education",
+    "critical": ["study.provider", "study.course_name"],
+    "fields": {
+      "Student Name": "ARIA TEST PERSON",
+      "Provider": "Aria Test University",
+      "Course Name": "Bachelor of Dummy Data",
+      "Completion Date": "01/12/2025"
+    }
+  },
+  "skills_assessment": {
+    "fileName": "golden-skills-assessment.pdf",
+    "mimeType": "application/pdf",
+    "category": "Employment",
+    "critical": ["skills.assessment_outcome", "skills.occupation"],
+    "fields": {
+      "Nominated Occupation": "Software Engineer",
+      "ANZSCO": "261313",
+      "Assessing Body": "ACS",
+      "Assessment Outcome": "Positive",
+      "Reference Number": "ACS-12345"
+    }
+  },
+  "employment_reference": {
+    "fileName": "golden-employment-reference.pdf",
+    "mimeType": "application/pdf",
+    "category": "Employment",
+    "critical": ["employment.employer", "employment.position"],
+    "fields": {
+      "Employer": "Aria Dummy Employer Pty Ltd",
+      "Position": "Software Engineer",
+      "Start Date": "01/01/2021",
+      "End Date": "01/01/2024",
+      "Weekly Hours": "38"
+    }
+  },
+  "payslip": {
+    "fileName": "golden-payslip.pdf",
+    "mimeType": "application/pdf",
+    "category": "Employment",
+    "critical": ["employment.employer", "employment.salary"],
+    "fields": {
+      "Employer": "Aria Dummy Employer Pty Ltd",
+      "Position": "Software Engineer",
+      "Salary": "AUD 95000",
+      "Pay Date": "01/05/2026"
+    }
+  },
+  "employment_contract": {
+    "fileName": "golden-employment-contract.pdf",
+    "mimeType": "application/pdf",
+    "category": "Employment",
+    "critical": ["employment.employer", "employment.position", "employment.salary"],
+    "fields": {
+      "Employer": "Aria Dummy Employer Pty Ltd",
+      "Position": "Software Engineer",
+      "Salary": "AUD 95000",
+      "Work Location": "Sydney NSW",
+      "Start Date": "01/06/2026"
+    }
+  },
+  "bank_statement": {
+    "fileName": "golden-bank-statement.pdf",
+    "mimeType": "application/pdf",
+    "category": "Financial",
+    "critical": ["financial.available_funds"],
+    "fields": {
+      "Account Holder": "ARIA TEST PERSON",
+      "Available Funds": "AUD 45231.88",
+      "Statement Date": "10/05/2026"
+    }
+  },
+  "marriage_certificate": {
+    "fileName": "golden-marriage-certificate.pdf",
+    "mimeType": "application/pdf",
+    "category": "Relationship",
+    "critical": ["relationship.marriage_date"],
+    "fields": {
+      "Applicant Name": "ARIA TEST PERSON",
+      "Sponsor Name": "ARIA TEST SPONSOR",
+      "Marriage Date": "02/02/2024",
+      "Place of Marriage": "Sydney NSW"
+    }
+  },
+  "birth_certificate": {
+    "fileName": "golden-birth-certificate.pdf",
+    "mimeType": "application/pdf",
+    "category": "Relationship",
+    "critical": ["applicant.date_of_birth", "family.relationship"],
+    "fields": {
+      "Full Name": "ARIA TEST CHILD",
+      "Date of Birth": "03/03/2020",
+      "Parent Name": "ARIA TEST PERSON",
+      "Relationship": "Child"
+    }
+  },
+  "form_888_witness_statement": {
+    "fileName": "golden-form-888-witness-statement.pdf",
+    "mimeType": "application/pdf",
+    "category": "Relationship",
+    "critical": ["relationship.witness_name"],
+    "fields": {
+      "Witness Name": "ARIA TEST WITNESS",
+      "Relationship to Couple": "Friend",
+      "Statement Date": "10/05/2026"
+    }
+  },
+  "police_clearance": {
+    "fileName": "golden-police-clearance.pdf",
+    "mimeType": "application/pdf",
+    "category": "Health / Insurance",
+    "critical": ["character.police_clearance_status"],
+    "fields": {
+      "Full Name": "ARIA TEST PERSON",
+      "Police Clearance Status": "No disclosable court outcomes",
+      "Issue Date": "11/05/2026"
+    }
+  },
+  "invitation_letter": {
+    "fileName": "golden-invitation-letter.pdf",
+    "mimeType": "application/pdf",
+    "category": "Travel",
+    "critical": ["visitor.purpose", "visitor.inviter"],
+    "fields": {
+      "Purpose of Visit": "Family visit",
+      "Inviter Name": "ARIA TEST INVITER",
+      "Accommodation": "Inviter residence",
+      "Travel Start": "01/08/2026"
+    }
+  },
+  "travel_itinerary": {
+    "fileName": "golden-travel-itinerary.pdf",
+    "mimeType": "application/pdf",
+    "category": "Travel",
+    "critical": ["visitor.arrival_date", "visitor.departure_date"],
+    "fields": {
+      "Arrival Date": "01/08/2026",
+      "Departure Date": "21/08/2026",
+      "Destination": "Sydney",
+      "Airline": "Dummy Air"
+    }
+  },
+  "sponsor_nomination": {
+    "fileName": "golden-sponsor-nomination.pdf",
+    "mimeType": "application/pdf",
+    "category": "Employment",
+    "critical": ["sponsor.business_name", "sponsor.abn", "nomination.position"],
+    "fields": {
+      "Sponsor Business Name": "Aria Dummy Sponsor Pty Ltd",
+      "ABN": "12 345 678 901",
+      "Nomination Position": "Software Engineer",
+      "Salary": "AUD 95000"
+    }
+  },
+  "form_956": {
+    "fileName": "golden-form-956.pdf",
+    "mimeType": "application/pdf",
+    "category": "Forms",
+    "critical": ["agent.name", "agent.marn"],
+    "fields": {
+      "Agent Name": "ARIA TEST AGENT",
+      "MARN": "1234567",
+      "Organisation": "Aria Dummy Migration",
+      "Authorised Recipient": "Yes"
+    }
+  }
+}

@@ -29,9 +29,17 @@ export default async function DocumentDetailPage({ params }: { params: { documen
   const extraction = document.extractionResults[0]?.extractedJson as any;
   const extractionSchema = typeof extraction?.extractionSchema === "string" ? extraction.extractionSchema : "OTHER";
   const extractionSchemaSupported = extraction?.extractionSchemaSupported !== false;
+  const documentQuality = extraction?.documentQuality ?? null;
+  const qualityStatus = typeof documentQuality?.status === "string" ? documentQuality.status : "NOT_ASSESSED";
+  const qualityScore = typeof documentQuality?.score === "number" ? documentQuality.score : null;
+  const qualityWarnings = Array.isArray(documentQuality?.warnings) ? documentQuality.warnings.map(String) : [];
+  const normalizedKeyValues = Array.isArray(extraction?.normalizedKeyValues) ? extraction.normalizedKeyValues : [];
+  const autofillCriticalFieldsAllowed = documentQuality?.autofillCriticalFieldsAllowed !== false;
   const weakOcr = !extraction?.extractedTextPreview || String(extraction.extractedTextPreview).length < 80;
   const weakEvidence = [
     ...(weakOcr ? ["OCR/text extraction looks weak or incomplete."] : []),
+    ...(autofillCriticalFieldsAllowed ? [] : ["Document quality blocks critical-field autofill until re-upload or audited agent override."]),
+    ...qualityWarnings,
     ...document.extractedFields
       .filter((field) => field.confidence < 0.72)
       .map((field) => `${field.fieldLabel} is below strong confidence.`)
@@ -84,7 +92,7 @@ export default async function DocumentDetailPage({ params }: { params: { documen
             </SectionCard>
             <SectionCard className="p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">OCR quality</p>
-              <p className="mt-2 text-sm text-white">{intelligence.weakOcr ? "Weak or unavailable" : "Readable preview available"}</p>
+              <p className="mt-2 text-sm text-white">{String(qualityStatus).replace(/_/g, " ")}{qualityScore == null ? "" : ` - ${Math.round(qualityScore * 100)}%`}</p>
             </SectionCard>
             <SectionCard className="p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Category suggestion</p>
@@ -130,6 +138,42 @@ export default async function DocumentDetailPage({ params }: { params: { documen
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Content hash</p>
                   <p className="mt-2 break-all text-sm text-white">{document.contentHash ?? "Not recorded"}</p>
                 </div>
+              </SectionCard>
+            </PageSection>
+
+            <PageSection title="Photo and extraction quality" description="Aria scores the uploaded file before trusting extracted values for draft autofill. Poor photos stay review-required.">
+              <SectionCard className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{String(qualityStatus).replace(/_/g, " ")}</p>
+                    <p className="mt-1 text-sm text-slate-400">Quality score: {qualityScore == null ? "Not scored" : `${Math.round(qualityScore * 100)}%`}</p>
+                  </div>
+                  <StatusPill tone={autofillCriticalFieldsAllowed ? "success" : "warning"}>
+                    {autofillCriticalFieldsAllowed ? "Critical fields review allowed" : "Do not use for autofill yet"}
+                  </StatusPill>
+                </div>
+                {documentQuality?.reuploadMessage ? (
+                  <p className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-300">{documentQuality.reuploadMessage}</p>
+                ) : null}
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(documentQuality?.issues ?? []).length ? documentQuality.issues.map((issue: string) => (
+                    <div key={issue} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-200">{issue.replace(/_/g, " ")}</div>
+                  )) : <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-400">No photo-quality issue recorded.</div>}
+                </div>
+                {normalizedKeyValues.length ? (
+                  <div>
+                    <p className="text-sm font-semibold text-white">Normalised extracted values</p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {normalizedKeyValues.slice(0, 12).map((field: any) => (
+                        <div key={`${field.key}-${field.normalizedValue}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{field.key}</p>
+                          <p className="mt-2 text-sm text-slate-200">{field.redactedDisplayValue}</p>
+                          <p className="mt-1 text-xs text-slate-500">Normalised for matching, original kept encrypted in extraction records.</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </SectionCard>
             </PageSection>
 
