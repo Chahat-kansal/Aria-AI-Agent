@@ -15,24 +15,235 @@ import { generateVisaDraftPack } from "@/lib/services/visa-draft-pack";
 const PORTAL_TOKEN_DAYS = 30;
 const REQUEST_TOKEN_DAYS = 14;
 
-const clientPortalInclude = Prisma.validator<Prisma.ClientPortalAccessTokenInclude>()({
-  client: true,
+const clientPortalSelect = Prisma.validator<Prisma.ClientPortalAccessTokenSelect>()({
+  id: true,
+  workspaceId: true,
+  clientId: true,
+  matterId: true,
+  createdByUserId: true,
+  label: true,
+  purpose: true,
+  expiresAt: true,
+  lastViewedAt: true,
+  createdAt: true,
+  client: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true
+    }
+  },
   matter: {
-    include: {
-      checklistItems: { include: { document: true }, orderBy: { label: "asc" } },
-      documents: { orderBy: { createdAt: "desc" } },
-      reviewRequests: { orderBy: { createdAt: "desc" } },
-      officialFormDrafts: { where: { status: { in: ["APPROVED", "PUBLISHED"] as any } }, orderBy: { updatedAt: "desc" } },
-      timelineEvents: { orderBy: { createdAt: "desc" }, take: 20 },
-      tasks: { where: { status: { not: "DONE" } }, orderBy: { dueDate: "asc" }, take: 10 }
+    select: {
+      id: true,
+      matterReference: true,
+      title: true,
+      visaSubclass: true,
+      visaStream: true,
+      status: true,
+      stage: true,
+      lodgementTargetDate: true,
+      assignedToUserId: true,
+      readinessScore: true,
+      assignedToUser: { select: { id: true, name: true, email: true, jobTitle: true } },
+      checklistItems: {
+        select: {
+          id: true,
+          documentId: true,
+          itemKey: true,
+          category: true,
+          label: true,
+          description: true,
+          status: true,
+          required: true,
+          dueDate: true,
+          requestedAt: true,
+          reviewedAt: true,
+          document: {
+            select: {
+              id: true,
+              fileName: true,
+              category: true,
+              mimeType: true,
+              fileSize: true,
+              extractionStatus: true,
+              reviewStatus: true,
+              createdAt: true
+            }
+          }
+        },
+        orderBy: { label: "asc" }
+      },
+      documents: {
+        select: {
+          id: true,
+          fileName: true,
+          category: true,
+          mimeType: true,
+          fileSize: true,
+          extractionStatus: true,
+          reviewStatus: true,
+          createdAt: true
+        },
+        orderBy: { createdAt: "desc" }
+      },
+      documentRequests: {
+        select: {
+          id: true,
+          dueDate: true,
+          status: true,
+          reminderSentAt: true,
+          createdAt: true,
+          items: {
+            select: {
+              id: true,
+              checklistItemId: true,
+              status: true
+            }
+          }
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5
+      },
+      appointments: {
+        select: {
+          id: true,
+          status: true,
+          meetingType: true,
+          startsAt: true,
+          createdAt: true
+        },
+        orderBy: { startsAt: "desc" },
+        take: 5
+      },
+      reviewRequests: {
+        select: {
+          id: true,
+          status: true,
+          sentAt: true,
+          viewedAt: true,
+          confirmedAt: true,
+          returnedAt: true,
+          expiresAt: true
+        },
+        orderBy: { createdAt: "desc" }
+      },
+      officialFormDrafts: {
+        where: { status: { in: ["APPROVED", "PUBLISHED"] as any } },
+        select: {
+          id: true,
+          status: true,
+          generatedFileName: true,
+          approvedAt: true,
+          publishedToClientAt: true,
+          updatedAt: true
+        },
+        orderBy: { updatedAt: "desc" }
+      },
+      timelineEvents: {
+        select: {
+          id: true,
+          eventType: true,
+          title: true,
+          description: true,
+          createdAt: true
+        },
+        orderBy: { createdAt: "desc" },
+        take: 30
+      }
     }
   }
 });
 
-const documentRequestInclude = Prisma.validator<Prisma.DocumentRequestInclude>()({
-  client: true,
-  matter: { include: { checklistItems: { include: { document: true }, orderBy: { label: "asc" } } } },
-  items: { include: { checklistItem: { include: { document: true } } }, orderBy: { createdAt: "asc" } }
+const documentRequestSelect = Prisma.validator<Prisma.DocumentRequestSelect>()({
+  id: true,
+  workspaceId: true,
+  clientId: true,
+  matterId: true,
+  createdByUserId: true,
+  recipientName: true,
+  recipientEmail: true,
+  message: true,
+  dueDate: true,
+  status: true,
+  expiresAt: true,
+  viewedAt: true,
+  completedAt: true,
+  reminderSentAt: true,
+  createdAt: true,
+  updatedAt: true,
+  client: { select: { id: true, firstName: true, lastName: true, email: true } },
+  matter: {
+    select: {
+      id: true,
+      title: true,
+      visaSubclass: true,
+      visaStream: true,
+      assignedToUserId: true,
+      checklistItems: {
+        select: {
+          id: true,
+          documentId: true,
+          itemKey: true,
+          category: true,
+          label: true,
+          description: true,
+          status: true,
+          required: true,
+          dueDate: true,
+          requestedAt: true,
+          reviewedAt: true,
+          document: {
+            select: {
+              id: true,
+              fileName: true,
+              category: true,
+              mimeType: true,
+              fileSize: true,
+              extractionStatus: true,
+              reviewStatus: true,
+              createdAt: true
+            }
+          }
+        },
+        orderBy: { label: "asc" }
+      }
+    }
+  },
+  items: {
+    include: {
+      checklistItem: {
+        select: {
+          id: true,
+          documentId: true,
+          itemKey: true,
+          category: true,
+          label: true,
+          description: true,
+          status: true,
+          required: true,
+          dueDate: true,
+          requestedAt: true,
+          reviewedAt: true,
+          document: {
+            select: {
+              id: true,
+              fileName: true,
+              category: true,
+              mimeType: true,
+              fileSize: true,
+              extractionStatus: true,
+              reviewStatus: true,
+              createdAt: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { createdAt: "asc" }
+  }
 });
 
 export const checklistTemplates: Record<string, Array<{ key: string; category: string; label: string; description: string; required: boolean }>> = {
@@ -131,6 +342,10 @@ export function buildClientLink(path: string, token: string, requestOrigin?: str
   return `${baseUrl(requestOrigin)}${path}/${token}`;
 }
 
+function redactForTimeline(value: string, maxLength = 1200) {
+  return value.replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
 export async function addMatterTimelineEvent(input: {
   workspaceId: string;
   matterId: string;
@@ -204,7 +419,7 @@ export async function ensureClientPortalToken(input: {
 export async function getClientPortalByToken(token: string) {
   const record = await prisma.clientPortalAccessToken.findFirst({
     where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() }, revokedAt: null },
-    include: clientPortalInclude
+    select: clientPortalSelect
   });
   if (!record) return null;
   await prisma.clientPortalAccessToken.update({ where: { id: record.id }, data: { lastViewedAt: new Date() } }).catch(() => null);
@@ -530,7 +745,7 @@ export async function createDocumentRequest(input: {
 export async function getDocumentRequestByToken(token: string) {
   return prisma.documentRequest.findFirst({
     where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() }, revokedAt: null },
-    include: documentRequestInclude
+    select: documentRequestSelect
   });
 }
 
@@ -575,6 +790,73 @@ export async function attachDocumentToChecklistItem(checklistItemId: string, doc
     where: { id: checklistItemId },
     data: { reviewedAt: null }
   }).catch(() => null);
+  const actorUserId = checklistItem.matter.assignedToUserId;
+  if (actorUserId) {
+    await auditMatterAction({
+      workspaceId: checklistItem.matter.workspaceId,
+      userId: actorUserId,
+      matterId: checklistItem.matterId,
+      action: "portal.document_uploaded",
+      metadata: { checklistItemId, documentId }
+    }).catch(() => null);
+  }
+}
+
+export async function createPortalMessage(input: {
+  token: string;
+  message: string;
+}) {
+  const portal = await getClientPortalByToken(input.token);
+  if (!portal?.matterId || !portal.matter) return null;
+  const message = redactForTimeline(input.message);
+  if (!message) return null;
+
+  await addMatterTimelineEvent({
+    workspaceId: portal.workspaceId,
+    matterId: portal.matterId,
+    actorUserId: portal.matter.assignedToUserId,
+    eventType: "portal.client_message",
+    title: "Client message received",
+    description: message
+  });
+
+  await auditMatterAction({
+    workspaceId: portal.workspaceId,
+    userId: portal.matter.assignedToUserId,
+    matterId: portal.matterId,
+    action: "portal.message.created",
+    metadata: { messageLength: message.length, source: "client_portal" }
+  }).catch(() => null);
+
+  return { ok: true };
+}
+
+export async function createPortalAcknowledgement(input: {
+  token: string;
+  acknowledgementType: string;
+}) {
+  const portal = await getClientPortalByToken(input.token);
+  if (!portal?.matterId || !portal.matter) return null;
+  const acknowledgementType = redactForTimeline(input.acknowledgementType || "Client acknowledgement / confirmation", 120);
+
+  await addMatterTimelineEvent({
+    workspaceId: portal.workspaceId,
+    matterId: portal.matterId,
+    actorUserId: portal.matter.assignedToUserId,
+    eventType: "portal.client_acknowledgement",
+    title: "Client acknowledgement / confirmation recorded",
+    description: `${acknowledgementType}. Registered migration agent review required before use.`
+  });
+
+  await auditMatterAction({
+    workspaceId: portal.workspaceId,
+    userId: portal.matter.assignedToUserId,
+    matterId: portal.matterId,
+    action: "portal.acknowledgement.created",
+    metadata: { acknowledgementType, source: "client_portal" }
+  }).catch(() => null);
+
+  return { ok: true };
 }
 
 export async function sendDocumentRequestReminder(requestId: string, actorUserId: string) {
@@ -645,14 +927,24 @@ export async function createAppointment(input: {
   });
 
   if (input.matterId) {
+    const eventType = appointment.status === AppointmentStatus.CONFIRMED ? "appointment.booked" : "appointment.requested";
     await addMatterTimelineEvent({
       workspaceId: input.workspaceId,
       matterId: input.matterId,
       actorUserId: input.assignedToUserId,
-      eventType: "appointment.booked",
-      title: "Appointment booked",
-      description: `${input.meetingType} scheduled for ${input.startsAt.toLocaleString("en-AU")}.`
+      eventType,
+      title: appointment.status === AppointmentStatus.CONFIRMED ? "Appointment booked" : "Appointment requested",
+      description: `${input.meetingType} requested for ${input.startsAt.toLocaleString("en-AU")}.`
     });
+    if (input.assignedToUserId) {
+      await auditMatterAction({
+        workspaceId: input.workspaceId,
+        userId: input.assignedToUserId,
+        matterId: input.matterId,
+        action: eventType,
+        metadata: { appointmentId: appointment.id, status: appointment.status }
+      }).catch(() => null);
+    }
     if (input.assignedToUserId) {
       await createWorkflowTask({
         workspaceId: input.workspaceId,

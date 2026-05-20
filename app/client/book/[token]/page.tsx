@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Card } from "@/components/ui/card";
 import { getClientPortalByToken, createAppointment } from "@/lib/services/client-workflows";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 function nextSlots(
   availability: Array<{ weekday: number; start: string; end: string }>,
@@ -69,8 +71,11 @@ export default async function ClientBookingPage({ params, searchParams }: { para
     const meetingMethod = String(formData.get("meetingMethod") || "");
     const notes = String(formData.get("notes") || "");
     const consentAccepted = String(formData.get("consent") || "") === "on";
+    const headerStore = await headers();
+    const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
+    const limit = checkRateLimit({ key: `portal.appointment:${ip}:${params.token.slice(0, 12)}`, limit: 5, windowMs: 10 * 60 * 1000 });
     const date = new Date(startsAt);
-    if (Number.isNaN(date.getTime()) || !consentAccepted) {
+    if (Number.isNaN(date.getTime()) || !consentAccepted || !limit.allowed) {
       redirect(`/client/book/${params.token}`);
     }
 
