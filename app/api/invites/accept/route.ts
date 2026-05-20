@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { acceptInvite } from "@/lib/services/invites";
 import { serverLog } from "@/lib/services/runtime-config";
+import { enforceRateLimit, getRequestIp } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   token: z.string().min(20),
@@ -10,6 +11,8 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const limited = enforceRateLimit(req, { action: "invite.accept", scope: getRequestIp(req), limit: 8, windowMs: 15 * 60 * 1000 });
+    if (limited) return limited;
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Valid invite token and password are required." }, { status: 400 });
 

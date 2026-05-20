@@ -5,19 +5,14 @@ import { auditEvent } from "@/lib/services/audit";
 import { generateDailyBriefing, generateNextBestActions, generateSecurityIntelligence } from "@/lib/services/aria-intelligence";
 import { refreshRetrievalIndexForWorkspace } from "@/lib/services/retrieval";
 import { serverLog } from "@/lib/services/runtime-config";
-
-function isAuthorized(req: Request) {
-  const auth = req.headers.get("authorization")?.trim();
-  const secret = process.env.CRON_SECRET?.trim().replace(/^['"]|['"]$/g, "");
-  if (secret && auth === `Bearer ${secret}`) return true;
-  const userAgent = req.headers.get("user-agent") || "";
-  return userAgent.includes("vercel-cron") && Boolean(secret);
-}
+import { getCronAuthFailure } from "@/lib/security/cron-auth";
+import { enforceRateLimit, getRequestIp } from "@/lib/security/rate-limit";
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const limited = enforceRateLimit(req, { action: "cron.aria-monitor", scope: getRequestIp(req), limit: 6, windowMs: 60_000 });
+  if (limited) return limited;
+  const authFailure = getCronAuthFailure(req, "aria-monitor");
+  if (authFailure) return authFailure;
 
   const workspaces = await prisma.workspace.findMany({
     include: {
@@ -94,6 +89,7 @@ export async function GET(req: Request) {
         entityId: workspace.id,
         action: "cron.aria_monitor",
         metadata: {
+          cronAuth: "secret_verified",
           briefingUrgency: briefing.urgency,
           securityUrgency: security.urgency,
           actionsCreated,

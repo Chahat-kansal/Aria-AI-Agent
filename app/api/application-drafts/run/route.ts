@@ -8,6 +8,7 @@ import { serverLog } from "@/lib/services/runtime-config";
 import { auditAiUsed, auditAccessDenied, auditMatterAction } from "@/lib/services/audit";
 import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 import { getSubclassSupport } from "@/lib/services/subclass-support";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
   try {
@@ -16,6 +17,8 @@ export async function POST(req: Request) {
     if (!matterId) return NextResponse.json({ error: "matterId is required" }, { status: 400 });
     const context = await getCurrentWorkspaceContext();
     if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+    const limited = enforceRateLimit(req, { action: "draft.autofill", scope: `${context.workspace.id}:${context.user.id}:${matterId}`, limit: 12, windowMs: 60_000 });
+    if (limited) return limited;
     if (!hasPermission(context.user, "can_access_ai")) {
       await auditAccessDenied({ workspaceId: context.workspace.id, userId: context.user.id, entityType: "MatterApplicationDraft", entityId: matterId, reason: "ai_permission_missing" });
       return NextResponse.json({ error: "You do not have permission to run AI-assisted draft mapping." }, { status: 403 });

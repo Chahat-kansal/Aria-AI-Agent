@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getUploadLimits, serverLog } from "@/lib/services/runtime-config";
 import { auditDocumentUploaded, auditEvent } from "@/lib/services/audit";
 import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
   try {
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
 
     const context = await getCurrentWorkspaceContext();
     if (!context) return NextResponse.json({ error: "Authentication and workspace setup are required" }, { status: 401 });
+    const limited = enforceRateLimit(req, { action: "document.upload.extract", scope: `${context.workspace.id}:${context.user.id}:${matterId}`, limit: 20, windowMs: 10 * 60 * 1000 });
+    if (limited) return limited;
     if (!hasPermission(context.user, "can_edit_matters")) return NextResponse.json({ error: "You do not have permission to upload documents for matters." }, { status: 403 });
     const matter = await prisma.matter.findFirst({
       where: { id: matterId, workspaceId: context.workspace.id },

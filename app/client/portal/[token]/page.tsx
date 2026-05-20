@@ -1,11 +1,29 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getClientPortalByToken } from "@/lib/services/client-workflows";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export default async function ClientPortalPage({ params }: { params: { token: string } }) {
+  const headerStore = await headers();
+  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
+  const portalLimit = checkRateLimit({ key: `portal.open:${ip}:${params.token.slice(0, 12)}`, limit: 40, windowMs: 60_000 });
+  if (!portalLimit.allowed) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_36%),radial-gradient(circle_at_top_right,rgba(6,182,212,0.12),transparent_34%),linear-gradient(135deg,#0B1322,#10203A_45%,#172033)] px-4 py-10 text-slate-50">
+        <div className="mx-auto max-w-2xl">
+          <Card className="p-8">
+            <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Aria Client Portal</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Please wait and try again</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-300">Too many portal attempts were made from this connection. Ask your migration team for help if this continues.</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
   const portal = await getClientPortalByToken(params.token);
   if (!portal) {
     return (

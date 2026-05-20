@@ -5,6 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { auditEvent } from "@/lib/services/audit";
 import { getAuthConfigStatus, serverLog } from "@/lib/services/runtime-config";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const authConfig = getAuthConfigStatus();
 if (!authConfig.configured) {
@@ -25,6 +26,15 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           serverLog("auth.credentials_missing");
           throw new Error("MISSING_CREDENTIALS");
+        }
+        const loginLimit = checkRateLimit({
+          key: `auth.signin:${credentials.email.toLowerCase()}`,
+          limit: 8,
+          windowMs: 15 * 60 * 1000
+        });
+        if (!loginLimit.allowed) {
+          serverLog("auth.rate_limited", { reason: "signin_limit" });
+          throw new Error("RATE_LIMITED");
         }
 
         const user = await prisma.user.findUnique({

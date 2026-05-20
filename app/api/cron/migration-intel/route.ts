@@ -3,18 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { auditEvent } from "@/lib/services/audit";
 import { sweepMigrationIntel } from "@/lib/services/migration-intel";
 import { serverLog } from "@/lib/services/runtime-config";
-
-function isAuthorized(req: Request) {
-  const auth = req.headers.get("authorization")?.trim();
-  const secret = process.env.CRON_SECRET?.trim().replace(/^['"]|['"]$/g, "");
-  if (secret && auth === `Bearer ${secret}`) return true;
-  return false;
-}
+import { getCronAuthFailure } from "@/lib/security/cron-auth";
+import { enforceRateLimit, getRequestIp } from "@/lib/security/rate-limit";
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const limited = enforceRateLimit(req, { action: "cron.migration-intel", scope: getRequestIp(req), limit: 6, windowMs: 60_000 });
+  if (limited) return limited;
+  const authFailure = getCronAuthFailure(req, "migration-intel");
+  if (authFailure) return authFailure;
 
   const workspaces = await prisma.workspace.findMany({
     select: {
@@ -57,7 +53,7 @@ export async function GET(req: Request) {
             entityType: "MigrationIntelSweep",
             entityId: result.sweepId,
             action: "migration_intel.cron.completed",
-            metadata: result as any
+            metadata: { ...(result as any), cronAuth: "secret_verified" }
           });
         }
 

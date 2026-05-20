@@ -4,6 +4,7 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied } from "@/lib/services/audit";
 import { createAssistantThreadForUser, sendAssistantThreadMessage } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
   const context = await getCurrentWorkspaceContext();
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
   }
+  const limited = enforceRateLimit(req, { action: "assistant.message", scope: `${context.workspace.id}:${context.user.id}`, limit: 20, windowMs: 60_000 });
+  if (limited) return limited;
 
   const body = await req.json().catch(() => ({}));
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";

@@ -5,6 +5,7 @@ import { UserRole, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
 import { getAuthConfigStatus, getDatabaseConfigStatus, serverLog } from "@/lib/services/runtime-config";
+import { enforceRateLimit, getRequestIp } from "@/lib/security/rate-limit";
 
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
@@ -47,6 +48,8 @@ async function uniqueWorkspaceSlug(name: string) {
 
 export async function POST(request: Request) {
   try {
+    const limited = enforceRateLimit(request, { action: "auth.register", scope: getRequestIp(request), limit: 5, windowMs: 60 * 60 * 1000 });
+    if (limited) return limited;
     if (process.env.ARIA_ALLOW_PUBLIC_SIGNUP !== "true") {
       return NextResponse.json({
         error: "Public signup is disabled by default. An authorised operator must enable it before broad public launch."

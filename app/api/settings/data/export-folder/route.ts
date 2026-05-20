@@ -6,6 +6,7 @@ import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { decryptBuffer, isEncrypted } from "@/lib/security/encryption";
 import { buildStoredZip } from "@/lib/services/zip";
 import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 function safeName(value: string) {
   return value.replace(/[^a-zA-Z0-9._ -]+/g, "").trim().replace(/\s+/g, " ") || "record";
@@ -41,6 +42,8 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ error: "You do not have permission to export secure client folders." }, { status: 403 });
   }
+  const limited = enforceRateLimit(req, { action: "data.export-folder", scope: `${context.workspace.id}:${context.user.id}`, limit: 10, windowMs: 10 * 60 * 1000 });
+  if (limited) return limited;
 
   const { searchParams } = new URL(req.url);
   const matterId = searchParams.get("matterId");

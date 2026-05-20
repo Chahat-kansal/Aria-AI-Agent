@@ -1,13 +1,19 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Card } from "@/components/ui/card";
 import { attachDocumentToChecklistItem, getDocumentRequestByToken, markDocumentRequestViewed } from "@/lib/services/client-workflows";
 import { prepareMatterDocumentUpload, persistDocumentStorageObject } from "@/lib/services/storage";
 import { extractReadableText } from "@/lib/services/document-extraction";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 async function handleClientDocumentUpload(token: string, formData: FormData) {
   "use server";
+  const headerStore = await headers();
+  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
+  const uploadLimit = checkRateLimit({ key: `portal.document-upload:${ip}:${token.slice(0, 12)}`, limit: 10, windowMs: 10 * 60 * 1000 });
+  if (!uploadLimit.allowed) redirect(`/client/documents/${token}`);
   const checklistItemId = String(formData.get("checklistItemId") || "");
   const file = formData.get("file");
   const consentAccepted = String(formData.get("consent") || "") === "on";

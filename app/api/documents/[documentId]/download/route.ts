@@ -5,12 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { decryptBuffer, isEncrypted } from "@/lib/security/encryption";
 import { auditAccessDenied, auditDocumentDownloaded } from "@/lib/services/audit";
 import { getClientPortalByToken, getDocumentRequestByToken } from "@/lib/services/client-workflows";
+import { enforceRateLimit, getRequestIp } from "@/lib/security/rate-limit";
 
 function safeDownloadName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "document";
 }
 
 export async function GET(req: Request, { params }: { params: { documentId: string } }) {
+  const limited = enforceRateLimit(req, { action: "document.download", scope: `${params.documentId}:${getRequestIp(req)}`, limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
   const context = await getCurrentWorkspaceContext();
   const url = new URL(req.url);
   const clientToken = url.searchParams.get("token");
