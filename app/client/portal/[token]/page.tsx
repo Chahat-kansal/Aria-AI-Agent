@@ -7,6 +7,7 @@ import { createPortalAcknowledgement, createPortalMessage, getClientPortalByToke
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { buildMobilePortalGuidance, buildNotificationSafetyView } from "@/lib/services/mobile-notification-safety";
 
 const visibleClientTimelineEvents = new Set([
   "matter.created",
@@ -119,6 +120,12 @@ export default async function ClientPortalPage({ params, searchParams }: { param
   const visibleTimelineEvents = (matter?.timelineEvents ?? []).filter((event) => visibleClientTimelineEvents.has(event.eventType));
   const missingItems = matter?.checklistItems.filter((item) => !item.documentId) ?? [];
   const dueOrRequestedMissing = missingItems.filter((item) => item.dueDate || item.requestedAt);
+  const notificationChannels = buildNotificationSafetyView({
+    emailConfigured: Boolean(process.env.RESEND_API_KEY),
+    smsConfigured: false,
+    pushConfigured: false
+  });
+  const mobileGuidance = buildMobilePortalGuidance(missingItems.length);
   const handleMessage = submitPortalMessage.bind(null, params.token);
   const handleAck = submitPortalAcknowledgement.bind(null, params.token);
 
@@ -257,6 +264,22 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                     <p className="font-medium text-white">Review requests</p>
                     <p className="mt-1 text-xs text-slate-500">{matter.reviewRequests[0] ? `Latest review status: ${prettyStatus(matter.reviewRequests[0].status)}` : "Your migration team will send separate secure review links when confirmation is needed."}</p>
                   </div>
+                </div>
+              </Card>
+
+              <Card className="mt-6">
+                <h3 className="text-sm font-semibold text-slate-100">Mobile reminders and notifications</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{mobileGuidance}</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {notificationChannels.map((channel) => (
+                    <div key={channel.channel} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-white">{channel.label}</p>
+                        <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-[11px] uppercase tracking-wide text-slate-300">{channel.status}</span>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-slate-400">{channel.messageRule}</p>
+                    </div>
+                  ))}
                 </div>
               </Card>
 
