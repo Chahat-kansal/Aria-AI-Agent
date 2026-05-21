@@ -8,6 +8,7 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { prisma } from "@/lib/prisma";
 import { canManageInvoiceFeature, canManageInvoiceSettingsFeature, canViewInvoiceFeature, isInvoiceOverdue, scopedInvoiceWhere } from "@/lib/services/invoices";
 import { formatCurrency } from "@/lib/invoice-calculations";
+import { billingStageTemplates, buildBillingSafetySummary } from "@/lib/services/billing-safety";
 
 export default async function InvoicesPage({
   searchParams
@@ -54,6 +55,7 @@ export default async function InvoicesPage({
     paid: invoices.filter((invoice) => invoice.status === InvoiceStatus.PAID).length,
     overdue: invoices.filter((invoice) => isInvoiceOverdue(invoice)).length
   };
+  const billingSafety = buildBillingSafetySummary(invoices);
 
   return (
     <AppShell title="Invoices">
@@ -103,6 +105,34 @@ export default async function InvoicesPage({
               Filter
             </button>
           </form>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-3xl border border-amber-300/20 bg-amber-500/10 p-5">
+            <p className="text-sm font-semibold text-amber-100">Trust-safe billing guardrail</p>
+            <p className="mt-2 text-sm leading-6 text-amber-100/85">
+              Aria tracks invoice stages and payment status only. It does not store card or bank details, does not process payments directly, and does not claim trust-accounting compliance.
+            </p>
+            <p className="mt-3 rounded-2xl border border-amber-200/20 bg-black/10 p-3 text-xs leading-5 text-amber-100/85">{billingSafety.warnings[0]}</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-slate-950/55 p-5 shadow-glass backdrop-blur-xl">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-100">Stage-based invoice support</p>
+                <p className="mt-1 text-sm text-slate-400">Use firm-reviewed stages without exposing private document content in invoice wording.</p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{formatCurrency(billingSafety.unpaidCents, "AUD")} unpaid visible</span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {billingStageTemplates.map((stage) => (
+                <div key={stage.stage} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
+                  <p className="font-medium text-white">{stage.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{stage.description}</p>
+                  <p className="mt-2 text-[11px] uppercase tracking-wide text-cyan-200">Firm review required</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         <div className="aria-table-wrap">
