@@ -7,6 +7,7 @@ import { ensureClientPortalToken } from "@/lib/services/client-workflows";
 import { auditEvent } from "@/lib/services/audit";
 import { serverLog } from "@/lib/services/runtime-config";
 import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   clientId: z.string().min(1),
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
     if (!hasPermission(context.user, "can_manage_clients")) {
       return NextResponse.json({ error: "You do not have permission to create client portal links." }, { status: 403 });
     }
+    const limited = enforceRateLimit(req, { action: "portal.link.create", scope: `${context.workspace.id}:${context.user.id}`, limit: 12, windowMs: 10 * 60_000 });
+    if (limited) return limited;
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Valid client portal details are required." }, { status: 400 });

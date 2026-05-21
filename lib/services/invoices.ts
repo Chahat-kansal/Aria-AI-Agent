@@ -33,6 +33,36 @@ function safeFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "file";
 }
 
+const INVOICE_BRANDING_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp"
+]);
+
+const INVOICE_TEMPLATE_MIME_TYPES = new Set([
+  "application/pdf",
+  "text/plain",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+]);
+
+export function assertAllowedInvoiceUpload(input: {
+  kind: InvoiceAssetKind;
+  mimeType: string;
+}) {
+  const mimeType = input.mimeType.trim().toLowerCase();
+  const allowed = input.kind === InvoiceAssetKind.TEMPLATE
+    ? INVOICE_TEMPLATE_MIME_TYPES
+    : INVOICE_BRANDING_MIME_TYPES;
+
+  if (!allowed.has(mimeType)) {
+    throw new Error(
+      input.kind === InvoiceAssetKind.TEMPLATE
+        ? "Unsupported invoice template file type. Use PDF, DOCX, or plain text."
+        : "Unsupported invoice branding file type. Use PNG, JPEG, or WEBP."
+    );
+  }
+}
+
 export async function prepareInvoiceAssetUpload(input: {
   workspaceId: string;
   kind: InvoiceAssetKind;
@@ -71,6 +101,7 @@ export async function createInvoiceAsset(input: {
   detectedFieldsJson?: Prisma.InputJsonValue;
   invoiceId?: string | null;
 }) {
+  assertAllowedInvoiceUpload({ kind: input.kind, mimeType: input.mimeType });
   const upload = await prepareInvoiceAssetUpload({
     workspaceId: input.workspaceId,
     kind: input.kind,

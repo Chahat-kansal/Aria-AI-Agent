@@ -94,48 +94,23 @@ async function extractBasic(bytes: Buffer, mimeType: string): Promise<DocumentAi
         });
       }
 
-      const fallbackText = extractFallbackReadableText(bytes);
-      if (fallbackText.length > 50) {
-        return withKeyValues({
-          provider: "basic",
-          model: "pdf-byte-text-fallback",
-          extractedText: fallbackText,
-          extractedTextPreview: preview(fallbackText),
-          confidence: fallbackText.length > 300 ? 0.68 : 0.55,
-          warnings: ["PDF was parsed through a fallback text path. Agent review required."],
-          configured: true
-        });
-      }
-
       return {
         provider: "basic",
         model: "pdf-parse",
         extractedText: "",
         extractedTextPreview: "",
         confidence: 0.2,
-        warnings: ["PDF appears scanned or image-based. OCR provider is required for fuller extraction."],
+        warnings: ["PDF appears scanned, image-based, or unreadable. OCR provider or manual review is required before using extracted fields."],
         configured: true
       };
     } catch {
-      const fallbackText = extractFallbackReadableText(bytes);
-      if (fallbackText.length > 50) {
-        return withKeyValues({
-          provider: "basic",
-          model: "pdf-byte-text-fallback",
-          extractedText: fallbackText,
-          extractedTextPreview: preview(fallbackText),
-          confidence: fallbackText.length > 300 ? 0.68 : 0.55,
-          warnings: ["PDF text extraction fell back to readable byte text. Agent review required."],
-          configured: true
-        });
-      }
       return {
         provider: "basic",
         model: "pdf-parse",
         extractedText: "",
         extractedTextPreview: "",
         confidence: 0.15,
-        warnings: ["PDF text extraction failed. OCR provider or manual review is required."],
+        warnings: ["PDF text extraction failed. OCR provider or manual review is required before using extracted fields."],
         configured: true
       };
     }
@@ -236,7 +211,7 @@ async function extractWithAwsTextract(bytes: Buffer): Promise<DocumentAiResult> 
       extractedText: "",
       extractedTextPreview: "",
       confidence: 0,
-      warnings: [`OCR extraction failed: ${error instanceof Error ? error.message : "unknown error"}`],
+      warnings: ["OCR extraction failed. Manual review or a clearer re-upload is required."],
       configured: true
     };
   }

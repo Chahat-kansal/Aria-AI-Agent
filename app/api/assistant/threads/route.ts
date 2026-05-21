@@ -4,6 +4,8 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied } from "@/lib/services/audit";
 import { createAssistantThreadForUser, getAssistantThreadForUser, listAssistantThreadsForUser } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { toPublicErrorMessage } from "@/lib/security/public-error";
 
 function parseContextType(value: unknown) {
   if (typeof value !== "string") return undefined;
@@ -45,6 +47,8 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
   }
+  const limited = enforceRateLimit(req, { action: "assistant.thread.create", scope: `${context.workspace.id}:${context.user.id}`, limit: 12, windowMs: 60_000 });
+  if (limited) return limited;
 
   const body = await req.json().catch(() => ({}));
 
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ thread }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to create a new conversation right now." },
+      { error: toPublicErrorMessage(error, "Unable to create a new conversation right now.") },
       { status: 400 }
     );
   }

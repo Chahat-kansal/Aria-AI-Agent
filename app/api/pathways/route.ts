@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { canAccessMatter, hasPermission, scopedClientWhere } from "@/lib/services/roles";
 import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-config";
 import { serverLog } from "@/lib/services/runtime-config";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   title: z.string().optional(),
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
     const context = await requireCurrentWorkspaceContext();
     if (!hasPermission(context.user, "can_run_pathway_analysis")) return NextResponse.json({ error: "You do not have permission to create AI-assisted pathway analyses." }, { status: 403 });
     if (!isAiConfigured()) return NextResponse.json(aiNotConfiguredResponse(), { status: 503 });
+    const limited = enforceRateLimit(req, { action: "pathway.generate", scope: `${context.workspace.id}:${context.user.id}`, limit: 8, windowMs: 60_000 });
+    if (limited) return limited;
     const parsed = schema.safeParse(await req.json().catch(() => null));
 
     if (!parsed.success) {

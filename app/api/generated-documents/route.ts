@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { generateMatterDocument } from "@/lib/services/client-workflows";
 import { generateVisaDraftPack } from "@/lib/services/visa-draft-pack";
 import { serverLog } from "@/lib/services/runtime-config";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   matterId: z.string().min(1),
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
     if (!hasPermission(context.user, "can_generate_documents")) {
       return NextResponse.json({ error: "You do not have permission to generate matter documents." }, { status: 403 });
     }
+    const limited = enforceRateLimit(req, { action: "generated-document.create", scope: `${context.workspace.id}:${context.user.id}`, limit: 10, windowMs: 60_000 });
+    if (limited) return limited;
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
@@ -48,7 +51,7 @@ export async function POST(req: Request) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("AI is not configured")) {
       return NextResponse.json({
-        error: "AI is not configured. Add OPENAI_API_KEY to enable AI-enhanced generated documents.",
+        error: "AI document generation is not configured for this workspace yet.",
         configured: false,
         reviewRequired: true
       }, { status: 503 });

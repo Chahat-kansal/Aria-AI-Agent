@@ -10,6 +10,7 @@ import { getUploadLimits, serverLog } from "@/lib/services/runtime-config";
 import { auditDocumentUploaded, auditEvent } from "@/lib/services/audit";
 import { getWorkspaceLaunchControls, isSubclassAllowedByLaunchControls } from "@/lib/services/launch-controls";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { toPublicErrorMessage } from "@/lib/security/public-error";
 
 export async function POST(req: Request) {
   try {
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
       document
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Document upload failed. Please try again.";
+    const message = toPublicErrorMessage(error, "Document upload failed. Please try again.");
     serverLog("document.upload_error", { error: message });
     const status =
       /not allowed|unsupported file type|required|storage is not configured|blocked until APP_FIELD_ENCRYPTION_KEY/i.test(message)

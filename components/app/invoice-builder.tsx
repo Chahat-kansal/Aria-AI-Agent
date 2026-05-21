@@ -324,7 +324,19 @@ export function InvoiceBuilder({
       setMessage(null);
       return;
     }
-    setMessage("Download request recorded. Use browser print if a file is not returned by this build.");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const disposition = response.headers.get("content-disposition") || "";
+    const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+    const fileName = match?.[1] || `${invoice.invoiceNumber || "invoice"}.html`;
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+    setMessage("Invoice download prepared.");
   }
 
   return (

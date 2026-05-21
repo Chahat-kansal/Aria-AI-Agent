@@ -5,6 +5,7 @@ import { hasPermission } from "@/lib/services/roles";
 import { auditAiUsed, auditEvent } from "@/lib/services/audit";
 import { generateInvoiceWithAi } from "@/lib/services/invoices";
 import { serverLog } from "@/lib/services/runtime-config";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const schema = z.object({
   clientId: z.string().optional().nullable(),
@@ -24,6 +25,8 @@ export async function POST(req: Request) {
     if (!hasPermission(context.user, "can_generate_invoices")) {
       return NextResponse.json({ error: "You do not have permission to generate invoices with Aria." }, { status: 403 });
     }
+    const limited = enforceRateLimit(req, { action: "invoice.generate", scope: `${context.workspace.id}:${context.user.id}`, limit: 10, windowMs: 60_000 });
+    if (limited) return limited;
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {

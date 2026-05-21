@@ -3,6 +3,7 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied, auditEvent } from "@/lib/services/audit";
 import { sweepMigrationIntel } from "@/lib/services/migration-intel";
 import { hasPermission } from "@/lib/services/roles";
+import { toPublicErrorMessage } from "@/lib/security/public-error";
 
 export async function POST() {
   const context = await getCurrentWorkspaceContext();
@@ -55,7 +56,7 @@ export async function POST() {
       ...result
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to complete the migration intelligence sweep.";
+    const message = toPublicErrorMessage(error, "Unable to complete the migration intelligence sweep.");
 
     await auditEvent({
       workspaceId: context.workspace.id,

@@ -6,6 +6,8 @@ import { createInvoiceAsset, upsertInvoiceBranding } from "@/lib/services/invoic
 import { auditEvent } from "@/lib/services/audit";
 import { prisma } from "@/lib/prisma";
 import { serverLog } from "@/lib/services/runtime-config";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { toPublicErrorMessage } from "@/lib/security/public-error";
 
 export async function POST(req: Request) {
   try {
@@ -13,6 +15,8 @@ export async function POST(req: Request) {
     if (!hasPermission(context.user, "can_manage_invoice_settings")) {
       return NextResponse.json({ error: "You do not have permission to manage invoice assets." }, { status: 403 });
     }
+    const limited = enforceRateLimit(req, { action: "invoice.asset.upload", scope: `${context.workspace.id}:${context.user.id}`, limit: 10, windowMs: 10 * 60_000 });
+    if (limited) return limited;
 
     const contentType = req.headers.get("content-type") ?? "";
     if (!contentType.includes("multipart/form-data")) {
@@ -98,6 +102,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ asset, branding: current }, { status: 201 });
   } catch (error) {
     serverLog("invoice_assets.upload_error", { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to upload invoice asset right now." }, { status: 500 });
+    const message = toPublicErrorMessage(error, "Unable to upload invoice asset right now.");
+    const status = /unsupported|required/i.test(message) ? 400 : /too large/i.test(message) ? 413 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

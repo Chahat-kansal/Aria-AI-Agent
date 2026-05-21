@@ -5,6 +5,7 @@ import { auditAccessDenied } from "@/lib/services/audit";
 import { createAssistantThreadForUser, sendAssistantThreadMessage } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { toPublicErrorMessage } from "@/lib/security/public-error";
 
 export async function POST(req: Request) {
   const context = await getCurrentWorkspaceContext();
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Aria could not complete that request right now." },
+      { error: toPublicErrorMessage(error, "Aria could not complete that request right now.") },
       { status: 500 }
     );
   }

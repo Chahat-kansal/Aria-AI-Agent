@@ -3,6 +3,8 @@ import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { auditAccessDenied } from "@/lib/services/audit";
 import { sendAssistantThreadMessage } from "@/lib/services/assistant-threads";
 import { hasPermission } from "@/lib/services/roles";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { toPublicErrorMessage } from "@/lib/security/public-error";
 
 export async function POST(req: Request, { params }: { params: { threadId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -19,6 +21,8 @@ export async function POST(req: Request, { params }: { params: { threadId: strin
     });
     return NextResponse.json({ error: "You do not have permission to use Aria AI." }, { status: 403 });
   }
+  const limited = enforceRateLimit(req, { action: "assistant.thread.message", scope: `${context.workspace.id}:${context.user.id}:${params.threadId}`, limit: 20, windowMs: 60_000 });
+  if (limited) return limited;
 
   const body = await req.json().catch(() => ({}));
   if (typeof body.prompt !== "string" || !body.prompt.trim()) {
@@ -44,7 +48,7 @@ export async function POST(req: Request, { params }: { params: { threadId: strin
       ...result.payload
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Aria could not complete that request right now.";
+    const message = toPublicErrorMessage(error, "Aria could not complete that request right now.");
     const status = /no longer available/i.test(message) ? 404 : 500;
     return NextResponse.json(
       { error: message },
