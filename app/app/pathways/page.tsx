@@ -30,13 +30,13 @@ export default async function PathwaysPage() {
   return (
     <AppShell title="Pathway Analysis">
       <PageHeader
-        title="PR & Citizenship Pathway Analysis"
-        subtitle="Create AI-assisted scenario analysis for potential Australian PR pathways and longer-term citizenship considerations. Review required before client advice."
+        title="Possible pathways for agent review"
+        subtitle="Create preliminary AI-assisted pathway analysis for Australian visa, PR, and citizenship scenarios. Registered migration agent review required before client advice."
       />
       <Card className="mb-4">
         <h3 className="font-semibold">Create pathway analysis</h3>
         <p className="mb-3 mt-1 text-sm text-muted">
-          Capture structured facts and free-text context. Aria will rank potential pathway groups, evidence gaps, blockers, and next review actions as review-required scenario analysis.
+          Capture structured facts and free-text context. Aria will rank possible pathway groups, evidence gaps, blockers, and next review actions as review-required scenario analysis. It does not decide eligibility or guarantee outcomes.
         </p>
         <PathwayAnalysisForm matters={matters} />
       </Card>

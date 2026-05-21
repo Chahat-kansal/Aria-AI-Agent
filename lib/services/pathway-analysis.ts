@@ -37,6 +37,23 @@ type PathwayOptionInput = {
   rank?: number;
 };
 
+export const pathwaySafetyDisclaimer =
+  "Preliminary AI-assisted pathway analysis. Possible pathways for agent review only. Registered migration agent review required.";
+
+const unsafePathwayPhrases: Array<[RegExp, string]> = [
+  [/\byou are eligible\b/gi, "this may require eligibility review"],
+  [/\bclient is eligible\b/gi, "client may require eligibility review"],
+  [/\bwill succeed\b/gi, "requires review"],
+  [/\bguaranteed\b/gi, "not guaranteed"],
+  [/\bbest visa\b/gi, "strongest currently visible option for review"],
+  [/\blegal advice\b/gi, "agent review"],
+  [/\bready to lodge\b/gi, "Ready for agent final review"]
+];
+
+export function safePathwayText(value: string) {
+  return unsafePathwayPhrases.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
+}
+
 function includesAny(value: string | undefined, terms: string[]) {
   const lower = (value ?? "").toLowerCase();
   return terms.some((term) => lower.includes(term));
@@ -191,6 +208,8 @@ Generate AI-assisted Australian visa pathway analysis.
 Rules:
 - Do not provide final legal advice.
 - Do not guarantee eligibility or approval.
+- Do not say "you are eligible", "best visa", "will succeed", "guaranteed", or "ready to lodge".
+- Use "Possible pathways for agent review" and "Preliminary AI-assisted pathway analysis" language.
 - Use review-required language.
 - Use supplied facts only.
 - If facts are missing, list them as evidence gaps.
@@ -221,31 +240,31 @@ Rules:
   if (aiPathways?.options && Array.isArray(aiPathways.options)) {
     options = aiPathways.options.map((option: any, index: number) => ({
       rank: index + 1,
-      pathwayType: String(option.pathwayType || "PR pathway"),
-      title: String(option.title || "Migration pathway for review"),
-      relevance: String(option.relevance || "Requires registered migration agent review."),
+      pathwayType: safePathwayText(String(option.pathwayType || "PR pathway")),
+      title: safePathwayText(String(option.title || "Migration pathway for review")),
+      relevance: safePathwayText(String(option.relevance || "Requires registered migration agent review.")),
       confidence: Number(option.confidence || 0.5),
-      conditions: Array.isArray(option.conditions) ? option.conditions.map(String) : [],
-      missing: Array.isArray(option.missing) ? option.missing.map(String) : [],
-      risks: Array.isArray(option.risks) ? option.risks.map(String) : [],
-      nextActions: Array.isArray(option.nextActions) ? option.nextActions.map(String) : []
+      conditions: Array.isArray(option.conditions) ? option.conditions.map((item: unknown) => safePathwayText(String(item))) : [],
+      missing: Array.isArray(option.missing) ? option.missing.map((item: unknown) => safePathwayText(String(item))) : [],
+      risks: Array.isArray(option.risks) ? option.risks.map((item: unknown) => safePathwayText(String(item))) : [],
+      nextActions: Array.isArray(option.nextActions) ? option.nextActions.map((item: unknown) => safePathwayText(String(item))) : []
     }));
   }
 
   if (typeof aiPathways?.summary === "string") {
-    aiSummary = aiPathways.summary;
+    aiSummary = safePathwayText(aiPathways.summary);
   }
 
   if (Array.isArray(aiPathways?.blockers)) {
-    aiBlockers = aiPathways.blockers.map(String);
+    aiBlockers = aiPathways.blockers.map((item: unknown) => safePathwayText(String(item)));
   }
 
   if (Array.isArray(aiPathways?.evidenceGaps)) {
-    aiEvidenceGaps = aiPathways.evidenceGaps.map(String);
+    aiEvidenceGaps = aiPathways.evidenceGaps.map((item: unknown) => safePathwayText(String(item)));
   }
 
   if (Array.isArray(aiPathways?.assumptions)) {
-    aiAssumptions = aiPathways.assumptions.map(String);
+    aiAssumptions = aiPathways.assumptions.map((item: unknown) => safePathwayText(String(item)));
   }
 
   const blockers = aiBlockers?.length ? aiBlockers : buildBlockers(profile);
@@ -263,7 +282,7 @@ Rules:
 
   const summary =
     aiSummary ||
-    `${options.length} potential pathway group${options.length === 1 ? "" : "s"} identified for review. Strongest current option: ${options[0]?.title ?? "Evidence intake required"}. Review required before any recommendation.`;
+    `${pathwaySafetyDisclaimer} ${options.length} potential pathway group${options.length === 1 ? "" : "s"} identified for review. Strongest current option: ${options[0]?.title ?? "Evidence intake required"}. Review required before any recommendation.`;
 
   return prisma.pathwayAnalysis.create({
     data: {

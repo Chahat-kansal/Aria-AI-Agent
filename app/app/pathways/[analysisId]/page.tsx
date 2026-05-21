@@ -52,7 +52,7 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
 
   return (
     <AppShell title="Pathway Analysis">
-      <PageHeader title={analysis.title} subtitle="AI-assisted scenario analysis. Registered migration agent review is required before client advice or application strategy." />
+      <PageHeader title={analysis.title} subtitle="Preliminary AI-assisted pathway analysis. Possible pathways for agent review only. Registered migration agent review is required before client advice or application strategy." />
       <div className="mb-4">
         <AIReviewNotice />
       </div>
@@ -62,7 +62,7 @@ export default async function PathwayDetailPage({ params }: { params: { analysis
           <p className="text-xs uppercase tracking-[0.18em] text-muted">Review summary</p>
           <h3 className="mt-2 text-lg font-semibold">{analysis.summary}</h3>
           <p className="mt-3 text-sm text-muted">
-            Created by {analysis.createdByUser.name} on {analysis.createdAt.toLocaleString("en-AU")}. This analysis identifies potential pathways and evidence gaps, not a final legal conclusion.
+            Created by {analysis.createdByUser.name} on {analysis.createdAt.toLocaleString("en-AU")}. This analysis identifies possible pathways and evidence gaps, not a final legal conclusion or outcome guarantee.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
             {analysis.client ? <span className="rounded-full border border-border px-3 py-1">Client: {analysis.client.firstName} {analysis.client.lastName}</span> : null}
