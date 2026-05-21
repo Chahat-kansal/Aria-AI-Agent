@@ -8,12 +8,15 @@ This is a real browser workflow recording, not a screenshot slideshow. It shows 
 
 1. Owner signs in through the real sign-in form.
 2. Owner creates a new dummy Subclass 500 matter by filling the matter form.
-3. Agent opens the matter workflow hub, checklist, evidence review, and full staff review draft.
-4. Agent records a consultation appointment.
-5. Owner fills a stage-based invoice draft.
-6. Owner fills a pathway intelligence form and opens an existing result.
-7. Client opens the secure portal, sends a message, records acknowledgement, uploads a dummy PDF, and requests an appointment.
-8. Agent opens Ask Aria and types a safe review-required prompt.
+3. Agent uploads a dummy document through the real document upload form.
+4. The demo matter receives dummy verified evidence so the review dashboard, AI Working Copy, and draft fields are not empty.
+5. Agent opens the matter workflow hub, checklist, evidence review, runs the real AI Draft Autofill action, reviews the autofilled fields, and opens the full staff review draft.
+6. Agent records a consultation appointment.
+7. Owner fills a stage-based invoice draft.
+8. Owner fills a pathway intelligence form and opens an existing result.
+9. Owner searches Visa Knowledge for Subclass 500 evidence.
+10. Client opens the secure portal, sends a message, records acknowledgement, uploads a dummy PDF, and requests an appointment.
+11. Agent opens Ask Aria and types a safe review-required prompt.
 
 ## Safety narration
 
@@ -21,7 +24,7 @@ Aria assists preparation. A registered migration agent must review before use. A
 
 ## Recording details
 
-- Duration: 00:03:18.36
-- Size: 7.3 MB
+- Duration: 00:06:41.36
+- Size: 15.8 MB
 - No real client data used.
 - No terminal, environment variables, database URLs, API keys, raw portal tokens, token hashes, or raw document URLs are shown.

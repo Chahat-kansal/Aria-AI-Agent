@@ -20,6 +20,8 @@ import {
 } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { ensureClientPortalToken } from "../lib/services/client-workflows";
+import { mapDocumentsToDraft, uploadDocumentToMatter } from "../lib/services/application-draft";
+import { updateWorkspaceLaunchControls } from "../lib/services/launch-controls";
 
 const execFile = promisify(execFileCb);
 const require = createRequire(import.meta.url);
@@ -173,6 +175,28 @@ async function seedDemo(): Promise<Seed> {
       plan: WorkspacePlan.PRO,
       legalName: "BrightPath Migration Demo Pty Ltd",
       contactEmail: "owner@brightpath-demo.com"
+    }
+  });
+
+  await updateWorkspaceLaunchControls(workspace.id, {
+    betaModeEnabled: true,
+    allowRealClientUploads: true,
+    restrictBetaToSelectedUsers: true,
+    restrictedUserEmails: ["owner@brightpath-demo.com", "agent.sarah@brightpath-demo.com", "agent.james@brightpath-demo.com"],
+    allowedSubclasses: ["500", "482", "820/801", "600", "190"],
+    clientPortalEnabled: true,
+    aiDraftAutofillEnabled: true,
+    pdfFormFillingEnabled: true,
+    exportEnabled: true,
+    publicSignupEnabled: false,
+    maxFileSizeMb: 15,
+    allowedFileTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+    legalReviewStatuses: {
+      privacy: "approved_for_beta",
+      terms: "approved_for_beta",
+      security: "approved_for_beta",
+      aiDisclaimer: "approved_for_beta",
+      subprocessors: "approved_for_beta"
     }
   });
 
@@ -334,8 +358,8 @@ async function seedDemo(): Promise<Seed> {
     itemKey: "passport",
     category: "Identity",
     label: "Passport",
-    description: "DEMO checklist item - not official legal advice.",
-    status: "Approved for AI Working Copy",
+    description: "Current passport identity page for staff review.",
+    status: "Accepted",
     required: true,
     dueDate: addDays(2),
     requestedAt: new Date(),
@@ -355,7 +379,11 @@ async function seedDemo(): Promise<Seed> {
       itemKey: item[0],
       category: item[1],
       label: item[2],
-      description: "DEMO checklist item - not official legal advice.",
+      description: item[0] === "bank_statement"
+        ? "Recent financial capacity evidence requested by the migration team."
+        : item[0] === "oshc"
+          ? "Health insurance evidence for the intended study period."
+          : "Course enrolment evidence from the education provider.",
       status: "Missing",
       required: true,
       dueDate: addDays(item[3]),
@@ -425,25 +453,213 @@ startxref
   await writeFile(DUMMY_UPLOAD_PATH, content, "utf8");
 }
 
+async function upsertChecklistItem(input: {
+  matterId: string;
+  itemKey: string;
+  category: string;
+  label: string;
+  description: string;
+  status: string;
+  required: boolean;
+  dueInDays: number;
+  documentId?: string | null;
+  reviewed?: boolean;
+}) {
+  const existing = await prisma.checklistItem.findFirst({ where: { matterId: input.matterId, itemKey: input.itemKey } });
+  const data = {
+    matterId: input.matterId,
+    itemKey: input.itemKey,
+    category: input.category,
+    label: input.label,
+    description: input.description,
+    status: input.status,
+    required: input.required,
+    dueDate: addDays(input.dueInDays),
+    requestedAt: new Date(),
+    reviewedAt: input.reviewed ? new Date() : null,
+    documentId: input.documentId ?? null
+  };
+  if (existing) return prisma.checklistItem.update({ where: { id: existing.id }, data });
+  return prisma.checklistItem.create({ data });
+}
+
+async function populateMatterWithAutofillEvidence(matterId: string) {
+  const matter = await prisma.matter.findUniqueOrThrow({
+    where: { id: matterId },
+    include: { client: true, assignedToUser: true }
+  });
+  const uploadedByUserId = matter.assignedToUserId;
+  if (!uploadedByUserId) throw new Error("Demo matter needs an assigned agent before evidence can be attached.");
+
+  const makeDocument = async (input: {
+    fileName: string;
+    category: string;
+    text: string;
+    keyValues: Array<{ key: string; value: string; confidence?: number }>;
+    reviewStatus: ReviewStatus;
+  }) => {
+    const existing = await prisma.document.findFirst({
+      where: { matterId, fileName: input.fileName },
+      select: { id: true }
+    });
+    if (existing) return prisma.document.findUniqueOrThrow({ where: { id: existing.id } });
+
+    const document = await uploadDocumentToMatter({
+      matterId,
+      fileName: input.fileName,
+      mimeType: "application/pdf",
+      storageKey: `demo/live-agent/${matterId}/${input.fileName}`,
+      fileSize: Buffer.byteLength(input.text),
+      extractedText: input.text,
+      extractionMetadata: {
+        provider: "demo-fixture-extractor",
+        model: "deterministic-demo",
+        confidence: 0.94,
+        configured: true,
+        keyValues: input.keyValues,
+        extractedTextPreview: input.text
+      },
+      uploadedByUserId,
+      overrideCategory: input.category
+    });
+
+    await prisma.document.update({
+      where: { id: document.id },
+      data: {
+        reviewStatus: input.reviewStatus,
+        extractionStatus: ExtractionStatus.EXTRACTED
+      }
+    });
+
+    await prisma.documentStorageObject.upsert({
+      where: { documentId: document.id },
+      create: {
+        documentId: document.id,
+        provider: "DEMO_SECURE_VAULT",
+        storageKey: `demo/live-agent/${matterId}/${input.fileName}`,
+        data: Buffer.from(input.text)
+      },
+      update: {
+        provider: "DEMO_SECURE_VAULT",
+        storageKey: `demo/live-agent/${matterId}/${input.fileName}`,
+        data: Buffer.from(input.text)
+      }
+    });
+
+    return document;
+  };
+
+  const passport = await makeDocument({
+    fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - Noah passport.pdf",
+    category: "Identity",
+    reviewStatus: ReviewStatus.VERIFIED,
+    text: [
+      "DEMO DOCUMENT - NOT REAL CLIENT DATA",
+      "Full Name: Noah Rivera",
+      "Date of Birth: 18 Apr 1999",
+      "Nationality: Demo nationality",
+      "Passport Number: DEMO-P500-7788",
+      "Passport Country: Demo country"
+    ].join("\n"),
+    keyValues: [
+      { key: "Full Name", value: "Noah Rivera", confidence: 0.97 },
+      { key: "Date of Birth", value: "18 Apr 1999", confidence: 0.96 },
+      { key: "Nationality", value: "Demo nationality", confidence: 0.94 },
+      { key: "Passport Number", value: "DEMO-P500-7788", confidence: 0.98 }
+    ]
+  });
+
+  const coe = await makeDocument({
+    fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - Confirmation of Enrolment.pdf",
+    category: "Education",
+    reviewStatus: ReviewStatus.VERIFIED,
+    text: [
+      "DEMO DOCUMENT - NOT REAL CLIENT DATA",
+      "Provider: BrightPath Demo University",
+      "Course Name: Bachelor of Demo Business",
+      "COE Number: DEMO-COE-500-2026",
+      "Course Start: 20 Jul 2026",
+      "CRICOS: DEMO0001A"
+    ].join("\n"),
+    keyValues: [
+      { key: "Provider", value: "BrightPath Demo University", confidence: 0.96 },
+      { key: "Course Name", value: "Bachelor of Demo Business", confidence: 0.95 },
+      { key: "COE Number", value: "DEMO-COE-500-2026", confidence: 0.98 },
+      { key: "Course Start", value: "20 Jul 2026", confidence: 0.92 }
+    ]
+  });
+
+  const bank = await makeDocument({
+    fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - Bank statement.pdf",
+    category: "Financial",
+    reviewStatus: ReviewStatus.PENDING,
+    text: [
+      "DEMO DOCUMENT - NOT REAL CLIENT DATA",
+      "Available Funds: 62500",
+      "Statement Date: 15 May 2026",
+      "Account Holder: Noah Rivera"
+    ].join("\n"),
+    keyValues: [
+      { key: "Available Funds", value: "62500", confidence: 0.9 }
+    ]
+  });
+
+  const oshc = await makeDocument({
+    fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - OSHC certificate.pdf",
+    category: "Health / Insurance",
+    reviewStatus: ReviewStatus.VERIFIED,
+    text: [
+      "DEMO DOCUMENT - NOT REAL CLIENT DATA",
+      "OSHC Provider: Demo Health Cover",
+      "Policy Number: DEMO-OSHC-500",
+      "Cover Start: 15 Jul 2026"
+    ].join("\n"),
+    keyValues: [
+      { key: "OSHC Provider", value: "Demo Health Cover", confidence: 0.94 }
+    ]
+  });
+
+  const statement = await makeDocument({
+    fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - Genuine student statement.pdf",
+    category: "Statements / Declarations",
+    reviewStatus: ReviewStatus.PENDING,
+    text: [
+      "DEMO DOCUMENT - NOT REAL CLIENT DATA",
+      "Genuine Student Statement: present for registered migration agent review.",
+      "Health and character declarations require client confirmation."
+    ].join("\n"),
+    keyValues: [
+      { key: "Genuine student", value: "true", confidence: 0.7 }
+    ]
+  });
+
+  await upsertChecklistItem({ matterId, itemKey: "passport", category: "Identity", label: "Passport", description: "Current passport identity page.", status: "Accepted", required: true, dueInDays: 2, documentId: passport.id, reviewed: true });
+  await upsertChecklistItem({ matterId, itemKey: "coe", category: "Education", label: "Confirmation of Enrolment", description: "Course enrolment evidence from the education provider.", status: "Accepted", required: true, dueInDays: 3, documentId: coe.id, reviewed: true });
+  await upsertChecklistItem({ matterId, itemKey: "bank_statement", category: "Financial", label: "Bank statement", description: "Recent financial capacity evidence requested by the migration team.", status: "Under review", required: true, dueInDays: 5, documentId: bank.id, reviewed: false });
+  await upsertChecklistItem({ matterId, itemKey: "oshc", category: "Health / Insurance", label: "OSHC certificate", description: "Health insurance evidence for the intended study period.", status: "Accepted", required: true, dueInDays: 7, documentId: oshc.id, reviewed: true });
+  await upsertChecklistItem({ matterId, itemKey: "genuine_student_statement", category: "Statements", label: "Genuine student statement", description: "Statement for registered migration agent review.", status: "Under review", required: true, dueInDays: 8, documentId: statement.id, reviewed: false });
+
+  await mapDocumentsToDraft(matterId, { skipAiSuggestions: true });
+}
+
 async function addDemoOverlay(page: Page, title: string) {
   await page.evaluate((label) => {
     document.querySelector("[data-live-demo-banner]")?.remove();
     document.querySelector("[data-live-demo-cursor]")?.remove();
     const banner = document.createElement("div");
     banner.setAttribute("data-live-demo-banner", "true");
-    banner.textContent = `LIVE TRAINING DEMO - DUMMY DATA ONLY - ${label}`;
+    banner.textContent = `DUMMY DATA TRAINING DEMO - ${label}`;
     Object.assign(banner.style, {
       position: "fixed",
       zIndex: "2147483647",
-      top: "14px",
-      left: "50%",
-      transform: "translateX(-50%)",
+      right: "18px",
+      bottom: "18px",
       padding: "10px 16px",
       borderRadius: "999px",
-      background: "rgba(15, 23, 42, 0.94)",
-      color: "white",
-      font: "700 14px system-ui",
-      boxShadow: "0 18px 48px rgba(0,0,0,0.30)",
+      background: "rgba(255,255,255,0.96)",
+      color: "#4c1d95",
+      font: "700 12px system-ui",
+      boxShadow: "0 18px 48px rgba(76,29,149,0.18)",
       pointerEvents: "none"
     });
     const cursor = document.createElement("div");
@@ -485,22 +701,22 @@ async function moveCursor(page: Page, locator: Locator) {
 async function liveClick(page: Page, locator: Locator) {
   await moveCursor(page, locator);
   await locator.click({ timeout: 15_000 });
-  await wait(650);
+  await wait(950);
 }
 
 async function liveFill(page: Page, locator: Locator, value: string) {
   await moveCursor(page, locator);
   await locator.click({ timeout: 15_000 });
   await locator.fill("");
-  await locator.pressSequentially(value, { delay: 35 });
-  await wait(250);
+  await locator.pressSequentially(value, { delay: 55 });
+  await wait(450);
 }
 
 async function goto(page: Page, url: string, title: string) {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => null);
   await addDemoOverlay(page, title);
-  await wait(1_000);
+  await wait(1_500);
 }
 
 async function signInOwnerLive(page: Page, seed: Seed) {
@@ -542,9 +758,40 @@ async function createMatterLive(page: Page) {
   await liveClick(page, page.getByRole("button", { name: /create matter/i }));
   await page.waitForURL(/\/app\/matters\/[^/]+$/, { timeout: 20_000 });
   await addDemoOverlay(page, "New matter opened");
-  await wait(1_600);
+  await wait(2_200);
   const url = page.url();
   return url.split("/app/matters/")[1]?.split(/[?#/]/)[0] || "";
+}
+
+async function uploadEvidenceLive(page: Page, matterId: string) {
+  await goto(page, `${BASE_URL}/app/documents`, "Agent uploads a dummy document");
+  const matterSelect = page.locator('select[name="matterId"]');
+  const optionCount = await matterSelect.locator("option").count().catch(() => 0);
+  if (optionCount > 1) {
+    await liveClick(page, matterSelect);
+    await matterSelect.selectOption(matterId);
+    await wait(650);
+  }
+  const fileInput = page.locator('input[type="file"]').first();
+  await moveCursor(page, fileInput);
+  await fileInput.setInputFiles(DUMMY_UPLOAD_PATH);
+  await wait(1_000);
+  await liveClick(page, page.getByRole("button", { name: /upload document/i }).first());
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => null);
+  await addDemoOverlay(page, "Upload recorded and extraction queued");
+  await wait(2_000);
+}
+
+async function runAutofillLive(page: Page, matterId: string) {
+  await goto(page, `${BASE_URL}/app/matters/${matterId}/review`, "Evidence review and AI Working Copy");
+  await scrollSection(page, 520);
+  const runButton = page.getByRole("button", { name: /run ai draft autofill/i });
+  if (await runButton.count()) {
+    await liveClick(page, runButton);
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => null);
+    await addDemoOverlay(page, "Aria autofill reviewed source-linked evidence");
+    await wait(2_300);
+  }
 }
 
 async function demonstrateMatterWork(page: Page, matterId: string) {
@@ -552,9 +799,12 @@ async function demonstrateMatterWork(page: Page, matterId: string) {
   await scrollSection(page, 520);
   await goto(page, `${BASE_URL}/app/matters/${matterId}/checklist`, "Required documents checklist");
   await scrollSection(page, 520);
-  await goto(page, `${BASE_URL}/app/matters/${matterId}/review`, "Evidence review and AI Working Copy");
-  await scrollSection(page, 660);
+  await runAutofillLive(page, matterId);
+  await goto(page, `${BASE_URL}/app/matters/${matterId}/draft`, "Aria autofilled draft fields");
+  await scrollSection(page, 650);
+  await scrollSection(page, 650);
   await goto(page, `${BASE_URL}/app/matters/${matterId}/full-draft`, "Full staff review application draft");
+  await scrollSection(page, 700);
   await scrollSection(page, 700);
   await scrollSection(page, 700);
 }
@@ -624,7 +874,7 @@ async function portalLive(page: Page, seed: Seed) {
   const messageBox = page.locator('textarea[name="message"]');
   if (await messageBox.count()) {
     await liveFill(page, messageBox, "DEMO client message: I uploaded the bank statement and can confirm this is not real client data.");
-    await liveClick(page, page.getByRole("button", { name: /send secure message/i }));
+    await liveClick(page, page.getByRole("button", { name: /send message/i }));
     await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => null);
     await addDemoOverlay(page, "Client message recorded");
     await wait(1_000);
@@ -676,6 +926,19 @@ async function askAriaLive(page: Page) {
   }
 }
 
+async function visaKnowledgeLive(page: Page) {
+  await goto(page, `${BASE_URL}/app/knowledge`, "Visa Knowledge research");
+  const search = page.locator('form[action="/app/knowledge"] input[name="q"]').first();
+  if (await search.count()) {
+    await liveFill(page, search, "Subclass 500 student evidence");
+    await search.press("Enter", { timeout: 5_000 }).catch(() => null);
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => null);
+    await addDemoOverlay(page, "Visa Knowledge search results");
+    await wait(2_200);
+  }
+  await scrollSection(page, 650);
+}
+
 async function convertVideo() {
   const files = await readdir(VIDEO_TEMP_DIR);
   const webm = files.find((file) => file.endsWith(".webm"));
@@ -711,12 +974,15 @@ This is a real browser workflow recording, not a screenshot slideshow. It shows 
 
 1. Owner signs in through the real sign-in form.
 2. Owner creates a new dummy Subclass 500 matter by filling the matter form.
-3. Agent opens the matter workflow hub, checklist, evidence review, and full staff review draft.
-4. Agent records a consultation appointment.
-5. Owner fills a stage-based invoice draft.
-6. Owner fills a pathway intelligence form and opens an existing result.
-7. Client opens the secure portal, sends a message, records acknowledgement, uploads a dummy PDF, and requests an appointment.
-8. Agent opens Ask Aria and types a safe review-required prompt.
+3. Agent uploads a dummy document through the real document upload form.
+4. The demo matter receives dummy verified evidence so the review dashboard, AI Working Copy, and draft fields are not empty.
+5. Agent opens the matter workflow hub, checklist, evidence review, runs the real AI Draft Autofill action, reviews the autofilled fields, and opens the full staff review draft.
+6. Agent records a consultation appointment.
+7. Owner fills a stage-based invoice draft.
+8. Owner fills a pathway intelligence form and opens an existing result.
+9. Owner searches Visa Knowledge for Subclass 500 evidence.
+10. Client opens the secure portal, sends a message, records acknowledgement, uploads a dummy PDF, and requests an appointment.
+11. Agent opens Ask Aria and types a safe review-required prompt.
 
 ## Safety narration
 
@@ -771,16 +1037,21 @@ async function main() {
   try {
     await signInOwnerLive(page, seed);
     const newMatterId = await createMatterLive(page);
-    await demonstrateMatterWork(page, newMatterId || seed.studentMatterId);
+    const activeMatterId = newMatterId || seed.studentMatterId;
+    await uploadEvidenceLive(page, activeMatterId);
+    await populateMatterWithAutofillEvidence(activeMatterId);
+    await demonstrateMatterWork(page, activeMatterId);
     await fillAppointmentLive(page);
     await fillInvoiceLive(page);
-    await fillPathwayLive(page, seed, newMatterId || seed.studentMatterId);
+    await fillPathwayLive(page, seed, activeMatterId);
+    await visaKnowledgeLive(page);
     await portalLive(page, seed);
     await signInOwnerLive(page, seed);
     await askAriaLive(page);
-    await goto(page, `${BASE_URL}/app/matters/${newMatterId || seed.studentMatterId}/full-draft`, "Final staff review draft result");
+    await goto(page, `${BASE_URL}/app/matters/${activeMatterId}/full-draft`, "Final staff review draft result");
     await scrollSection(page, 760);
-    await wait(1_500);
+    await scrollSection(page, 760);
+    await wait(2_500);
   } finally {
     await context.close();
     await browser.close();

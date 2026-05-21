@@ -1,7 +1,10 @@
 node_modules/
 .next/
 .env
+*.tsbuildinfo
+artifacts/*/
 artifacts/*.zip
 artifacts/*.tar.gz
 artifacts/*.bundle
 artifacts/*.patch
+docs/demo/*preview.png
