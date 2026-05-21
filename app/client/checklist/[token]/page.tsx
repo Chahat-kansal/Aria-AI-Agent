@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getClientPortalByToken } from "@/lib/services/client-workflows";
-import { documentStatus, dueLabel, PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
+import { cleanClientDescription, documentStatus, dueLabel, PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
 
 function unavailable() {
   return (
@@ -41,17 +41,17 @@ export default async function ClientChecklistPage({ params }: { params: { token:
               description="This is the client-facing list for this matter. Internal notes and audit records are not shown."
             />
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-3">
-                <p className="text-2xl font-semibold text-white">{missing}</p>
-                <p className="mt-1 text-xs text-slate-400">Still needed</p>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{missing}</p>
+                <p className="mt-1 text-xs text-slate-600">Still needed</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-3">
-                <p className="text-2xl font-semibold text-white">{uploaded}</p>
-                <p className="mt-1 text-xs text-slate-400">Uploaded</p>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{uploaded}</p>
+                <p className="mt-1 text-xs text-slate-600">Uploaded</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-3">
-                <p className="text-2xl font-semibold text-white">{accepted}</p>
-                <p className="mt-1 text-xs text-slate-400">Accepted</p>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{accepted}</p>
+                <p className="mt-1 text-xs text-slate-600">Accepted</p>
               </div>
             </div>
           </div>
@@ -65,12 +65,12 @@ export default async function ClientChecklistPage({ params }: { params: { token:
                 {items.map((item) => {
                   const status = documentStatus(item);
                   return (
-                    <div key={item.id} className="rounded-3xl border border-white/10 bg-white/[0.05] p-4">
+                    <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-white">{item.label}</p>
-                          <p className="mt-1 text-xs text-slate-400">{item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
-                          {item.description ? <p className="mt-2 text-sm leading-6 text-slate-300">{item.description}</p> : null}
+                          <p className="font-semibold text-slate-950">{item.label}</p>
+                          <p className="mt-1 text-xs text-slate-600">{item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
+                          {cleanClientDescription(item.description) ? <p className="mt-2 text-sm leading-6 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
                           {item.document ? <p className="mt-2 text-xs text-slate-500">Uploaded: {item.document.fileName}</p> : null}
                         </div>
                         <PortalStatusBadge tone={status.tone}>{status.label}</PortalStatusBadge>
@@ -84,10 +84,11 @@ export default async function ClientChecklistPage({ params }: { params: { token:
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">Upload missing documents</Link>
-          <Link href={`/client/portal/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-2 text-sm font-semibold text-white">Back to portal home</Link>
+          <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Upload missing documents</Link>
+          <Link href={`/client/portal/${params.token}` as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">Back to portal home</Link>
         </div>
       </div>
     </PortalShell>
   );
 }
+

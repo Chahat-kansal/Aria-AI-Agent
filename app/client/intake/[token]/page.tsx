@@ -56,7 +56,7 @@ export default async function ClientIntakePage({ params, searchParams }: { param
       <Card className="mx-auto max-w-3xl p-8">
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria Client Portal</p>
         <h1 className="mt-2 text-2xl font-semibold">{request.title}</h1>
-        <p className="mt-3 text-sm text-muted">Provide accurate information for your migration team. This is an AI-assisted intake workflow and will be reviewed by a registered migration agent.</p>
+        <p className="mt-3 text-sm text-muted">Provide accurate information for your migration team. Your migration team will review this before use.</p>
         {request.message ? (
           <div className="mt-4 rounded-2xl border border-violet-400/20 bg-violet-500/8 p-4 text-sm leading-6 text-slate-700 dark:text-slate-200">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-500 dark:text-violet-300">Requested confirmations</p>
@@ -131,7 +131,7 @@ export default async function ClientIntakePage({ params, searchParams }: { param
             <input type="checkbox" name="consent" required className="mt-1" />
             <span>I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting.</span>
           </label>
-          <button className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white md:col-span-2">Submit intake</button>
+          <button className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-[#fff] md:col-span-2">Submit intake</button>
         </form>
       </Card>
     </div>

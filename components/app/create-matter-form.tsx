@@ -12,18 +12,50 @@ type VisaOption = {
 };
 
 const fallbackOptions = [
-  { subclassCode: "500", title: "Student visa Subclass 500", stream: "Higher Education" },
-  { subclassCode: "189", title: "Skilled Independent Subclass 189", stream: "Points-tested" },
-  { subclassCode: "190", title: "Skilled Nominated Subclass 190", stream: "State nominated" },
-  { subclassCode: "482", title: "Skills in Demand / TSS Subclass 482", stream: "Employer sponsored" },
-  { subclassCode: "820", title: "Partner visa Subclass 820", stream: "Onshore" }
+  { subclassCode: "500", title: "Subclass 500 - Student visa", stream: "Higher Education" },
+  { subclassCode: "482", title: "Subclass 482 - Skills in Demand / employer sponsored", stream: "Employer sponsored" },
+  { subclassCode: "820/801", title: "Subclass 820/801 - Partner onshore", stream: "Partner onshore" },
+  { subclassCode: "600", title: "Subclass 600 - Visitor", stream: "Tourist" },
+  { subclassCode: "190", title: "Subclass 190 - Skilled nominated", stream: "State nominated" }
 ];
+
+const cleanSubclassLabels: Record<string, string> = {
+  "500": "Subclass 500 - Student visa",
+  "482": "Subclass 482 - Skills in Demand / employer sponsored",
+  "820": "Subclass 820/801 - Partner onshore",
+  "820/801": "Subclass 820/801 - Partner onshore",
+  "600": "Subclass 600 - Visitor",
+  "190": "Subclass 190 - Skilled nominated",
+  "189": "Subclass 189 - Skilled independent",
+  "491": "Subclass 491 - Skilled regional",
+  "485": "Subclass 485 - Temporary Graduate",
+  "186": "Subclass 186 - Employer Nomination Scheme",
+  "309/100": "Subclass 309/100 - Partner offshore"
+};
+
+function cleanOptionLabel(option: VisaOption) {
+  const code = option.subclassCode || "";
+  if (cleanSubclassLabels[code]) return cleanSubclassLabels[code];
+  const title = option.title.replace(/^\[PDF\]\s*/i, "").replace(/\s+/g, " ").trim();
+  return code ? `Subclass ${code} - ${title.replace(/^Subclass\s+\S+\s*[-–—:]?\s*/i, "")}` : title;
+}
+
+function cleanOptions(visaOptions: VisaOption[]) {
+  const merged = [...fallbackOptions, ...visaOptions.filter((option) => option.subclassCode)];
+  const seen = new Set<string>();
+  return merged.filter((option) => {
+    const code = option.subclassCode || "";
+    if (!code || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
 
 export function CreateMatterForm({ visaOptions = [] }: { visaOptions?: VisaOption[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const options = visaOptions.length ? visaOptions.filter((option) => option.subclassCode) : fallbackOptions;
+  const options = cleanOptions(visaOptions);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,7 +145,7 @@ export function CreateMatterForm({ visaOptions = [] }: { visaOptions?: VisaOptio
         >
           {options.map((option) => (
             <option key={`${option.subclassCode}-${option.title}`} value={option.subclassCode ?? ""}>
-              {option.title}
+              {cleanOptionLabel(option)}
             </option>
           ))}
         </select>

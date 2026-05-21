@@ -241,7 +241,7 @@ async function main() {
   });
   checks.push({
     name: "Documents page uses styled upload component instead of visible default file input",
-    pass: /PortalUploadForm/.test(documentsPage) && /Choose a clear scan or photo/.test(readFileSync("components/client-portal/portal-upload-form.tsx", "utf8"))
+    pass: /PortalUploadForm/.test(documentsPage) && /Browse files/.test(readFileSync("components/client-portal/portal-upload-form.tsx", "utf8"))
   });
   checks.push({
     name: "Appointment booking supports no-live-availability fallback",

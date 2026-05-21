@@ -6,7 +6,7 @@ import { prepareMatterDocumentUpload, persistDocumentStorageObject } from "@/lib
 import { extractReadableText } from "@/lib/services/document-extraction";
 import { uploadDocumentToMatter } from "@/lib/services/application-draft";
 import { checkRateLimit } from "@/lib/security/rate-limit";
-import { documentStatus, dueLabel, PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
+import { cleanClientDescription, documentStatus, dueLabel, PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
 import { PortalUploadForm } from "@/components/client-portal/portal-upload-form";
 
 function clientDocumentStatus(item: { documentId: string | null; reviewedAt: Date | null; status: string; required: boolean; document?: { reviewStatus: string; extractionStatus: string } | null }) {
@@ -108,27 +108,27 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
               description="Use this secure page for scans and photos. Your migration team will check quality before using anything."
             />
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-3">
-                <p className="text-2xl font-semibold text-white">{missing}</p>
-                <p className="mt-1 text-xs text-slate-400">Still needed</p>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{missing}</p>
+                <p className="mt-1 text-xs text-slate-600">Still needed</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-3">
-                <p className="text-2xl font-semibold text-white">{uploaded}</p>
-                <p className="mt-1 text-xs text-slate-400">Uploaded</p>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{uploaded}</p>
+                <p className="mt-1 text-xs text-slate-600">Uploaded</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-3">
-                <p className="text-2xl font-semibold text-white">{accepted}</p>
-                <p className="mt-1 text-xs text-slate-400">Accepted</p>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{accepted}</p>
+                <p className="mt-1 text-xs text-slate-600">Accepted</p>
               </div>
             </div>
           </div>
           {searchParams?.uploaded === "1" ? (
-            <p className="mt-5 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-3 text-sm text-emerald-100">
+            <p className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
               Document uploaded. Your migration team can now review it.
             </p>
           ) : null}
           {searchParams?.error ? (
-            <p className="mt-5 rounded-2xl border border-rose-300/30 bg-rose-300/10 p-3 text-sm text-rose-100">
+            <p className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
               Upload could not be completed. Please choose a supported file and try again.
             </p>
           ) : null}
@@ -142,26 +142,26 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
               <PortalCard key={item.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-white">{item.label}</p>
-                    <p className="mt-1 text-xs text-slate-400">{item.category} · {item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
-                    {item.description ? <p className="mt-3 text-sm leading-6 text-slate-300">{item.description}</p> : null}
+                    <p className="font-semibold text-slate-950">{item.label}</p>
+                    <p className="mt-1 text-xs text-slate-600">{item.category} · {item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
+                    {cleanClientDescription(item.description) ? <p className="mt-3 text-sm leading-6 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
                   </div>
                   <PortalStatusBadge tone={status.tone}>{status.label}</PortalStatusBadge>
                 </div>
 
                 {item.document ? (
-                  <div className="mt-4 rounded-3xl border border-white/10 bg-slate-950/35 p-4 text-sm text-slate-300">
-                    <p className="font-semibold text-white">Uploaded file</p>
+                  <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    <p className="font-semibold text-slate-950">Uploaded file</p>
                     <p className="mt-1 break-words">{item.document.fileName}</p>
                     <p className="mt-2 text-xs text-slate-500">Review: {status.label}. Quality: {item.document.extractionStatus === "NEEDS_REVIEW" ? "Re-upload recommended" : "Review by migration team"}.</p>
-                    {needsReupload ? <p className="mt-2 text-sm text-amber-100">Please upload a clearer scan or photo. Make sure all corners are visible and there is no glare.</p> : null}
+                    {needsReupload ? <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Please upload a clearer scan or photo. Make sure all corners are visible and there is no glare.</p> : null}
                   </div>
                 ) : null}
 
                 {!item.documentId || needsReupload ? (
                   <PortalUploadForm checklistItemId={item.id} uploadAction={handleUpload} buttonLabel={item.documentId ? "Re-upload document" : "Upload document"} />
                 ) : (
-                  <p className="mt-4 rounded-3xl border border-white/10 bg-white/[0.05] p-3 text-sm text-slate-300">
+                  <p className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
                     No action needed right now. Your migration team will contact you if they need a clearer copy.
                   </p>
                 )}
@@ -171,10 +171,11 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {portal ? <Link href={`/client/portal/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-2 text-sm font-semibold text-white">Back to portal home</Link> : null}
-          <Link href={`/client/book/${params.token}` as any} className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">Request appointment</Link>
+          {portal ? <Link href={`/client/portal/${params.token}` as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">Back to portal home</Link> : null}
+          <Link href={`/client/book/${params.token}` as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Request appointment</Link>
         </div>
       </div>
     </PortalShell>
   );
 }
+

@@ -12,6 +12,7 @@ import {
   ExtractionStatus,
   MatterStage,
   MatterStatus,
+  ReviewRequestStatus,
   ReviewStatus,
   UserRole,
   UserStatus,
@@ -20,6 +21,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { addMatterTimelineEvent, ensureClientPortalToken } from "../lib/services/client-workflows";
+import { createOrGetMatterDraft } from "../lib/services/application-draft";
 
 const execFile = promisify(execFileCb);
 const require = createRequire(import.meta.url);
@@ -28,8 +30,8 @@ const BASE_URL = process.env.DEMO_BASE_URL || "http://localhost:3007";
 const DEMO_DIR = path.join(ROOT, "docs", "demo");
 const VIDEO_TEMP_DIR = path.join(DEMO_DIR, ".portal-fixed-video-temp");
 const SCREENSHOT_DIR = path.join(DEMO_DIR, "portal-fixed-screenshots");
-const VIDEO_PATH = path.join(DEMO_DIR, "aria-client-portal-demo-fixed.mp4");
-const SCRIPT_PATH = path.join(DEMO_DIR, "aria-client-portal-demo-fixed-script.md");
+const VIDEO_PATH = path.join(DEMO_DIR, "aria-client-portal-fixed-demo.mp4");
+const SCRIPT_PATH = path.join(DEMO_DIR, "aria-client-portal-fixed-demo-script.md");
 const DUMMY_DOC_DIR = path.join(DEMO_DIR, "dummy-documents");
 const DUMMY_DOC_PATH = path.join(DUMMY_DOC_DIR, "DEMO-DOCUMENT-NOT-REAL-CLIENT-DATA-portal-upload.pdf");
 const PASSWORD = "BrightPath-Demo-Only-2026!";
@@ -234,18 +236,34 @@ async function seedPortalDemo(): Promise<Seed> {
   });
 
   await prisma.checklistItem.deleteMany({ where: { matterId: matter.id } });
-  const passport = await createDemoDocument({ workspaceId: workspace.id, clientId: client.id, matterId: matter.id, uploadedByUserId: sarah.id, fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - passport.pdf", category: "Identity", reviewStatus: ReviewStatus.VERIFIED, extractionStatus: ExtractionStatus.EXTRACTED });
-  const blurry = await createDemoDocument({ workspaceId: workspace.id, clientId: client.id, matterId: matter.id, uploadedByUserId: sarah.id, fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - blurry bank statement.pdf", category: "Financial", reviewStatus: ReviewStatus.FLAGGED, extractionStatus: ExtractionStatus.NEEDS_REVIEW });
+  const passport = await createDemoDocument({ workspaceId: workspace.id, clientId: client.id, matterId: matter.id, uploadedByUserId: sarah.id, fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - passport.pdf", category: "Identity", reviewStatus: ReviewStatus.PENDING, extractionStatus: ExtractionStatus.EXTRACTED });
+  const coe = await createDemoDocument({ workspaceId: workspace.id, clientId: client.id, matterId: matter.id, uploadedByUserId: sarah.id, fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - COE.pdf", category: "Education", reviewStatus: ReviewStatus.VERIFIED, extractionStatus: ExtractionStatus.EXTRACTED });
+  const oshc = await createDemoDocument({ workspaceId: workspace.id, clientId: client.id, matterId: matter.id, uploadedByUserId: sarah.id, fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - unclear OSHC photo.pdf", category: "Health / Insurance", reviewStatus: ReviewStatus.FLAGGED, extractionStatus: ExtractionStatus.NEEDS_REVIEW });
+  const english = await createDemoDocument({ workspaceId: workspace.id, clientId: client.id, matterId: matter.id, uploadedByUserId: sarah.id, fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - English test.pdf", category: "Education", reviewStatus: ReviewStatus.PENDING, extractionStatus: ExtractionStatus.EXTRACTED });
   await prisma.checklistItem.createMany({
     data: [
-      { matterId: matter.id, documentId: passport.id, itemKey: "passport", category: "Identity", label: "Passport bio page", description: "Current passport biodata page.", status: "APPROVED", required: true, dueDate: addDays(2), requestedAt: new Date(), reviewedAt: new Date() },
-      { matterId: matter.id, documentId: blurry.id, itemKey: "funds", category: "Financial", label: "Financial capacity evidence", description: "Bank statement or other funds evidence.", status: "REUPLOAD_REQUESTED", required: true, dueDate: addDays(3), requestedAt: new Date() },
-      { matterId: matter.id, itemKey: "coe", category: "Education", label: "Confirmation of Enrolment", description: "Course enrolment evidence from the provider.", status: "REQUESTED", required: true, dueDate: addDays(4), requestedAt: new Date() },
-      { matterId: matter.id, itemKey: "oshc", category: "Health / Insurance", label: "OSHC / health insurance", description: "Health insurance evidence for the study period.", status: "REQUESTED", required: true, dueDate: addDays(5), requestedAt: new Date() },
+      { matterId: matter.id, documentId: passport.id, itemKey: "passport", category: "Identity", label: "Passport bio page", description: "Current passport biodata page.", status: "RECEIVED", required: true, dueDate: addDays(2), requestedAt: new Date() },
+      { matterId: matter.id, documentId: coe.id, itemKey: "coe", category: "Education", label: "Confirmation of Enrolment", description: "Course enrolment evidence from the provider.", status: "APPROVED", required: true, dueDate: addDays(4), requestedAt: new Date(), reviewedAt: new Date() },
+      { matterId: matter.id, itemKey: "funds", category: "Financial", label: "Bank statement", description: "Recent financial evidence requested by your migration team.", status: "REQUESTED", required: true, dueDate: addDays(3), requestedAt: new Date() },
+      { matterId: matter.id, documentId: oshc.id, itemKey: "oshc", category: "Health / Insurance", label: "OSHC / health insurance", description: "Health insurance evidence for the study period.", status: "REUPLOAD_REQUESTED", required: true, dueDate: addDays(5), requestedAt: new Date() },
+      { matterId: matter.id, documentId: english.id, itemKey: "english", category: "Education", label: "English test", description: "PTE, IELTS, or exemption evidence if relevant.", status: "RECEIVED", required: false, dueDate: addDays(9), requestedAt: new Date() },
       { matterId: matter.id, itemKey: "genuine_student", category: "Statements", label: "Genuine student statement", description: "Statement and supporting evidence for agent review.", status: "MISSING", required: true, dueDate: addDays(7), requestedAt: new Date() },
-      { matterId: matter.id, itemKey: "english", category: "Education", label: "English evidence", description: "PTE, IELTS, or exemption evidence if relevant.", status: "OPTIONAL", required: false, dueDate: addDays(9), requestedAt: new Date() }
     ]
   });
+
+  const draft = await createOrGetMatterDraft(matter.id);
+  await prisma.matterReviewRequest.create({
+    data: {
+      matterId: matter.id,
+      draftId: draft.id,
+      status: ReviewRequestStatus.SENT_TO_CLIENT,
+      recipientEmail: client.email,
+      recipientName: `${client.firstName} ${client.lastName}`,
+      message: "Please confirm contact and study details.",
+      expiresAt: addDays(10),
+      sentAt: new Date()
+    }
+  }).catch(() => null);
 
   await prisma.appointment.create({
     data: {
@@ -289,15 +307,15 @@ async function addOverlay(page: Page, label: string) {
     Object.assign(banner.style, {
       position: "fixed",
       zIndex: "2147483647",
-      top: "12px",
-      left: "50%",
-      transform: "translateX(-50%)",
-      padding: "10px 16px",
+      right: "18px",
+      bottom: "18px",
+      padding: "8px 12px",
       borderRadius: "999px",
-      background: "rgba(15,23,42,0.94)",
-      color: "white",
-      font: "700 13px system-ui",
-      boxShadow: "0 16px 44px rgba(0,0,0,0.28)",
+      background: "rgba(255,255,255,0.92)",
+      border: "1px solid rgba(124,58,237,0.25)",
+      color: "#4c1d95",
+      font: "700 11px system-ui",
+      boxShadow: "0 12px 32px rgba(15,23,42,0.16)",
       pointerEvents: "none"
     });
     document.body.appendChild(banner);
@@ -413,7 +431,7 @@ async function main() {
   await rm(VIDEO_TEMP_DIR, { recursive: true, force: true }).catch(() => null);
   await writeFile(SCRIPT_PATH, `# Fixed Client Portal Demo Script
 
-Video: \`docs/demo/aria-client-portal-demo-fixed.mp4\`
+Video: \`docs/demo/aria-client-portal-fixed-demo.mp4\`
 
 This short segment shows the polished client portal using dummy Noah Rivera data only.
 

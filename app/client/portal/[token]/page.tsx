@@ -6,6 +6,7 @@ import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-op
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { buildMobilePortalGuidance, buildNotificationSafetyView } from "@/lib/services/mobile-notification-safety";
 import {
+  cleanClientDescription,
   documentStatus,
   dueLabel,
   formatPortalStatus,
@@ -89,8 +90,8 @@ function unavailable(title: string, description: string) {
     <PortalShell firmName="Aria Client Portal">
       <PortalCard className="mx-auto max-w-2xl">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Aria Client Portal</p>
-        <h1 className="mt-3 text-3xl font-semibold text-white">{title}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">{description}</p>
+        <h1 className="mt-3 text-3xl font-semibold text-slate-950">{title}</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
       </PortalCard>
     </PortalShell>
   );
@@ -142,11 +143,11 @@ export default async function ClientPortalPage({ params, searchParams }: { param
               <PortalSectionHeading eyebrow="Next steps" title="What you need to do next" description="A simple list of the actions your migration team needs from you." />
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 {nextActions.map((item) => (
-                  <Link key={item.title} href={item.href as any} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4 transition hover:bg-white/[0.10] focus:outline-none focus:ring-2 focus:ring-cyan-300/50">
+                  <Link key={item.title} href={item.href as any} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-cyan-300/50">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-white">{item.title}</p>
-                        <p className="mt-1 text-sm leading-5 text-slate-300">{item.detail}</p>
+                        <p className="font-semibold text-slate-950">{item.title}</p>
+                        <p className="mt-1 text-sm leading-5 text-slate-600">{item.detail}</p>
                       </div>
                       <PortalStatusBadge tone={item.tone}>Open</PortalStatusBadge>
                     </div>
@@ -161,13 +162,13 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                 {matter.checklistItems.slice(0, 6).map((item) => {
                   const status = documentStatus(item);
                   return (
-                    <div key={item.id} className="rounded-3xl border border-white/10 bg-white/[0.05] p-4">
+                    <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-semibold text-white">{item.label}</p>
-                          <p className="mt-1 text-xs text-slate-400">{item.category} · {item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
-                          {item.description ? <p className="mt-2 text-sm leading-5 text-slate-300">{item.description}</p> : null}
-                          {item.document ? <p className="mt-2 text-xs text-slate-400">Uploaded: {item.document.fileName}</p> : null}
+                          <p className="font-semibold text-slate-950">{item.label}</p>
+                          <p className="mt-1 text-xs text-slate-600">{item.category} · {item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
+                          {cleanClientDescription(item.description) ? <p className="mt-2 text-sm leading-5 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
+                          {item.document ? <p className="mt-2 text-xs text-slate-600">Uploaded: {item.document.fileName}</p> : null}
                         </div>
                         <PortalStatusBadge tone={status.tone}>{status.label}</PortalStatusBadge>
                       </div>
@@ -176,59 +177,62 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                 })}
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">Upload documents</Link>
-                <Link href={`/client/checklist/${params.token}` as any} className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-semibold text-white">View full checklist</Link>
+                <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Upload documents</Link>
+                <Link href={`/client/checklist/${params.token}` as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">View full checklist</Link>
               </div>
             </PortalCard>
 
             <PortalCard id="messages">
               <PortalSectionHeading eyebrow="Messages" title="Message your migration team" description="Use this for short updates and questions. Upload attachments through the document area." />
-              {searchParams?.message === "sent" ? <p className="mt-4 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-3 text-sm text-emerald-100">Message sent.</p> : null}
-              {searchParams?.message === "rate-limited" ? <p className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-300/12 p-3 text-sm text-amber-100">Please wait before sending another message.</p> : null}
+              {searchParams?.message === "sent" ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Message sent.</p> : null}
+              {searchParams?.message === "rate-limited" ? <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Please wait before sending another message.</p> : null}
               <div className="mt-5 space-y-3">
                 {messageEvents.length ? messageEvents.slice(0, 5).map((event) => (
-                  <div key={event.id} className={`max-w-[92%] rounded-3xl border p-4 ${event.eventType === "portal.client_message" ? "ml-auto border-cyan-200/20 bg-cyan-200/10" : "border-white/10 bg-white/[0.06]"}`}>
+                  <div key={event.id} className={`max-w-[92%] rounded-3xl border p-4 ${event.eventType === "portal.client_message" ? "ml-auto border-cyan-200/20 bg-cyan-200/10" : "border-slate-200 bg-slate-50"}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100">{event.eventType === "portal.client_message" ? "You" : "Migration team"}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">{event.eventType === "portal.client_message" ? "You" : "Migration team"}</p>
                       <p className="text-xs text-slate-500">{event.createdAt.toLocaleString("en-AU")}</p>
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-100">{event.description || event.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-900">{event.description || event.title}</p>
                   </div>
-                )) : <p className="rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-sm text-slate-300">No messages yet. Send an update if your migration team needs to know something.</p>}
+                )) : <p className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">No messages yet. Send an update if your migration team needs to know something.</p>}
               </div>
               <form action={handleMessage} className="mt-5 space-y-3">
-                <textarea name="message" required maxLength={1200} placeholder="Write your update or question" className="min-h-28 w-full rounded-3xl border border-white/10 bg-slate-950/45 p-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/20" />
+                <textarea name="message" required maxLength={1200} placeholder="Write your update or question" className="min-h-28 w-full rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/20" />
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-slate-400">Do not attach files here. Upload documents through the secure document page.</p>
-                  <button className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-2 text-sm font-semibold text-white">Send message</button>
+                  <p className="text-xs text-slate-600">Upload documents from the Documents section.</p>
+                  <button className="rounded-2xl bg-violet-700 px-5 py-2 text-sm font-semibold text-[#fff]">Send message</button>
                 </div>
               </form>
             </PortalCard>
 
             <PortalCard id="confirmations">
               <PortalSectionHeading eyebrow="Confirmations" title="Client acknowledgement / confirmation" description="Confirmations help your migration team check facts. They are reviewed before use." />
-              {searchParams?.ack === "recorded" ? <p className="mt-4 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-3 text-sm text-emerald-100">Acknowledgement recorded.</p> : null}
+              {searchParams?.ack === "recorded" ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Acknowledgement recorded.</p> : null}
               <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-4">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-white">Portal information acknowledgement</p>
+                    <p className="font-semibold text-slate-950">Portal information acknowledgement</p>
                     <PortalStatusBadge tone={confirmationEvents.length ? "success" : "warning"}>{confirmationEvents.length ? "Completed" : "Pending"}</PortalStatusBadge>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Confirm that you understand uploaded information is checked by your migration agent before it is used.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">Confirm that you understand uploaded information is checked by your migration agent before it is used.</p>
                   {confirmationEvents[0] ? <p className="mt-2 text-xs text-slate-500">Submitted {confirmationEvents[0].createdAt.toLocaleString("en-AU")}</p> : null}
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-4">
-                  <p className="font-semibold text-white">Review request confirmations</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{matter.reviewRequests.length ? "Your migration team has sent review items for confirmation." : "No separate review request is waiting right now."}</p>
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-slate-950">Confirm contact and study details</p>
+                    <PortalStatusBadge tone={matter.reviewRequests.length ? "warning" : "neutral"}>{matter.reviewRequests.length ? "Pending" : "Not requested"}</PortalStatusBadge>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{matter.reviewRequests.length ? "Your migration team has details waiting for confirmation." : "No separate confirmation is waiting right now."}</p>
                 </div>
               </div>
               <form action={handleAck} className="mt-5 space-y-3">
                 <input type="hidden" name="acknowledgementType" value="Portal information and document review acknowledgement" />
-                <label className="flex items-start gap-3 rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-sm leading-6 text-slate-300">
+                <label className="flex items-start gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                   <input type="checkbox" name="acknowledgement" required className="mt-1" />
                   <span>I understand that my migration agent will review this before use. This is not final lodgement.</span>
                 </label>
-                <button className="rounded-2xl border border-white/10 bg-white/[0.08] px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.12]">Record acknowledgement</button>
+                <button className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white/[0.12]">Record acknowledgement</button>
               </form>
             </PortalCard>
 
@@ -236,14 +240,14 @@ export default async function ClientPortalPage({ params, searchParams }: { param
               <PortalSectionHeading eyebrow="Timeline" title="Matter timeline" description="Client-facing milestones only. Internal notes and audit records are not shown here." />
               <div className="mt-5 space-y-3">
                 {visibleTimelineEvents.length ? visibleTimelineEvents.slice(0, 8).map((event) => (
-                  <div key={event.id} className="grid gap-3 rounded-3xl border border-white/10 bg-white/[0.05] p-4 sm:grid-cols-[140px_minmax(0,1fr)]">
+                  <div key={event.id} className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[140px_minmax(0,1fr)]">
                     <p className="text-xs text-slate-500">{event.createdAt.toLocaleString("en-AU")}</p>
                     <div>
-                      <p className="font-semibold text-white">{event.title}</p>
-                      {event.description ? <p className="mt-1 text-sm leading-6 text-slate-300">{event.description}</p> : null}
+                      <p className="font-semibold text-slate-950">{event.title}</p>
+                      {event.description ? <p className="mt-1 text-sm leading-6 text-slate-600">{event.description}</p> : null}
                     </div>
                   </div>
-                )) : <p className="text-sm text-slate-300">No client-facing timeline items have been recorded yet.</p>}
+                )) : <p className="text-sm text-slate-600">No client-facing timeline items have been recorded yet.</p>}
               </div>
             </PortalCard>
           </div>
@@ -254,8 +258,8 @@ export default async function ClientPortalPage({ params, searchParams }: { param
               <div className="mt-5 space-y-4">
                 <div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-300">Progress</span>
-                    <span className="font-semibold text-white">{matter.readinessScore}%</span>
+                    <span className="text-slate-600">Progress</span>
+                    <span className="font-semibold text-slate-950">{matter.readinessScore}%</span>
                   </div>
                   <div className="mt-2 h-2 rounded-full bg-white/10">
                     <div className="h-2 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{ width: `${Math.max(0, Math.min(100, matter.readinessScore))}%` }} />
@@ -263,24 +267,24 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                 </div>
                 <dl className="space-y-3 text-sm">
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-slate-400">Stage</dt>
-                    <dd className="text-right font-medium text-white">{formatPortalStatus(matter.stage)}</dd>
+                    <dt className="text-slate-600">Stage</dt>
+                    <dd className="text-right font-medium text-slate-950">{formatPortalStatus(matter.stage)}</dd>
                   </div>
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-slate-400">Documents</dt>
-                    <dd className="text-right font-medium text-white">{uploadedItems.length}/{matter.checklistItems.length} uploaded</dd>
+                    <dt className="text-slate-600">Documents</dt>
+                    <dd className="text-right font-medium text-slate-950">{uploadedItems.length}/{matter.checklistItems.length} uploaded</dd>
                   </div>
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-slate-400">Accepted</dt>
-                    <dd className="text-right font-medium text-white">{approvedItems.length}</dd>
+                    <dt className="text-slate-600">Accepted</dt>
+                    <dd className="text-right font-medium text-slate-950">{approvedItems.length}</dd>
                   </div>
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-slate-400">Appointment</dt>
-                    <dd className="text-right font-medium text-white">{latestAppointment ? formatPortalStatus(latestAppointment.status) : "Not requested"}</dd>
+                    <dt className="text-slate-600">Appointment</dt>
+                    <dd className="text-right font-medium text-slate-950">{latestAppointment ? formatPortalStatus(latestAppointment.status) : "Not requested"}</dd>
                   </div>
                   <div className="flex items-start justify-between gap-4">
-                    <dt className="text-slate-400">Assigned agent</dt>
-                    <dd className="text-right font-medium text-white">{matter.assignedToUser.name}</dd>
+                    <dt className="text-slate-600">Assigned agent</dt>
+                    <dd className="text-right font-medium text-slate-950">{matter.assignedToUser.name}</dd>
                   </div>
                 </dl>
               </div>
@@ -301,12 +305,12 @@ export default async function ClientPortalPage({ params, searchParams }: { param
               <PortalSectionHeading title="Reminders" description={mobileGuidance} />
               <div className="mt-4 space-y-3">
                 {notificationChannels.map((channel) => (
-                  <div key={channel.channel} className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-sm">
+                  <div key={channel.channel} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-white">{channel.label}</p>
+                      <p className="font-medium text-slate-950">{channel.label}</p>
                       <PortalStatusBadge tone={channel.status === "configured" ? "success" : "neutral"}>{channel.status}</PortalStatusBadge>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">{channel.messageRule}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-600">{channel.messageRule}</p>
                   </div>
                 ))}
               </div>
@@ -321,3 +325,4 @@ export default async function ClientPortalPage({ params, searchParams }: { param
     </PortalShell>
   );
 }
+

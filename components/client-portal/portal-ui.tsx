@@ -11,29 +11,24 @@ type PortalShellProps = {
 
 export function PortalShell({ firmName, clientName, matterTitle, subclass, children }: PortalShellProps) {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.20),transparent_32%),radial-gradient(circle_at_top_right,rgba(6,182,212,0.16),transparent_30%),linear-gradient(135deg,#07111F,#10233F_48%,#182033)] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.10),transparent_30%),linear-gradient(180deg,#fbfaff,#f4f7fb)] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-slate-950/30 backdrop-blur-xl sm:p-6">
+        <header className="mb-6 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(79,70,229,0.12)] sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
-                  Secure client portal
-                </span>
-                <span className="rounded-full border border-violet-300/30 bg-violet-300/10 px-3 py-1 text-xs font-semibold text-violet-100">
-                  Agent review required
-                </span>
-              </div>
-              <p className="mt-4 text-sm font-medium text-cyan-100">{firmName || "Your migration team"}</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{clientName || "Client portal"}</h1>
+              <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">
+                Secure client portal
+              </span>
+              <p className="mt-4 text-sm font-medium text-violet-700">{firmName || "Your migration team"}</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{clientName || "Client portal"}</h1>
               {matterTitle ? (
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                  {matterTitle}{subclass ? ` · Subclass ${subclass}` : ""}
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  {matterTitle}{subclass ? ` - Subclass ${subclass}` : ""}
                 </p>
               ) : null}
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-950/40 p-4 text-sm leading-6 text-slate-200 lg:max-w-sm">
-              Your migration agent will review all information before it is used. Aria does not lodge applications or guarantee visa outcomes.
+            <div className="rounded-3xl border border-violet-100 bg-violet-50 p-4 text-sm leading-6 text-slate-700 lg:max-w-sm">
+              Your migration team will review everything before it is used.
             </div>
           </div>
         </header>
@@ -45,7 +40,7 @@ export function PortalShell({ firmName, clientName, matterTitle, subclass, child
 
 export function PortalCard({ children, className = "", ...props }: { children: ReactNode; className?: string } & HTMLAttributes<HTMLElement>) {
   return (
-    <section {...props} className={`rounded-[1.5rem] border border-white/10 bg-white/[0.08] p-5 shadow-xl shadow-slate-950/20 backdrop-blur-xl ${className}`.trim()}>
+    <section {...props} className={`rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ${className}`.trim()}>
       {children}
     </section>
   );
@@ -54,9 +49,9 @@ export function PortalCard({ children, className = "", ...props }: { children: R
 export function PortalSectionHeading({ eyebrow, title, description }: { eyebrow?: string; title: string; description?: string }) {
   return (
     <div>
-      {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200/80">{eyebrow}</p> : null}
-      <h2 className="mt-1 text-lg font-semibold text-white">{title}</h2>
-      {description ? <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p> : null}
+      {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">{eyebrow}</p> : null}
+      <h2 className="mt-1 text-lg font-semibold text-slate-950">{title}</h2>
+      {description ? <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p> : null}
     </div>
   );
 }
@@ -65,11 +60,11 @@ export type PortalStatusTone = "neutral" | "info" | "success" | "warning" | "dan
 
 export function PortalStatusBadge({ children, tone = "neutral" }: { children: ReactNode; tone?: PortalStatusTone }) {
   const tones: Record<PortalStatusTone, string> = {
-    neutral: "border-white/12 bg-white/[0.08] text-slate-200",
-    info: "border-cyan-300/25 bg-cyan-300/10 text-cyan-100",
-    success: "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
-    warning: "border-amber-300/30 bg-amber-300/12 text-amber-100",
-    danger: "border-rose-300/30 bg-rose-300/12 text-rose-100"
+    neutral: "border-slate-200 bg-slate-50 text-slate-700",
+    info: "border-cyan-200 bg-cyan-50 text-cyan-800",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    warning: "border-amber-200 bg-amber-50 text-amber-900",
+    danger: "border-rose-200 bg-rose-50 text-rose-800"
   };
   return (
     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${tones[tone]}`}>
@@ -80,9 +75,9 @@ export function PortalStatusBadge({ children, tone = "neutral" }: { children: Re
 
 export function PortalActionLink({ href, title, description }: { href: string; title: string; description: string }) {
   return (
-    <Link href={href as any} className="group block rounded-3xl border border-white/10 bg-white/[0.06] p-4 transition hover:-translate-y-0.5 hover:bg-white/[0.10] focus:outline-none focus:ring-2 focus:ring-cyan-300/50">
-      <p className="font-semibold text-white">{title}</p>
-      <p className="mt-1 text-sm leading-5 text-slate-400 group-hover:text-slate-300">{description}</p>
+    <Link href={href as any} className="group block rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-0.5 hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-violet-300/50">
+      <p className="font-semibold text-slate-950">{title}</p>
+      <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>
     </Link>
   );
 }
@@ -97,6 +92,12 @@ export function dueLabel(date?: Date | null) {
   return date.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+export function cleanClientDescription(value?: string | null) {
+  if (!value) return null;
+  if (/demo checklist item|not official legal advice|ai working copy|evidence vault|audit metadata/i.test(value)) return null;
+  return value;
+}
+
 export function documentStatus(item: {
   documentId: string | null;
   reviewedAt: Date | null;
@@ -105,9 +106,10 @@ export function documentStatus(item: {
   document?: { reviewStatus: string; extractionStatus: string } | null;
 }) {
   if (!item.required && !item.documentId) return { label: "Optional", tone: "neutral" as const };
-  if (!item.documentId) return { label: item.status === "REQUESTED" ? "Awaiting upload" : "Missing", tone: "warning" as const };
-  if (item.document?.reviewStatus === "VERIFIED" || item.reviewedAt) return { label: "Accepted / Approved by team", tone: "success" as const };
+  if (!item.documentId) return { label: "Missing", tone: "warning" as const };
+  if (item.document?.reviewStatus === "VERIFIED" || item.reviewedAt) return { label: "Accepted", tone: "success" as const };
   if (item.document?.reviewStatus === "FLAGGED") return { label: "Needs clearer copy", tone: "danger" as const };
   if (item.document?.extractionStatus === "NEEDS_REVIEW") return { label: "Under review", tone: "warning" as const };
   return { label: "Uploaded", tone: "info" as const };
 }
+

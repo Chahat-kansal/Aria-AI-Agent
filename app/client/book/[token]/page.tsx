@@ -113,8 +113,8 @@ export default async function ClientBookingPage({ params, searchParams }: { para
             <PortalStatusBadge tone={searchParams?.booked === "1" ? "success" : "info"}>{searchParams?.booked === "1" ? "Requested" : "Agent confirmation required"}</PortalStatusBadge>
           </div>
           {searchParams?.booked === "1" ? (
-            <div className="mt-5 rounded-3xl border border-emerald-300/25 bg-emerald-300/10 p-4 text-sm text-emerald-100">
-              Your appointment request has been recorded. Your migration team will review and confirm the time.
+            <div className="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+              Appointment request sent. Status: Waiting for team confirmation.
             </div>
           ) : null}
         </PortalCard>
@@ -128,14 +128,14 @@ export default async function ClientBookingPage({ params, searchParams }: { para
           <form action={handleSubmit} className="mt-5 space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-200">Appointment type</span>
-                <select name="meetingType" defaultValue={defaultType.label} className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30">
+                <span className="text-sm font-medium text-slate-800">Appointment type</span>
+                <select name="meetingType" defaultValue={defaultType.label} className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none focus:ring-2 focus:ring-cyan-300/30">
                   {appointmentTypes.map((type) => <option key={type.key} value={type.label}>{type.label}</option>)}
                 </select>
               </label>
               <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-200">Meeting method</span>
-                <select name="meetingMethod" className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30">
+                <span className="text-sm font-medium text-slate-800">Meeting method</span>
+                <select name="meetingMethod" className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none focus:ring-2 focus:ring-cyan-300/30">
                   {meetingMethods.map((method) => <option key={method} value={method}>{method}</option>)}
                   {!meetingMethods.length ? <option value="video">Video call</option> : null}
                 </select>
@@ -145,7 +145,7 @@ export default async function ClientBookingPage({ params, searchParams }: { para
             {availableSlots.length ? (
               <div className="grid gap-3 md:grid-cols-3">
                 {availableSlots.map((slot, index) => (
-                  <label key={slot.value} className="cursor-pointer rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-sm text-slate-200 transition hover:bg-white/[0.10]">
+                  <label key={slot.value} className="cursor-pointer rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800 transition hover:bg-violet-50">
                     <input type="radio" name="slot" value={slot.value} required={availableSlots.length > 0} defaultChecked={index === 0} className="mr-2" />
                     {slot.label}
                   </label>
@@ -154,12 +154,12 @@ export default async function ClientBookingPage({ params, searchParams }: { para
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-200">Preferred date</span>
-                  <input name="preferredDate" type="date" required className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30" />
+                  <span className="text-sm font-medium text-slate-800">Preferred date</span>
+                  <input name="preferredDate" type="date" required className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none focus:ring-2 focus:ring-cyan-300/30" />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-200">Preferred time window</span>
-                  <select name="preferredWindow" className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30">
+                  <span className="text-sm font-medium text-slate-800">Preferred time window</span>
+                  <select name="preferredWindow" className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none focus:ring-2 focus:ring-cyan-300/30">
                     <option value="morning">Morning</option>
                     <option value="afternoon">Afternoon</option>
                     <option value="evening">After hours / evening</option>
@@ -168,17 +168,18 @@ export default async function ClientBookingPage({ params, searchParams }: { para
               </div>
             )}
 
-            <textarea name="notes" placeholder="Questions or availability notes" className="min-h-28 w-full rounded-3xl border border-white/10 bg-slate-950/45 p-4 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30" />
-            <label className="flex items-start gap-3 rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-sm leading-6 text-slate-300">
+            <textarea name="notes" placeholder="Questions or availability notes" className="min-h-28 w-full rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-950 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30" />
+            <label className="flex items-start gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
               <input type="checkbox" name="consent" required className="mt-1" />
               <span>I understand my migration team will review and confirm this appointment request.</span>
             </label>
-            <button className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-3 text-sm font-semibold text-white">Request appointment</button>
+            <button className="rounded-2xl bg-violet-700 px-5 py-3 text-sm font-semibold text-[#fff]">Request appointment</button>
           </form>
         </PortalCard>
 
-        <Link href={`/client/portal/${params.token}` as any} className="inline-flex rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-2 text-sm font-semibold text-white">Back to portal home</Link>
+        <Link href={`/client/portal/${params.token}` as any} className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">Back to portal home</Link>
       </div>
     </PortalShell>
   );
 }
+
