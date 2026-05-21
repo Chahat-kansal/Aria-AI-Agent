@@ -1,4 +1,4 @@
-import { MatterStage, MatterStatus, UserRole, UserStatus, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
+import { ExtractionStatus, MatterStage, MatterStatus, ReviewStatus, UserRole, UserStatus, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { readFileSync } from "node:fs";
 import { prisma } from "@/lib/prisma";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
@@ -102,6 +102,32 @@ async function ensureClientAndMatter(workspaceId: string, assignedToUserId: stri
     where: { id: firstChecklistItem.id },
     data: { requestedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) }
   });
+
+  const secondChecklistItem = await prisma.checklistItem.findFirst({
+    where: { matterId: matter.id, id: { not: firstChecklistItem.id } },
+    orderBy: { label: "asc" }
+  });
+  if (secondChecklistItem) {
+    const flaggedDocument = await prisma.document.create({
+      data: {
+        workspaceId,
+        clientId: client.id,
+        matterId: matter.id,
+        uploadedByUserId: assignedToUserId,
+        fileName: "DEMO DOCUMENT - NOT REAL CLIENT DATA - blurry bank statement.pdf",
+        storageKey: `demo/portal-readiness/${matter.id}/blurry-bank-statement.pdf`,
+        mimeType: "application/pdf",
+        fileSize: 1024,
+        category: secondChecklistItem.category,
+        extractionStatus: ExtractionStatus.NEEDS_REVIEW,
+        reviewStatus: ReviewStatus.FLAGGED
+      }
+    });
+    await prisma.checklistItem.update({
+      where: { id: secondChecklistItem.id },
+      data: { documentId: flaggedDocument.id, status: "REUPLOAD_REQUESTED", requestedAt: new Date(), dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) }
+    });
+  }
 
   return { client, matter };
 }
@@ -208,6 +234,18 @@ async function main() {
   checks.push({
     name: "Portal pages do not render raw token hashes",
     pass: !/tokenHash/.test(portalSource)
+  });
+  checks.push({
+    name: "Portal home includes next-action dashboard and secure message thread",
+    pass: /What you need to do next/.test(portalPage) && /Message your migration team/.test(portalPage)
+  });
+  checks.push({
+    name: "Documents page uses styled upload component instead of visible default file input",
+    pass: /PortalUploadForm/.test(documentsPage) && /Choose a clear scan or photo/.test(readFileSync("components/client-portal/portal-upload-form.tsx", "utf8"))
+  });
+  checks.push({
+    name: "Appointment booking supports no-live-availability fallback",
+    pass: /No live availability is configured yet/.test(readFileSync("app/client/book/[token]/page.tsx", "utf8")) && /preferredWindow/.test(readFileSync("app/client/book/[token]/page.tsx", "utf8"))
   });
 
   const failed = checks.filter((check) => !check.pass);

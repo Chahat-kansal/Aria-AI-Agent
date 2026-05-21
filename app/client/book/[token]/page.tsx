@@ -1,10 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { Card } from "@/components/ui/card";
 import { getClientPortalByToken, createAppointment } from "@/lib/services/client-workflows";
-import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
 
 function nextSlots(
   availability: Array<{ weekday: number; start: string; end: string }>,
@@ -15,11 +15,10 @@ function nextSlots(
   const slots: Array<{ label: string; value: string }> = [];
   const now = new Date();
   const minStart = new Date(now.getTime() + minNoticeHours * 60 * 60 * 1000);
-  for (let dayOffset = 0; dayOffset < 14 && slots.length < 12; dayOffset += 1) {
+  for (let dayOffset = 0; dayOffset < 14 && slots.length < 9; dayOffset += 1) {
     const day = new Date(now);
     day.setDate(now.getDate() + dayOffset);
-    const weekday = day.getDay();
-    const windows = availability.filter((item) => item.weekday === weekday);
+    const windows = availability.filter((item) => item.weekday === day.getDay());
     for (const window of windows) {
       const [startHour, startMinute] = window.start.split(":").map(Number);
       const [endHour, endMinute] = window.end.split(":").map(Number);
@@ -27,7 +26,7 @@ function nextSlots(
       start.setHours(startHour, startMinute, 0, 0);
       const end = new Date(day);
       end.setHours(endHour, endMinute, 0, 0);
-      for (let cursor = new Date(start); cursor < end && slots.length < 12; cursor = new Date(cursor.getTime() + durationMinutes * 60 * 1000)) {
+      for (let cursor = new Date(start); cursor < end && slots.length < 9; cursor = new Date(cursor.getTime() + durationMinutes * 60 * 1000)) {
         if (cursor < minStart) continue;
         const nextEnd = new Date(cursor.getTime() + durationMinutes * 60 * 1000);
         if (nextEnd > end) continue;
@@ -41,32 +40,40 @@ function nextSlots(
   return slots;
 }
 
+function fallbackDateTime(formData: FormData) {
+  const preferredDate = String(formData.get("preferredDate") || "");
+  const preferredWindow = String(formData.get("preferredWindow") || "morning");
+  const date = preferredDate ? new Date(`${preferredDate}T${preferredWindow === "afternoon" ? "14:00" : preferredWindow === "evening" ? "17:00" : "10:00"}:00`) : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  if (Number.isNaN(date.getTime())) return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  return date;
+}
+
+function unavailable() {
+  return (
+    <PortalShell firmName="Aria Client Portal">
+      <PortalCard className="mx-auto max-w-2xl">
+        <PortalSectionHeading title="Booking link unavailable" description="This booking link is invalid or expired. Ask your migration team for a fresh secure link." />
+      </PortalCard>
+    </PortalShell>
+  );
+}
+
 export default async function ClientBookingPage({ params, searchParams }: { params: { token: string }; searchParams?: { booked?: string } }) {
   const portal = await getClientPortalByToken(params.token);
-  if (!portal) {
-    return (
-      <div className="min-h-screen bg-background px-4 py-10">
-        <Card className="mx-auto max-w-2xl p-8">
-          <h1 className="text-2xl font-semibold">Booking link unavailable</h1>
-          <p className="mt-3 text-sm text-muted">This booking link is invalid or expired. Ask your migration team for a fresh secure link.</p>
-        </Card>
-      </div>
-    );
-  }
+  if (!portal) return unavailable();
   const activePortal = portal;
   const settings = await getWorkspaceOperationalSettingsView(activePortal.workspaceId);
   const appointmentTypes = settings.appointmentTypes as Array<{ key: string; label: string; durationMinutes: number }>;
   const meetingMethods = settings.appointmentMeetingMethods as string[];
   const availability = settings.appointmentAvailability as Array<{ weekday: number; start: string; end: string }>;
-  const hasAvailability = availability.length > 0;
   const defaultType = appointmentTypes[0] ?? { key: "consultation", label: "Consultation", durationMinutes: 45 };
-  const availableSlots = hasAvailability
+  const availableSlots = availability.length
     ? nextSlots(availability, defaultType.durationMinutes, settings.appointmentMinNoticeHours, settings.appointmentTimezone)
     : [];
 
   async function handleSubmit(formData: FormData) {
     "use server";
-    const startsAt = String(formData.get("startsAt") || formData.get("slot") || "");
+    const slot = String(formData.get("slot") || "");
     const meetingType = String(formData.get("meetingType") || defaultType.label);
     const meetingMethod = String(formData.get("meetingMethod") || "");
     const notes = String(formData.get("notes") || "");
@@ -74,8 +81,8 @@ export default async function ClientBookingPage({ params, searchParams }: { para
     const headerStore = await headers();
     const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
     const limit = checkRateLimit({ key: `portal.appointment:${ip}:${params.token.slice(0, 12)}`, limit: 5, windowMs: 10 * 60 * 1000 });
-    const date = new Date(startsAt);
-    if (Number.isNaN(date.getTime()) || !consentAccepted || !limit.allowed) {
+    const startsAt = slot ? new Date(slot) : fallbackDateTime(formData);
+    if (Number.isNaN(startsAt.getTime()) || !consentAccepted || !limit.allowed) {
       redirect(`/client/book/${params.token}`);
     }
 
@@ -87,54 +94,91 @@ export default async function ClientBookingPage({ params, searchParams }: { para
       requestedByName: `${activePortal.client.firstName} ${activePortal.client.lastName}`,
       requestedByEmail: activePortal.client.email,
       meetingType: `${meetingType}${meetingMethod ? ` · ${meetingMethod}` : ""}`,
-      startsAt: date,
+      startsAt,
       notes
     });
     redirect(`/client/book/${params.token}?booked=1`);
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <Card className="mx-auto max-w-2xl p-8">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted">Aria Client Portal</p>
-        <h1 className="mt-2 text-2xl font-semibold">Book an appointment</h1>
-        <p className="mt-3 text-sm text-muted">Request a consultation with your migration team. A staff member will review and confirm the appointment.</p>
-        {!hasAvailability ? (
-          <p className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
-            Availability is not configured. Submit a preferred time and the firm will confirm.
-          </p>
-        ) : null}
-        <div className="mt-4">
-          <AIReviewNotice variant="client" />
-        </div>
-        {searchParams?.booked === "1" ? (
-          <div className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
-            Your appointment request has been recorded.
+    <PortalShell firmName={activePortal.workspace.name} clientName={`${activePortal.client.firstName} ${activePortal.client.lastName}`} matterTitle={activePortal.matter?.title} subclass={activePortal.matter?.visaSubclass}>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PortalCard>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <PortalSectionHeading
+              eyebrow="Appointment"
+              title="Request an appointment"
+              description="Choose a live slot if one is available, or send preferred timing for your migration team to confirm."
+            />
+            <PortalStatusBadge tone={searchParams?.booked === "1" ? "success" : "info"}>{searchParams?.booked === "1" ? "Requested" : "Agent confirmation required"}</PortalStatusBadge>
           </div>
-        ) : null}
-        <form action={handleSubmit} className="mt-6 grid gap-3">
-          <select name="meetingType" defaultValue={defaultType.label} className="rounded-lg border border-border bg-white/80 p-3 text-sm">
-            {appointmentTypes.map((type) => <option key={type.key} value={type.label}>{type.label}</option>)}
-          </select>
-          <select name="meetingMethod" className="rounded-lg border border-border bg-white/80 p-3 text-sm">
-            {meetingMethods.map((method) => <option key={method} value={method}>{method}</option>)}
-          </select>
-          {hasAvailability && availableSlots.length ? (
-            <select name="slot" required className="rounded-lg border border-border bg-white/80 p-3 text-sm md:col-span-2">
-              <option value="">Select an available slot</option>
-              {availableSlots.map((slot) => <option key={slot.value} value={slot.value}>{slot.label}</option>)}
-            </select>
+          {searchParams?.booked === "1" ? (
+            <div className="mt-5 rounded-3xl border border-emerald-300/25 bg-emerald-300/10 p-4 text-sm text-emerald-100">
+              Your appointment request has been recorded. Your migration team will review and confirm the time.
+            </div>
+          ) : null}
+        </PortalCard>
+
+        <PortalCard>
+          {availableSlots.length ? (
+            <PortalSectionHeading title="Choose an available time" description="Select one of the available appointment times below." />
           ) : (
-            <input name="startsAt" type="datetime-local" required className="rounded-lg border border-border bg-white/80 p-3 text-sm md:col-span-2" />
+            <PortalSectionHeading title="No live availability is configured yet" description="Send your preferred date and time window. Your migration team will confirm manually." />
           )}
-          <textarea name="notes" placeholder="Questions or availability notes" className="min-h-28 rounded-lg border border-border bg-white/80 p-3 text-sm" />
-          <label className="flex items-start gap-2 text-xs text-slate-600">
-            <input type="checkbox" name="consent" required className="mt-0.5" />
-            <span>I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting.</span>
-          </label>
-          <button className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white">Request appointment</button>
-        </form>
-      </Card>
-    </div>
+          <form action={handleSubmit} className="mt-5 space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-200">Appointment type</span>
+                <select name="meetingType" defaultValue={defaultType.label} className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30">
+                  {appointmentTypes.map((type) => <option key={type.key} value={type.label}>{type.label}</option>)}
+                </select>
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-200">Meeting method</span>
+                <select name="meetingMethod" className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30">
+                  {meetingMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                  {!meetingMethods.length ? <option value="video">Video call</option> : null}
+                </select>
+              </label>
+            </div>
+
+            {availableSlots.length ? (
+              <div className="grid gap-3 md:grid-cols-3">
+                {availableSlots.map((slot, index) => (
+                  <label key={slot.value} className="cursor-pointer rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-sm text-slate-200 transition hover:bg-white/[0.10]">
+                    <input type="radio" name="slot" value={slot.value} required={availableSlots.length > 0} defaultChecked={index === 0} className="mr-2" />
+                    {slot.label}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-200">Preferred date</span>
+                  <input name="preferredDate" type="date" required className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30" />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-200">Preferred time window</span>
+                  <select name="preferredWindow" className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-300/30">
+                    <option value="morning">Morning</option>
+                    <option value="afternoon">Afternoon</option>
+                    <option value="evening">After hours / evening</option>
+                  </select>
+                </label>
+              </div>
+            )}
+
+            <textarea name="notes" placeholder="Questions or availability notes" className="min-h-28 w-full rounded-3xl border border-white/10 bg-slate-950/45 p-4 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30" />
+            <label className="flex items-start gap-3 rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-sm leading-6 text-slate-300">
+              <input type="checkbox" name="consent" required className="mt-1" />
+              <span>I understand my migration team will review and confirm this appointment request.</span>
+            </label>
+            <button className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-3 text-sm font-semibold text-white">Request appointment</button>
+          </form>
+        </PortalCard>
+
+        <Link href={`/client/portal/${params.token}` as any} className="inline-flex rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-2 text-sm font-semibold text-white">Back to portal home</Link>
+      </div>
+    </PortalShell>
   );
 }

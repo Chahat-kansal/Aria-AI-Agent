@@ -26,6 +26,7 @@ const clientPortalSelect = Prisma.validator<Prisma.ClientPortalAccessTokenSelect
   expiresAt: true,
   lastViewedAt: true,
   createdAt: true,
+  workspace: { select: { name: true } },
   client: {
     select: {
       id: true,
