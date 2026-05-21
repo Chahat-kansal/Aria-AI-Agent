@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Result = {
@@ -13,6 +13,17 @@ type Result = {
   sourceType: string;
   lastRefreshedAt: string;
 };
+
+const SUGGESTED_TERMS = [
+  "Subclass 500",
+  "Subclass 482",
+  "Subclass 820",
+  "English evidence",
+  "Health insurance",
+  "Partner evidence",
+  "Skills assessment",
+  "Visitor funds"
+];
 
 export function VisaKnowledgeSearch({ defaultValue = "", compact = false }: { defaultValue?: string; compact?: boolean }) {
   const [query, setQuery] = useState(defaultValue);
@@ -46,28 +57,44 @@ export function VisaKnowledgeSearch({ defaultValue = "", compact = false }: { de
   }, [query]);
 
   return (
-    <form action="/app/knowledge" className={compact ? "relative flex min-w-full items-center gap-3 xl:min-w-[420px]" : "relative flex w-full flex-col gap-3 sm:flex-row"}>
-      <div className="relative flex h-14 flex-1 items-center gap-3 rounded-3xl bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] backdrop-blur-xl">
-        <Search className="h-5 w-5 shrink-0 text-[color:var(--text-tertiary)]" />
-        <input name="q" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search visa knowledge" className="h-auto w-full bg-transparent p-0 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:ring-0" placeholder="Search subclass, visa name, pathway, evidence..." />
-        {query.trim().length >= 2 ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-3xl bg-[color:var(--surface-strong)] shadow-[var(--shadow-lg)] backdrop-blur-xl">
-            {status === "loading" ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">Searching stored visa knowledge...</p> : null}
-            {status === "error" ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">Search is unavailable for your current session or permissions.</p> : null}
-            {status === "ready" && results.length === 0 ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">No matching records. Try a subclass number, visa name, or evidence term.</p> : null}
-            {results.map((record) => (
-              <Link key={record.id} href={`/app/knowledge/${record.id}` as any} className="block px-4 py-3 text-left transition hover:bg-[color:var(--surface-soft)]">
-                <p className="text-sm font-medium text-[color:var(--text-primary)]">{record.subclassCode ? `Subclass ${record.subclassCode} - ` : ""}{record.title}</p>
-                <p className="line-clamp-2 text-xs text-[color:var(--text-secondary)]">{record.summary}</p>
-                <p className="mt-1 text-[11px] text-[color:var(--text-tertiary)]">{record.sourceType} - updated {new Date(record.lastRefreshedAt).toLocaleDateString("en-AU")}</p>
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      <button className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white shadow-glow transition hover:scale-[1.01] hover:opacity-95">
-        Search
-      </button>
-    </form>
+    <div className={compact ? "w-full" : "w-full space-y-3"}>
+      <form action="/app/knowledge" className={compact ? "relative flex min-w-full items-center gap-3 xl:min-w-[420px]" : "relative flex w-full flex-col gap-3 sm:flex-row"}>
+        <div className="relative flex h-14 flex-1 items-center gap-3 rounded-2xl bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] backdrop-blur-xl">
+          <Search className="h-5 w-5 shrink-0 text-[color:var(--text-tertiary)]" />
+          <input name="q" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search visa knowledge" className="h-auto w-full bg-transparent p-0 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:ring-0" placeholder="Search subclass, visa name, pathway, evidence..." />
+          {query ? (
+            <Link href="/app/knowledge" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-soft)] text-[color:var(--text-secondary)] transition hover:text-[color:var(--text-primary)]" aria-label="Clear visa knowledge search">
+              <X className="h-4 w-4" />
+            </Link>
+          ) : null}
+          {query.trim().length >= 2 ? (
+            <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 overflow-hidden rounded-3xl bg-[color:var(--surface-strong)] shadow-[var(--shadow-lg)] backdrop-blur-xl">
+              {status === "loading" ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">Searching stored visa knowledge...</p> : null}
+              {status === "error" ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">Search is unavailable for your current session or permissions.</p> : null}
+              {status === "ready" && results.length === 0 ? <p className="p-4 text-xs text-[color:var(--text-secondary)]">No matching records. Try a subclass number, visa name, or evidence term.</p> : null}
+              {results.map((record) => (
+                <Link key={record.id} href={`/app/knowledge/${record.id}` as any} className="block px-4 py-3 text-left transition hover:bg-[color:var(--surface-soft)]">
+                  <p className="text-sm font-medium text-[color:var(--text-primary)]">{record.subclassCode ? `Subclass ${record.subclassCode} - ` : ""}{record.title}</p>
+                  <p className="line-clamp-2 text-xs text-[color:var(--text-secondary)]">{record.summary}</p>
+                  <p className="mt-1 text-[11px] text-[color:var(--text-tertiary)]">{record.sourceType} - updated {new Date(record.lastRefreshedAt).toLocaleDateString("en-AU")}</p>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <button className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-[#fff] shadow-glow transition hover:scale-[1.01] hover:opacity-95">
+          Search
+        </button>
+      </form>
+      {!compact ? (
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_TERMS.map((term) => (
+            <Link key={term} href={`/app/knowledge?q=${encodeURIComponent(term)}`} className="rounded-full bg-[color:var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--text-secondary)] shadow-sm transition hover:text-[color:var(--accent)]">
+              {term}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

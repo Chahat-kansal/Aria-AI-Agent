@@ -26,7 +26,7 @@ export function VisaKnowledgeIngestAction() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <button onClick={runIngestion} disabled={isRunning} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <button onClick={runIngestion} disabled={isRunning} className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff] shadow-sm transition hover:bg-violet-800 disabled:opacity-60">
         {isRunning ? "Refreshing..." : "Refresh official visa knowledge"}
       </button>
       {message ? <p className="text-sm text-muted">{message}</p> : null}

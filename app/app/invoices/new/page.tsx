@@ -33,7 +33,7 @@ export default async function NewInvoicePage() {
   return (
     <AppShell title="New invoice">
       <div className="space-y-6">
-        <PageHeader title="Manual invoice builder" description="Create a real workspace invoice with live totals, linked clients, and secure preview rendering." />
+        <PageHeader title="Editable invoice document" description="Create the invoice directly on the document canvas. Save as draft before sending or downloading." />
         <InvoiceBuilder
           mode="create"
           clients={references.clients}

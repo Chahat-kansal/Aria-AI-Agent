@@ -23,8 +23,8 @@ export default async function InvoiceDetailPage({ params }: { params: { invoiceI
       <div className="space-y-6">
         <PageHeader
           eyebrow="Billing"
-          title={invoice.invoiceNumber}
-          description={`Invoice for ${invoice.clientName}. Review required before sending or marking as paid.`}
+          title="Editable invoice document"
+          description={`${invoice.invoiceNumber} for ${invoice.clientName}. Review required before sending or marking as paid.`}
           action={
             <InvoiceActions
               invoiceId={invoice.id}

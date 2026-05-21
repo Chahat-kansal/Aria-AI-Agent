@@ -96,14 +96,14 @@ html[data-theme="light"] {
   --bg-overlay: #ffffff;
   --bg-hover: #f4f0fb;
   --bg-active: #ece5fb;
-  --bg-input: #f4f1fb;
+  --bg-input: #ffffff;
   --bg-glass: rgba(255, 255, 255, 0.8);
 
   --divider: rgba(36, 28, 60, 0.07);
 
   --text-primary: #14101e;
-  --text-secondary: #5f5878;
-  --text-tertiary: #a19ab6;
+  --text-secondary: #49415f;
+  --text-tertiary: #736a8d;
   --text-violet: #7c3aed;
   --text-inverse: #ffffff;
 
@@ -218,7 +218,7 @@ select {
   padding-inline: 0.95rem;
   font-size: 0.875rem;
   color: var(--text-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), var(--shadow-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-sm);
 }
 
 textarea {
@@ -229,7 +229,7 @@ textarea {
   padding: 0.95rem 1rem;
   font-size: 0.875rem;
   color: var(--text-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), var(--shadow-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-sm);
 }
 
 input[type="file"] {
@@ -385,6 +385,15 @@ html[data-theme="light"] .text-violet-400 {
   color: var(--violet) !important;
 }
 
+html[data-theme="light"] button.bg-violet-600,
+html[data-theme="light"] button.bg-violet-700,
+html[data-theme="light"] a.bg-violet-600,
+html[data-theme="light"] a.bg-violet-700,
+html[data-theme="light"] button[class*="from-violet-"],
+html[data-theme="light"] a[class*="from-violet-"] {
+  color: #ffffff !important;
+}
+
 html[data-theme="light"] .bg-white\/\[0\.02\],
 html[data-theme="light"] .bg-white\/\[0\.03\],
 html[data-theme="light"] .bg-white\/\[0\.04\],
@@ -464,9 +473,65 @@ html[data-theme="dark"] textarea {
   caret-color: var(--violet);
 }
 
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(36, 28, 60, 0.08), var(--shadow-sm);
+}
+
+html[data-theme="dark"] .invoice-document-editor input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html[data-theme="dark"] .invoice-document-editor select,
+html[data-theme="dark"] .invoice-document-editor textarea {
+  background: #ffffff;
+  color: #020617;
+  caret-color: #6d28d9;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1), 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="dark"] .invoice-document-editor input::placeholder,
+html[data-theme="dark"] .invoice-document-editor textarea::placeholder {
+  color: #64748b !important;
+}
+
 select option {
   background: var(--bg-overlay);
   color: var(--text-primary);
+}
+
+@media print {
+  body {
+    overflow: visible;
+    background: #ffffff;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  body:has(.invoice-document-editor) * {
+    visibility: hidden;
+  }
+
+  body:has(.invoice-document-editor) .invoice-document-editor,
+  body:has(.invoice-document-editor) .invoice-document-editor * {
+    visibility: visible;
+  }
+
+  body:has(.invoice-document-editor) .invoice-document-editor {
+    position: absolute;
+    inset: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff;
+  }
+
+  body:has(.invoice-document-editor) .invoice-document-editor article {
+    width: 100%;
+    max-width: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 html[data-theme="light"] .bg-\[\#06090d\]\/96,
