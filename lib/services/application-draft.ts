@@ -33,6 +33,8 @@ const packageFolders = [
   "Other Evidence"
 ];
 
+const AUTO_DRAFT_MIN_CONFIDENCE = 0.75;
+
 function classifyDocument(fileName: string, extractedText = "") {
   const lower = `${fileName} ${extractedText}`.toLowerCase();
   if (lower.includes("passport") || lower.includes("identity")) return "Identity";
@@ -341,7 +343,9 @@ export async function uploadDocumentToMatter(input: {
   const category = input.overrideCategory ?? classifyDocument(input.fileName, input.extractedText);
   const extractionSchema = detectExtractionSchema(input.fileName, input.extractedText);
   const documentQuality = input.extractionMetadata?.documentQuality;
-  const blocksCriticalAutofill = documentQuality?.autofillCriticalFieldsAllowed === false;
+  const extractionConfidence = Number(input.extractionMetadata?.confidence ?? 0);
+  const blocksCriticalAutofill = documentQuality?.autofillCriticalFieldsAllowed === false || extractionConfidence < AUTO_DRAFT_MIN_CONFIDENCE;
+  const blocksAutomaticDraftMapping = extractionConfidence < AUTO_DRAFT_MIN_CONFIDENCE;
   const extractedFields = inferExtractedDraftFields({
     subclassCode: matter.visaSubclass,
     fileName: input.fileName,
@@ -386,6 +390,7 @@ export async function uploadDocumentToMatter(input: {
         extractionConfidence: input.extractionMetadata?.confidence ?? null,
         extractionWarnings: [
           ...(input.extractionMetadata?.warnings ?? []),
+          ...(blocksAutomaticDraftMapping ? [`needs_manual_review: extraction confidence ${extractionConfidence.toFixed(2)} is below the automatic draft mapping threshold ${AUTO_DRAFT_MIN_CONFIDENCE.toFixed(2)}.`] : []),
           ...(extractionSchema.supported ? [] : [extractionSchema.manualReviewReason ?? "Manual review required."])
         ],
         extractionSchema: extractionSchema.schema,
@@ -422,7 +427,7 @@ export async function uploadDocumentToMatter(input: {
     data: { extractionStatus: ExtractionStatus.EXTRACTED }
   });
 
-  if (!input.skipDraftMapping) {
+  if (!input.skipDraftMapping && !blocksAutomaticDraftMapping) {
     await mapDocumentsToDraft(matter.id);
   }
   return document;
@@ -454,6 +459,7 @@ export async function mapDocumentsToDraft(matterId: string, options?: { skipAiSu
       keyValues?: Array<{ key: string; value: string; confidence?: number }>;
       documentQuality?: DocumentQualityResult | null;
       autofillCriticalFieldsAllowed?: boolean;
+      extractionConfidence?: number | null;
     }>(String(latestExtraction.extractedJson));
 
     const previewText = [
@@ -462,6 +468,10 @@ export async function mapDocumentsToDraft(matterId: string, options?: { skipAiSu
     ].join("\n");
 
     const blocksCriticalAutofill = extractedPayload.autofillCriticalFieldsAllowed === false || extractedPayload.documentQuality?.autofillCriticalFieldsAllowed === false;
+    const documentConfidence = Number(extractedPayload.extractionConfidence ?? 0);
+    if (documentConfidence < AUTO_DRAFT_MIN_CONFIDENCE) {
+      continue;
+    }
     const derivedCandidates = inferExtractedDraftFields({
       subclassCode: reviewData.matter.visaSubclass,
       fileName: document.fileName,

@@ -6,6 +6,28 @@ export type NormalizedExtractedField = {
   confidence?: number;
 };
 
+const keyAliases: Record<string, string> = {
+  "surname": "family_name",
+  "last name": "family_name",
+  "family name": "family_name",
+  "firstname": "given_names",
+  "first name": "given_names",
+  "given name": "given_names",
+  "given names": "given_names",
+  "full name": "full_name",
+  "dob": "date_of_birth",
+  "birth date": "date_of_birth",
+  "passport no": "passport_number",
+  "passport number": "passport_number",
+  "grant no": "visa_grant_number",
+  "grant number": "visa_grant_number",
+  "trn": "transaction_reference_number",
+  "email address": "email",
+  "mobile": "phone",
+  "mobile number": "phone",
+  "telephone": "phone"
+};
+
 function compactWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -51,15 +73,21 @@ function normalizeAddress(value: string) {
   return compactWhitespace(value).replace(/[,.]+/g, "").toLowerCase();
 }
 
+export function normalizeExtractedFieldKey(key: string) {
+  const normalized = compactWhitespace(key).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return keyAliases[normalized] ?? normalized.replace(/\s+/g, "_");
+}
+
 export function normalizeExtractedValue(key: string, value: string) {
-  const lowerKey = key.toLowerCase();
+  const lowerKey = normalizeExtractedFieldKey(key);
   const trimmed = compactWhitespace(value);
   if (!trimmed) return "";
   if (/date|dob|expiry|issued|grant_date|completion/.test(lowerKey)) return normalizeDateValue(trimmed);
-  if (/passport|grant|policy|coe|reference|abn|acn|anzsco/.test(lowerKey)) return normalizeIdentifier(trimmed);
+  if (/passport|grant|policy|coe|reference|abn|acn|anzsco|transaction_reference_number|marn/.test(lowerKey)) return normalizeIdentifier(trimmed);
   if (/fund|balance|salary|amount|currency/.test(lowerKey)) return normalizeCurrencyValue(trimmed);
   if (/score|listening|reading|writing|speaking|overall/.test(lowerKey)) return normalizeScoreValue(trimmed);
   if (/phone|mobile/.test(lowerKey)) return normalizePhone(trimmed);
+  if (/email/.test(lowerKey)) return trimmed.toLowerCase();
   if (/address/.test(lowerKey)) return normalizeAddress(trimmed);
   return trimmed.toLowerCase();
 }
@@ -83,7 +111,7 @@ export function normalizeExtractedKeyValues(
   return keyValues
     .filter((field) => field.key && field.value)
     .map((field) => ({
-      key: field.key,
+      key: normalizeExtractedFieldKey(field.key),
       originalValue: compactWhitespace(field.value),
       normalizedValue: normalizeExtractedValue(field.key, field.value),
       redactedDisplayValue: redactExtractedDisplayValue(field.key, field.value),

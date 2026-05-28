@@ -35,7 +35,10 @@ export function detectExtractionSchema(fileName: string, extractedText = ""): {
   supported: boolean;
   manualReviewReason?: string;
 } {
-  const haystack = `${fileName} ${extractedText}`.toLowerCase();
+  const haystack = `${fileName} ${extractedText}`
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
   if (/passport|travel document|mrz/.test(haystack)) return { schema: "PASSPORT", supported: true };
   if (/vevo|current visa|bridging visa|grant details/.test(haystack)) return { schema: "CURRENT_VISA_EVIDENCE", supported: true };
   if (/\bpte\b|pearson/.test(haystack)) return { schema: "PTE", supported: true };
@@ -45,8 +48,10 @@ export function detectExtractionSchema(fileName: string, extractedText = ""): {
   if (/completion letter|course completion|award letter|successful completion/.test(haystack)) return { schema: "COMPLETION_LETTER", supported: true };
   if (/academic transcript|official transcript|record of results/.test(haystack)) return { schema: "TRANSCRIPT", supported: true };
   if (/resume|curriculum vitae|\bcv\b/.test(haystack)) return { schema: "RESUME", supported: true };
-  if (/payslip|pay slip|salary/.test(haystack)) return { schema: "PAYSLIP", supported: true };
+  if (/nomination approval|sponsor nomination|labour market testing|abn|acn/.test(haystack)) return { schema: "SPONSOR_NOMINATION", supported: true };
+  if (/form 956|registered migration agent|authorised recipient|marn/.test(haystack)) return { schema: "OTHER", supported: false, manualReviewReason: "Form 956 extraction is stored with source-linked fields, but a dedicated schema is not configured yet. Agent review is required." };
   if (/employment contract|contract of employment|letter of offer/.test(haystack)) return { schema: "EMPLOYMENT_CONTRACT", supported: true };
+  if (/payslip|pay slip|salary/.test(haystack)) return { schema: "PAYSLIP", supported: true };
   if (/group certificate|payment summary|tax return|notice of assessment|superannuation|super fund/.test(haystack)) return { schema: "TAX_SUPER_EVIDENCE", supported: true };
   if (/bank statement|transaction account|available balance/.test(haystack)) return { schema: "BANK_STATEMENT", supported: true };
   if (/visa grant|grant notice|vevo/.test(haystack)) return { schema: "VISA_GRANT", supported: true };
@@ -62,7 +67,6 @@ export function detectExtractionSchema(fileName: string, extractedText = ""): {
   if (/police clearance|national police|criminal history/.test(haystack)) return { schema: "POLICE_CLEARANCE", supported: true };
   if (/\bafp\b|australian federal police/.test(haystack)) return { schema: "AFP_CHECK", supported: true };
   if (/health insurance|oshc|ovhc|policy number/.test(haystack)) return { schema: "HEALTH_INSURANCE_POLICY", supported: true };
-  if (/nomination approval|sponsor nomination|labour market testing|abn|acn/.test(haystack)) return { schema: "SPONSOR_NOMINATION", supported: true };
   if (/state nomination|invitation to apply|regional nomination/.test(haystack)) return { schema: "STATE_NOMINATION", supported: true };
   if (/statement|sop|genuine student|declaration/.test(haystack)) return { schema: "STATEMENT", supported: true };
   return {
