@@ -1,4 +1,5 @@
 import { OFFICIAL_HOME_AFFAIRS_FORMS } from "@/lib/data/official-home-affairs-forms";
+import { getOfficialFormMappingHints } from "@/lib/data/official-form-mapping-hints";
 
 async function main() {
   const totals = {
@@ -18,8 +19,11 @@ async function main() {
 
   const coverageEntries = OFFICIAL_HOME_AFFAIRS_FORMS.map((form) => {
     const hasPdf = !!form.sourceUrl?.endsWith(".pdf");
+    const hintCount = getOfficialFormMappingHints(form.formNumber).length;
     const coverage =
-      form.supportStatus === "FILLABLE_PDF" ? 65
+      form.supportStatus === "FILLABLE_PDF" && hintCount ? Math.min(85, hintCount * 10)
+      : form.supportStatus === "MAPPING_REQUIRED" && hintCount ? Math.min(65, hintCount * 9)
+      : form.supportStatus === "NEEDS_REVIEW" && hintCount ? Math.min(35, hintCount * 7)
       : form.supportStatus === "MAPPING_REQUIRED" ? 25
       : 0;
     if (hasPdf) totals.pdfCount += 1;

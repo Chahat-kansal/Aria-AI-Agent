@@ -1,6 +1,7 @@
 import { OfficialFormLifecycleStatus, OfficialFormSupportStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OFFICIAL_HOME_AFFAIRS_FORMS } from "@/lib/data/official-home-affairs-forms";
+import { getOfficialFormMappingHints } from "@/lib/data/official-form-mapping-hints";
 import { checksumBuffer, detectFillableFields } from "@/lib/services/pdf-form-engine";
 import { auditEvent } from "@/lib/services/audit";
 
@@ -41,6 +42,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
 
   for (const seed of OFFICIAL_HOME_AFFAIRS_FORMS) {
     results.checked += 1;
+    const mappingHints = getOfficialFormMappingHints(seed.formNumber);
     const existing = await prisma.officialFormTemplate.findFirst({
       where: {
         workspaceId: input.workspaceId,
@@ -81,6 +83,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             supportStatus: seededSupportStatus,
             lifecycleStatus,
             mappingNotes: seed.notes,
+            fieldMappingsJson: mappingHints,
             lastCheckedAt: new Date()
           }
         });
@@ -96,7 +99,8 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             supportStatus: seededSupportStatus,
             lifecycleStatus,
             lastCheckedAt: new Date(),
-            mappingNotes: seed.notes
+            mappingNotes: seed.notes,
+            fieldMappingsJson: mappingHints
           }
         });
       }
@@ -115,7 +119,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
       const supportStatus = inspection.fillable
         ? OfficialFormSupportStatus.FILLABLE_PDF
         : OfficialFormSupportStatus.MAPPING_REQUIRED;
-      const mappedFieldCount = 0;
+      const mappedFieldCount = Math.min(inspection.fields.length, mappingHints.length);
       const fieldCount = inspection.fields.length;
       const mappingCoveragePercent = fieldCount ? Math.round((mappedFieldCount / fieldCount) * 100) : 0;
 
@@ -146,6 +150,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             mimeType: "application/pdf",
             fileData: buffer,
             fieldSchemaJson,
+            fieldMappingsJson: mappingHints,
             mappingNotes: seed.notes
           }
         });
@@ -168,6 +173,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             mimeType: "application/pdf",
             fileData: buffer,
             fieldSchemaJson,
+            fieldMappingsJson: mappingHints,
             syncError: null,
             mappingNotes: seed.notes
           }
@@ -185,6 +191,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             subclassCodes: seed.subclassCodes,
             supportStatus,
             fieldSchemaJson,
+            fieldMappingsJson: mappingHints,
             syncError: null,
             mappingNotes: seed.notes
           }
