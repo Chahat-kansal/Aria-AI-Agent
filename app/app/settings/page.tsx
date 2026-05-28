@@ -8,6 +8,7 @@ import { SecondaryButton } from "@/components/ui/secondary-button";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { formatDate, formatEnum, getSettingsData } from "@/lib/data/workspace-repository";
 import { prisma } from "@/lib/prisma";
+import { getPaymentProviderStatus } from "@/lib/providers/payment-provider";
 import { canManageTeam, hasPermission, roleLabel } from "@/lib/services/roles";
 import {
   getAiConfigStatus,
@@ -50,6 +51,7 @@ export default async function SettingsPage() {
   const webResearchStatus = getWebResearchConfigStatus();
   const cronStatus = getCronConfigStatus();
   const encryptionStatus = getEncryptionConfigStatus();
+  const paymentStatus = getPaymentProviderStatus();
   const onboardingSteps = workspace ? [
     { label: "Company profile completed", done: Boolean(workspace.name && workspace.slug) },
     { label: "Invite team", done: workspace.users.length > 1 },
@@ -95,6 +97,7 @@ export default async function SettingsPage() {
                     <Link href={"/app/settings/client-portal" as any} className="inline-flex text-cyan-300 transition hover:text-white">Client portal settings</Link>
                     <Link href={"/app/settings/forms" as any} className="inline-flex text-cyan-300 transition hover:text-white">Form library settings</Link>
                     <Link href={"/app/settings/ai" as any} className="inline-flex text-cyan-300 transition hover:text-white">AI settings</Link>
+                    <Link href={"/app/settings/integrations" as any} className="inline-flex text-cyan-300 transition hover:text-white">Integrations</Link>
                     <Link href={"/app/settings/documents" as any} className="inline-flex text-cyan-300 transition hover:text-white">Document settings</Link>
                     <Link href={"/app/invoices/setup" as any} className="inline-flex text-cyan-300 transition hover:text-white">Invoice setup</Link>
                   </div>
@@ -219,10 +222,14 @@ export default async function SettingsPage() {
           {canManageCompany ? <Card>
             <h3 className="text-xl font-semibold tracking-tight text-white">Billing</h3>
             <div className="mt-4 flex items-center justify-between text-sm text-slate-300">
-              <span>Plan management</span>
-              <StatusChip label="Coming soon" />
+              <span>{paymentStatus.providerName}</span>
+              <ConfigStatus configured={paymentStatus.configured} />
             </div>
-            <p className="mt-3 text-xs text-slate-400">Billing is not active in this phase and no subscription data is shown.</p>
+            <p className="mt-3 text-xs text-slate-400">
+              {paymentStatus.configured
+                ? "Stripe plan configuration is present. Billing still needs webhook verification and workspace-facing subscription workflow rollout before live charging."
+                : `Billing is not configured yet. Missing ${paymentStatus.missingEnv.join(", ")}.`}
+            </p>
           </Card> : null}
         </section>
       ) : (

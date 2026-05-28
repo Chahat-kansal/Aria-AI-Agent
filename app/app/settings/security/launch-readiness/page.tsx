@@ -7,6 +7,7 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { canManageTeam } from "@/lib/services/roles";
 import { getLaunchReadinessReport } from "@/lib/services/launch-readiness";
 import { legalReviewStatusLabel, updateWorkspaceLaunchControls } from "@/lib/services/launch-controls";
+import { getProviderStatuses } from "@/lib/services/provider-status";
 import { listSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-support";
 
 function ReadinessItem({ label, configured, detail }: { label: string; configured: boolean; detail: string }) {
@@ -32,6 +33,7 @@ export default async function LaunchReadinessPage() {
   }
 
   const report = await getLaunchReadinessReport(context.workspace.id);
+  const providerStatuses = await getProviderStatuses(context.workspace.id);
   const subclasses = listSubclassSupport();
 
   async function saveControls(formData: FormData) {
@@ -81,6 +83,19 @@ export default async function LaunchReadinessPage() {
           <p className="mt-3 text-sm leading-7 text-slate-300">
             Security, legal/privacy, product, and operations are tracked separately so unsupported or partially supported workflows stay explicit.
           </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {providerStatuses.map((provider) => (
+              <div key={provider.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-white">{provider.label}</p>
+                  <StatusPill tone={provider.configured ? "success" : provider.state === "disabled" ? "neutral" : "warning"}>
+                    {provider.configured ? "Configured" : provider.state === "disabled" ? "Disabled" : "Not configured"}
+                  </StatusPill>
+                </div>
+                <p className="mt-2 text-xs text-slate-400">{provider.providerName}</p>
+              </div>
+            ))}
+          </div>
         </Card>
 
         <form action={saveControls} className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">

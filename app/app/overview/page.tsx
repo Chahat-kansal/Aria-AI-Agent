@@ -172,6 +172,7 @@ export default async function OverviewPage() {
             <Link href="/app/appointments" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">View appointments</p><p className="mt-2 text-sm text-slate-400">Confirm or record consultations.</p></SectionCard></Link>
             <Link href="/app/document-requests" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Review pending client uploads</p><p className="mt-2 text-sm text-slate-400">Track document requests and reminders.</p></SectionCard></Link>
             <Link href="/app/settings/security" className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Open security health</p><p className="mt-2 text-sm text-slate-400">Review encryption, cron, and storage safety.</p></SectionCard></Link>
+            <Link href={"/app/operations" as any} className="block"><SectionCard className="p-4 transition hover:bg-white/[0.05]"><p className="text-sm font-semibold text-white">Open operations command centre</p><p className="mt-2 text-sm text-slate-400">Track deadlines, reminders, matter health, and value metrics.</p></SectionCard></Link>
           </div>
         </PageSection>
 

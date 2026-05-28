@@ -1,4 +1,5 @@
 import type { DocumentQualityResult } from "@/lib/services/document-quality";
+import { extractDocumentImage } from "@/lib/services/ocr/extract-document-image";
 
 export type DocumentAiResult = {
   provider: string;
@@ -211,17 +212,31 @@ async function extractBasic(bytes: Buffer, mimeType: string): Promise<DocumentAi
         configured: true
       });
     }
+    const providerResult = await extractDocumentImage(bytes, mimeType);
+    if (providerResult.extractedText.trim()) {
+      return withKeyValues({
+        provider: providerResult.provider,
+        model: providerResult.model,
+        extractedText: providerResult.extractedText,
+        extractedTextPreview: providerResult.extractedTextPreview,
+        confidence: providerResult.confidence,
+        warnings: providerResult.warnings,
+        configured: providerResult.configured
+      });
+    }
     return {
-      provider: "basic",
-      model: "image-no-ocr",
+      provider: providerResult.provider || "basic",
+      model: providerResult.model || "image-no-ocr",
       extractedText: "",
       extractedTextPreview: "",
       confidence: 0.1,
-      warnings: [
-        "text_extraction_empty: no readable text was extracted from the image payload.",
-        "needs_manual_review: Image document uploaded. OCR provider is required for readable extraction."
-      ],
-      configured: true
+      warnings: providerResult.warnings.length
+        ? providerResult.warnings
+        : [
+            "text_extraction_empty: no readable text was extracted from the image payload.",
+            "needs_manual_review: Image document uploaded. OCR provider is required for readable extraction."
+          ],
+      configured: providerResult.configured
     };
   }
 

@@ -1,0 +1,167 @@
+import { revalidatePath } from "next/cache";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { AppShell } from "@/components/app/app-shell";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusPill } from "@/components/ui/status-pill";
+import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { canManageTeam } from "@/lib/services/roles";
+import { getProviderStatuses } from "@/lib/services/provider-status";
+import { sendEmail } from "@/lib/services/email/send-email";
+import { sendSms } from "@/lib/services/sms/send-sms";
+
+function ProviderCard(props: {
+  title: string;
+  providerName: string;
+  configured: boolean;
+  state: string;
+  lastSuccessfulTestAt?: string | null;
+  lastErrorSummary?: string | null;
+  missingEnv: string[];
+  notes: string[];
+  actions?: ReactNode;
+}) {
+  return (
+    <Card className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-white">{props.title}</h3>
+          <p className="mt-1 text-sm text-slate-400">{props.providerName}</p>
+        </div>
+        <StatusPill tone={props.configured ? "success" : props.state === "disabled" ? "neutral" : "warning"}>
+          {props.configured ? "Configured" : props.state === "disabled" ? "Disabled" : "Not configured"}
+        </StatusPill>
+      </div>
+      <div className="space-y-2 text-sm text-slate-300">
+        <p>Last successful test: <span className="text-white">{props.lastSuccessfulTestAt ? new Date(props.lastSuccessfulTestAt).toLocaleString("en-AU") : "Not recorded"}</span></p>
+        <p>Last error summary: <span className="text-white">{props.lastErrorSummary || "No recent redacted error recorded"}</span></p>
+        {props.missingEnv.length ? <p>Missing: <span className="text-white">{props.missingEnv.join(", ")}</span></p> : null}
+      </div>
+      <ul className="space-y-2 text-xs leading-6 text-slate-400">
+        {props.notes.map((note) => <li key={note}>{note}</li>)}
+      </ul>
+      {props.actions}
+    </Card>
+  );
+}
+
+export default async function IntegrationsSettingsPage() {
+  const context = await requireCurrentWorkspaceContext();
+  if (!canManageTeam(context.user)) {
+    return (
+      <AppShell title="Integrations">
+        <PageHeader title="Integrations unavailable" description="Your company administrator manages provider configuration and notification testing." />
+      </AppShell>
+    );
+  }
+
+  const statuses = await getProviderStatuses(context.workspace.id);
+  const byKey = Object.fromEntries(statuses.map((item) => [item.key, item]));
+
+  async function sendTestEmail() {
+    "use server";
+    const context = await requireCurrentWorkspaceContext();
+    if (!canManageTeam(context.user)) return;
+    await sendEmail({
+      to: context.user.email,
+      template: "beta_onboarding",
+      templateInput: {
+        recipientName: context.user.name,
+        workspaceName: context.workspace.name,
+        intro: "This is a safe Aria provider test email.",
+        footer: "No sensitive client data is included in provider test notifications."
+      },
+      workspaceId: context.workspace.id,
+      userId: context.user.id
+    });
+    revalidatePath("/app/settings/integrations");
+    revalidatePath("/app/settings");
+  }
+
+  async function sendTestSms(formData: FormData) {
+    "use server";
+    const context = await requireCurrentWorkspaceContext();
+    if (!canManageTeam(context.user)) return;
+    const phone = String(formData.get("phone") || "").trim();
+    if (!phone) return;
+    await sendSms({
+      to: phone,
+      body: `${context.workspace.name}: this is a safe Aria test reminder. Please use your secure portal for any client-specific details.`,
+      workspaceId: context.workspace.id,
+      userId: context.user.id,
+      rateLimitKey: `provider.sms.test:${context.workspace.id}:${phone.slice(-6)}`
+    });
+    revalidatePath("/app/settings/integrations");
+    revalidatePath("/app/settings");
+  }
+
+  return (
+    <AppShell title="Integrations">
+      <div className="space-y-8">
+        <PageHeader
+          eyebrow="INTEGRATIONS"
+          title="Provider configuration and status"
+          description="These cards show configuration state only. No API keys, tokens, connection strings, or raw URLs are displayed here."
+          action={<Link href="/app/settings/security/launch-readiness" className="text-sm text-cyan-300 hover:text-white">Open launch readiness</Link>}
+        />
+
+        <section className="grid gap-4 xl:grid-cols-2">
+          <ProviderCard
+            title="Email"
+            providerName={byKey.email.providerName}
+            configured={byKey.email.configured}
+            state={byKey.email.state}
+            lastSuccessfulTestAt={byKey.email.lastSuccessfulTestAt}
+            lastErrorSummary={byKey.email.lastErrorSummary}
+            missingEnv={byKey.email.missingEnv}
+            notes={byKey.email.notes}
+            actions={
+              <form action={sendTestEmail}>
+                <button className="inline-flex h-11 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 text-sm font-semibold text-white">
+                  Send test email
+                </button>
+              </form>
+            }
+          />
+          <ProviderCard
+            title="SMS"
+            providerName={byKey.sms.providerName}
+            configured={byKey.sms.configured}
+            state={byKey.sms.state}
+            lastSuccessfulTestAt={byKey.sms.lastSuccessfulTestAt}
+            lastErrorSummary={byKey.sms.lastErrorSummary}
+            missingEnv={byKey.sms.missingEnv}
+            notes={byKey.sms.notes}
+            actions={
+              <form action={sendTestSms} className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Test phone number"
+                  className="h-11 flex-1 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-slate-500"
+                />
+                <button className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                  Send test SMS
+                </button>
+              </form>
+            }
+          />
+          {statuses.filter((item) => item.key !== "email" && item.key !== "sms").map((status) => (
+            <ProviderCard
+              key={status.key}
+              title={status.label}
+              providerName={status.providerName}
+              configured={status.configured}
+              state={status.state}
+              lastSuccessfulTestAt={status.lastSuccessfulTestAt}
+              lastErrorSummary={status.lastErrorSummary}
+              missingEnv={status.missingEnv}
+              notes={status.notes}
+            />
+          ))}
+        </section>
+      </div>
+    </AppShell>
+  );
+}
