@@ -414,7 +414,7 @@ export async function ensureClientPortalToken(input: {
       expiresAt: addDays(settings.clientPortalExpiryDays || PORTAL_TOKEN_DAYS)
     }
   });
-  return { record, token, url: buildClientLink("/client/portal", token, input.requestOrigin) };
+  return { record, token, url: buildClientLink("/client/activate", token, input.requestOrigin) };
 }
 
 export async function getClientPortalByToken(token: string) {
@@ -430,6 +430,24 @@ export async function getClientPortalByToken(token: string) {
     entityType: "ClientPortalAccessToken",
     entityId: record.id,
     action: "portal.used",
+    metadata: { matterId: record.matterId ?? null, clientId: record.clientId }
+  });
+  return record;
+}
+
+export async function getClientPortalById(portalId: string) {
+  const record = await prisma.clientPortalAccessToken.findFirst({
+    where: { id: portalId, expiresAt: { gt: new Date() }, revokedAt: null },
+    select: clientPortalSelect
+  });
+  if (!record) return null;
+  await prisma.clientPortalAccessToken.update({ where: { id: record.id }, data: { lastViewedAt: new Date() } }).catch(() => null);
+  await auditEvent({
+    workspaceId: record.workspaceId,
+    userId: record.createdByUserId ?? record.matter?.assignedToUserId ?? undefined,
+    entityType: "ClientPortalAccessToken",
+    entityId: record.id,
+    action: "portal.session_used",
     metadata: { matterId: record.matterId ?? null, clientId: record.clientId }
   });
   return record;
@@ -832,6 +850,35 @@ export async function createPortalMessage(input: {
   return { ok: true };
 }
 
+export async function createPortalMessageById(input: {
+  portalId: string;
+  message: string;
+}) {
+  const portal = await getClientPortalById(input.portalId);
+  if (!portal?.matterId || !portal.matter) return null;
+  const message = redactForTimeline(input.message);
+  if (!message) return null;
+
+  await addMatterTimelineEvent({
+    workspaceId: portal.workspaceId,
+    matterId: portal.matterId,
+    actorUserId: portal.matter.assignedToUserId,
+    eventType: "portal.client_message",
+    title: "Client message received",
+    description: message
+  });
+
+  await auditMatterAction({
+    workspaceId: portal.workspaceId,
+    userId: portal.matter.assignedToUserId,
+    matterId: portal.matterId,
+    action: "portal.message.created",
+    metadata: { messageLength: message.length, source: "client_portal_session" }
+  }).catch(() => null);
+
+  return { ok: true };
+}
+
 export async function createPortalAcknowledgement(input: {
   token: string;
   acknowledgementType: string;
@@ -855,6 +902,34 @@ export async function createPortalAcknowledgement(input: {
     matterId: portal.matterId,
     action: "portal.acknowledgement.created",
     metadata: { acknowledgementType, source: "client_portal" }
+  }).catch(() => null);
+
+  return { ok: true };
+}
+
+export async function createPortalAcknowledgementById(input: {
+  portalId: string;
+  acknowledgementType: string;
+}) {
+  const portal = await getClientPortalById(input.portalId);
+  if (!portal?.matterId || !portal.matter) return null;
+  const acknowledgementType = redactForTimeline(input.acknowledgementType || "Client acknowledgement / confirmation", 120);
+
+  await addMatterTimelineEvent({
+    workspaceId: portal.workspaceId,
+    matterId: portal.matterId,
+    actorUserId: portal.matter.assignedToUserId,
+    eventType: "portal.client_acknowledgement",
+    title: "Client acknowledgement / confirmation recorded",
+    description: `${acknowledgementType}. Registered migration agent review required before use.`
+  });
+
+  await auditMatterAction({
+    workspaceId: portal.workspaceId,
+    userId: portal.matter.assignedToUserId,
+    matterId: portal.matterId,
+    action: "portal.acknowledgement.created",
+    metadata: { acknowledgementType, source: "client_portal_session" }
   }).catch(() => null);
 
   return { ok: true };

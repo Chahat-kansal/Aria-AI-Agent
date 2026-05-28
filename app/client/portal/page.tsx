@@ -1,0 +1,237 @@
+import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { createPortalAcknowledgementById, createPortalMessageById } from "@/lib/services/client-workflows";
+import { getClientPortalSession } from "@/lib/services/client-portal-session";
+import { checkRateLimit } from "@/lib/security/rate-limit";
+import {
+  cleanClientDescription,
+  documentStatus,
+  dueLabel,
+  PortalCard,
+  PortalSectionHeading,
+  PortalShell,
+  PortalStatusBadge
+} from "@/components/client-portal/portal-ui";
+
+const visibleClientTimelineEvents = new Set([
+  "matter.created",
+  "intake.sent",
+  "intake.viewed",
+  "intake.submitted",
+  "documents.requested",
+  "document.uploaded",
+  "documents.reminder_sent",
+  "appointment.booked",
+  "appointment.requested",
+  "generated_document.created",
+  "client.review.sent",
+  "client.review.returned",
+  "client.review.confirmed",
+  "portal.client_message",
+  "portal.client_acknowledgement"
+]);
+
+function nextActionForMatter(matter: NonNullable<Awaited<ReturnType<typeof getClientPortalSession>>>["matter"]) {
+  if (!matter) return "Wait for your migration team to link an active matter.";
+  const missing = matter.checklistItems.filter((item) => !item.documentId && item.required);
+  if (missing.length) return `Upload ${missing.length} outstanding document${missing.length === 1 ? "" : "s"}.`;
+  const pending = matter.checklistItems.filter((item) => item.documentId && item.document?.reviewStatus !== "VERIFIED");
+  if (pending.length) return "Your migration team is reviewing uploaded documents.";
+  if (matter.reviewRequests.some((request) => request.status === "SENT_TO_CLIENT" || request.status === "VIEWED_BY_CLIENT")) {
+    return "Complete the latest confirmation request from your migration team.";
+  }
+  return "No client action is currently required. Your migration team will contact you after agent review.";
+}
+
+function actionItems(matter: NonNullable<Awaited<ReturnType<typeof getClientPortalSession>>>["matter"]) {
+  if (!matter) return [];
+  const missing = matter.checklistItems.filter((item) => !item.documentId && item.required);
+  const pendingDocs = matter.checklistItems.filter((item) => item.documentId && item.document?.reviewStatus !== "VERIFIED");
+  const pendingReviews = matter.reviewRequests.filter((request) => request.status === "SENT_TO_CLIENT" || request.status === "VIEWED_BY_CLIENT");
+  const hasAppointment = matter.appointments.some((appointment) => appointment.status === "REQUESTED" || appointment.status === "CONFIRMED");
+  const items = [
+    ...(missing.length ? [{ title: "Upload missing documents", detail: `${missing.length} required item${missing.length === 1 ? "" : "s"} still needed.`, href: "/client/documents" as any, tone: "warning" as const }] : []),
+    ...(pendingDocs.length ? [{ title: "Wait for document review", detail: `${pendingDocs.length} uploaded item${pendingDocs.length === 1 ? " is" : "s are"} being checked by your migration team.`, href: "/client/checklist" as any, tone: "info" as const }] : []),
+    ...(pendingReviews.length ? [{ title: "Confirm requested details", detail: "Your migration team has details waiting for confirmation.", href: "/client/portal#confirmations" as any, tone: "warning" as const }] : []),
+    ...(!hasAppointment ? [{ title: "Request an appointment", detail: "Choose a preferred time for a consultation or follow-up.", href: "/client/book" as any, tone: "neutral" as const }] : [])
+  ];
+  return items.length ? items : [{ title: "No action needed right now", detail: "Your migration team will contact you after review.", href: "/client/checklist" as any, tone: "success" as const }];
+}
+
+async function submitPortalMessage(portalId: string, formData: FormData) {
+  "use server";
+  const headerStore = await headers();
+  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
+  const limit = checkRateLimit({ key: `portal.message:${ip}:${portalId}`, limit: 8, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) redirect(`/client/portal?message=rate-limited#messages`);
+  const message = String(formData.get("message") || "");
+  await createPortalMessageById({ portalId, message });
+  redirect(`/client/portal?message=sent#messages`);
+}
+
+async function submitPortalAcknowledgement(portalId: string, formData: FormData) {
+  "use server";
+  const headerStore = await headers();
+  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
+  const limit = checkRateLimit({ key: `portal.acknowledgement:${ip}:${portalId}`, limit: 6, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) redirect(`/client/portal?ack=rate-limited#confirmations`);
+  const accepted = String(formData.get("acknowledgement") || "") === "on";
+  const acknowledgementType = String(formData.get("acknowledgementType") || "Client portal acknowledgement");
+  if (accepted) await createPortalAcknowledgementById({ portalId, acknowledgementType });
+  redirect(`/client/portal?ack=recorded#confirmations`);
+}
+
+export default async function ClientPortalSessionPage({ searchParams }: { searchParams?: { message?: string; ack?: string } }) {
+  const portal = await getClientPortalSession();
+  if (!portal) redirect("/client/login");
+  const matter = portal.matter;
+  const visibleTimelineEvents = (matter?.timelineEvents ?? []).filter((event) => visibleClientTimelineEvents.has(event.eventType));
+  const missingItems = matter?.checklistItems.filter((item) => !item.documentId && item.required) ?? [];
+  const uploadedItems = matter?.checklistItems.filter((item) => item.documentId) ?? [];
+  const approvedItems = matter?.checklistItems.filter((item) => item.document?.reviewStatus === "VERIFIED" || item.reviewedAt) ?? [];
+  const latestAppointment = matter?.appointments[0] ?? null;
+  const confirmationEvents = visibleTimelineEvents.filter((event) => event.eventType === "portal.client_acknowledgement" || event.eventType.startsWith("client.review"));
+  const messageEvents = visibleTimelineEvents.filter((event) => event.eventType === "portal.client_message" || event.eventType === "documents.reminder_sent");
+  const nextActions = actionItems(matter);
+  const handleMessage = submitPortalMessage.bind(null, portal.id);
+  const handleAck = submitPortalAcknowledgement.bind(null, portal.id);
+
+  return (
+    <PortalShell firmName={portal.workspace.name} clientName={`${portal.client.firstName} ${portal.client.lastName}`} matterTitle={matter?.title} subclass={matter?.visaSubclass}>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_390px]">
+        <div className="space-y-6">
+          <PortalCard>
+            <PortalSectionHeading eyebrow="Next steps" title="What you need to do next" description="A simple list of the actions your migration team needs from you." />
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {nextActions.map((item) => (
+                <Link key={item.title} href={item.href as any} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:bg-violet-50 focus:outline-none focus:ring-2 focus:ring-cyan-300/50">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-950">{item.title}</p>
+                      <p className="mt-1 text-sm leading-5 text-slate-600">{item.detail}</p>
+                    </div>
+                    <PortalStatusBadge tone={item.tone}>Open</PortalStatusBadge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionHeading eyebrow="Documents" title="Document checklist" description="Upload clear copies only. Your migration team will review each document before use." />
+            <div className="mt-5 space-y-3">
+              {matter?.checklistItems.slice(0, 6).map((item) => {
+                const status = documentStatus(item);
+                return (
+                  <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-950">{item.label}</p>
+                        <p className="mt-1 text-xs text-slate-600">{item.category} - {item.required ? "Required" : "Recommended"}{item.dueDate ? ` - Due ${dueLabel(item.dueDate)}` : ""}</p>
+                        {cleanClientDescription(item.description) ? <p className="mt-2 text-sm leading-5 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
+                        {item.document ? <p className="mt-2 text-xs text-slate-600">Uploaded: {item.document.fileName}</p> : null}
+                      </div>
+                      <PortalStatusBadge tone={status.tone}>{status.label}</PortalStatusBadge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href={"/client/documents" as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Upload documents</Link>
+              <Link href={"/client/checklist" as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">View full checklist</Link>
+            </div>
+          </PortalCard>
+
+          <PortalCard id="messages">
+            <PortalSectionHeading eyebrow="Messages" title="Message your migration team" description="Use this for short updates and questions. Upload attachments through the document area." />
+            {searchParams?.message === "sent" ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Message sent.</p> : null}
+            {searchParams?.message === "rate-limited" ? <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Please wait before sending another message.</p> : null}
+            <div className="mt-5 space-y-3">
+              {messageEvents.length ? messageEvents.slice(0, 5).map((event) => (
+                <div key={event.id} className={`max-w-[92%] rounded-3xl border p-4 ${event.eventType === "portal.client_message" ? "ml-auto border-cyan-200/20 bg-cyan-200/10" : "border-slate-200 bg-slate-50"}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">{event.eventType === "portal.client_message" ? "You" : "Migration team"}</p>
+                    <p className="text-xs text-slate-500">{event.createdAt.toLocaleString("en-AU")}</p>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-900">{event.description || event.title}</p>
+                </div>
+              )) : <p className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">No messages yet. Send an update if your migration team needs to know something.</p>}
+            </div>
+            <form action={handleMessage} className="mt-5 space-y-3">
+              <textarea name="message" required maxLength={1200} placeholder="Write your update or question" className="min-h-28 w-full rounded-3xl border border-slate-200 bg-white p-4 text-sm text-slate-950 placeholder:text-slate-500 outline-none transition focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/20" />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-600">Upload documents from the Documents section.</p>
+                <button className="rounded-2xl bg-violet-700 px-5 py-2 text-sm font-semibold text-[#fff]">Send message</button>
+              </div>
+            </form>
+          </PortalCard>
+
+          <PortalCard id="confirmations">
+            <PortalSectionHeading eyebrow="Confirmations" title="Client acknowledgement / confirmation" description="Confirmations help your migration team check facts. They are reviewed before use." />
+            {searchParams?.ack === "recorded" ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Acknowledgement recorded.</p> : null}
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-slate-950">Portal information acknowledgement</p>
+                  <PortalStatusBadge tone={confirmationEvents.length ? "success" : "warning"}>{confirmationEvents.length ? "Completed" : "Pending"}</PortalStatusBadge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Confirm that you understand uploaded information is checked by your migration agent before it is used.</p>
+                {confirmationEvents[0] ? <p className="mt-2 text-xs text-slate-500">Submitted {confirmationEvents[0].createdAt.toLocaleString("en-AU")}</p> : null}
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-slate-950">Confirm contact and matter details</p>
+                  <PortalStatusBadge tone={matter?.reviewRequests.length ? "warning" : "neutral"}>{matter?.reviewRequests.length ? "Pending" : "Not requested"}</PortalStatusBadge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{matter?.reviewRequests.length ? "Your migration team has details waiting for confirmation." : "No separate confirmation is waiting right now."}</p>
+              </div>
+            </div>
+            <form action={handleAck} className="mt-5 space-y-3">
+              <input type="hidden" name="acknowledgementType" value="Portal information and document review acknowledgement" />
+              <label className="flex items-start gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                <input type="checkbox" name="acknowledgement" required className="mt-1" />
+                <span>I understand that my migration agent will review this before use. This is not final lodgement.</span>
+              </label>
+              <button className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white/[0.12]">Record acknowledgement</button>
+            </form>
+          </PortalCard>
+        </div>
+
+        <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+          <PortalCard>
+            <PortalSectionHeading title="Matter status" description={nextActionForMatter(matter)} />
+            <div className="mt-5 space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">Current stage</span>
+                  <span className="font-semibold text-slate-950">{matter?.stage?.replaceAll("_", " ") || "Not linked"}</span>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-slate-200">
+                  <div className="h-2 rounded-full bg-violet-700" style={{ width: `${Math.max(8, matter?.readinessScore || 0)}%` }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                  <span>Progress</span>
+                  <span>{matter?.readinessScore || 0}%</span>
+                </div>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <p className="font-semibold text-slate-950">Assigned agent</p>
+                <p className="mt-1">{matter?.assignedToUser?.name || "Your migration team"}</p>
+                <p className="mt-3 font-semibold text-slate-950">Document progress</p>
+                <p className="mt-1">{uploadedItems.length} uploaded - {approvedItems.length} accepted - {missingItems.length} still needed</p>
+                <p className="mt-3 font-semibold text-slate-950">Appointment</p>
+                <p className="mt-1">{latestAppointment ? latestAppointment.status.replaceAll("_", " ") : "No appointment booked yet"}</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <p className="font-semibold text-slate-950">Latest message from migration team</p>
+                <p className="mt-2">{messageEvents.find((event) => event.eventType !== "portal.client_message")?.description || "No team message yet."}</p>
+              </div>
+            </div>
+          </PortalCard>
+        </aside>
+      </div>
+    </PortalShell>
+  );
+}
