@@ -1,5 +1,8 @@
 import { ExtractionStatus, FieldStatus, MatterStage, MatterStatus, ReviewStatus, UserRole, UserStatus, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { loadScriptEnv } from "@/scripts/helpers/load-script-env";
+
+loadScriptEnv();
 
 const ADMIN_EMAIL = "platform-admin-readiness+aria@example.com";
 const OWNER_EMAIL = "owner-platform-admin-readiness+aria@example.com";

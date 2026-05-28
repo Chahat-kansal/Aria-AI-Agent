@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { DraftFieldStatus, FieldStatus, OfficialFormLifecycleStatus, OfficialFormSupportStatus, UserRole, UserStatus, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { loadScriptEnv } from "@/scripts/helpers/load-script-env";
 import { createMatter } from "@/lib/services/matters";
 import { defaultPermissionsForRole, canAccessMatter, canManageTeam, hasPermission } from "@/lib/services/roles";
 import { updateWorkspaceLaunchControls } from "@/lib/services/launch-controls";
@@ -19,6 +20,8 @@ import { encryptJson, encryptString } from "@/lib/security/encryption";
 import { getAriaReviewWarning } from "@/lib/services/aria-grounding";
 import { generateVisaDraftPack } from "@/lib/services/visa-draft-pack";
 import { detectFillableFields, generateMatterFormDraft, saveManualFieldMapping } from "@/lib/services/pdf-form-engine";
+
+loadScriptEnv();
 
 const WORKSPACE_NAME = "Aria Production Readiness Test Pty Ltd";
 const WORKSPACE_SLUG = "aria-production-readiness-test";

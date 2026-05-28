@@ -3,6 +3,9 @@ import path from "node:path";
 import { ExtractionStatus, FieldStatus, MatterStage, MatterStatus, ReviewStatus, UserRole, UserStatus, UserVisibilityScope, WorkspacePlan } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canAccessMatter } from "@/lib/services/roles";
+import { loadScriptEnv } from "@/scripts/helpers/load-script-env";
+
+loadScriptEnv();
 
 const WORKSPACE_SLUG = "aria-privacy-qa-workspace";
 const RESULT = {
