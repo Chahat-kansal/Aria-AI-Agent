@@ -22,14 +22,22 @@ async function downloadPdfBuffer(url: string) {
 export async function syncOfficialForms(input: { workspaceId: string; userId: string }) {
   const results = {
     checked: 0,
+    discovered: OFFICIAL_HOME_AFFAIRS_FORMS.length,
     downloaded: 0,
     updated: 0,
     unchanged: 0,
     failed: 0,
     fillable: 0,
     manualOnly: 0,
-    onlineOnly: 0
+    onlineOnly: 0,
+    mappingRequired: 0,
+    needsReview: 0,
+    superseded: 0,
+    changedSinceLastCheck: 0,
+    averageMappingCoverage: 0
   };
+  let totalCoverage = 0;
+  let coverageCount = 0;
 
   for (const seed of OFFICIAL_HOME_AFFAIRS_FORMS) {
     results.checked += 1;
@@ -41,7 +49,23 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
       }
     });
 
-    if (seed.supportStatus === "ONLINE_ONLY" || !seed.sourceUrl) {
+    const lifecycleStatus =
+      seed.lifecycleStatus === "SUPERSEDED"
+        ? OfficialFormLifecycleStatus.SUPERSEDED
+        : seed.lifecycleStatus === "NEEDS_REVIEW" || seed.lifecycleStatus === "UNKNOWN"
+          ? OfficialFormLifecycleStatus.NEEDS_REVIEW
+          : OfficialFormLifecycleStatus.CURRENT;
+
+    const seededSupportStatus =
+      seed.supportStatus === "ONLINE_ONLY"
+        ? OfficialFormSupportStatus.ONLINE_ONLY
+        : seed.supportStatus === "MANUAL_ONLY"
+          ? OfficialFormSupportStatus.MANUAL_ONLY
+          : seed.supportStatus === "FILLABLE_PDF"
+            ? OfficialFormSupportStatus.FILLABLE_PDF
+            : OfficialFormSupportStatus.MAPPING_REQUIRED;
+
+    if (seed.supportStatus === "ONLINE_ONLY" || !seed.sourceUrl || seed.supportStatus === "NEEDS_REVIEW" || seed.supportStatus === "SUPERSEDED" || seed.supportStatus === "MANUAL_ONLY") {
       if (!existing) {
         await prisma.officialFormTemplate.create({
           data: {
@@ -54,8 +78,8 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             sourceUrl: seed.sourceUrl,
             sourceName: seed.sourceName,
             subclassCodes: seed.subclassCodes,
-            supportStatus: OfficialFormSupportStatus.ONLINE_ONLY,
-            lifecycleStatus: OfficialFormLifecycleStatus.CURRENT,
+            supportStatus: seededSupportStatus,
+            lifecycleStatus,
             mappingNotes: seed.notes,
             lastCheckedAt: new Date()
           }
@@ -69,14 +93,18 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             sourceUrl: seed.sourceUrl,
             sourceName: seed.sourceName,
             subclassCodes: seed.subclassCodes,
-            supportStatus: OfficialFormSupportStatus.ONLINE_ONLY,
-            lifecycleStatus: OfficialFormLifecycleStatus.CURRENT,
+            supportStatus: seededSupportStatus,
+            lifecycleStatus,
             lastCheckedAt: new Date(),
             mappingNotes: seed.notes
           }
         });
       }
-      results.onlineOnly += 1;
+      if (seed.supportStatus === "ONLINE_ONLY") results.onlineOnly += 1;
+      if (seed.supportStatus === "MANUAL_ONLY") results.manualOnly += 1;
+      if (seed.supportStatus === "MAPPING_REQUIRED") results.mappingRequired += 1;
+      if (seed.supportStatus === "NEEDS_REVIEW") results.needsReview += 1;
+      if (seed.supportStatus === "SUPERSEDED" || seed.lifecycleStatus === "SUPERSEDED") results.superseded += 1;
       continue;
     }
 
@@ -86,9 +114,10 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
       const inspection = await detectFillableFields(buffer);
       const supportStatus = inspection.fillable
         ? OfficialFormSupportStatus.FILLABLE_PDF
-        : seed.supportStatus === "MANUAL_ONLY"
-          ? OfficialFormSupportStatus.MANUAL_ONLY
-          : OfficialFormSupportStatus.MAPPING_REQUIRED;
+        : OfficialFormSupportStatus.MAPPING_REQUIRED;
+      const mappedFieldCount = 0;
+      const fieldCount = inspection.fields.length;
+      const mappingCoveragePercent = fieldCount ? Math.round((mappedFieldCount / fieldCount) * 100) : 0;
 
       const fieldSchemaJson = inspection.fields.map((field) => ({
         name: field.name,
@@ -108,7 +137,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             sourceUrl: seed.sourceUrl,
             sourceName: seed.sourceName,
             subclassCodes: seed.subclassCodes,
-            lifecycleStatus: OfficialFormLifecycleStatus.CURRENT,
+            lifecycleStatus,
             supportStatus,
             downloadedAt: new Date(),
             lastCheckedAt: new Date(),
@@ -130,7 +159,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
             sourceUrl: seed.sourceUrl,
             sourceName: seed.sourceName,
             subclassCodes: seed.subclassCodes,
-            lifecycleStatus: OfficialFormLifecycleStatus.CURRENT,
+            lifecycleStatus,
             supportStatus,
             downloadedAt: new Date(),
             lastCheckedAt: new Date(),
@@ -144,6 +173,7 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
           }
         });
         results.updated += 1;
+        results.changedSinceLastCheck += 1;
       } else {
         await prisma.officialFormTemplate.update({
           where: { id: existing.id },
@@ -164,6 +194,10 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
 
       if (inspection.fillable) results.fillable += 1;
       if (!inspection.fillable) results.manualOnly += 1;
+      if (supportStatus === OfficialFormSupportStatus.MAPPING_REQUIRED) results.mappingRequired += 1;
+      if (lifecycleStatus === OfficialFormLifecycleStatus.NEEDS_REVIEW) results.needsReview += 1;
+      totalCoverage += mappingCoveragePercent;
+      coverageCount += 1;
     } catch (error) {
       results.failed += 1;
       if (existing) {
@@ -176,8 +210,11 @@ export async function syncOfficialForms(input: { workspaceId: string; userId: st
           }
         });
       }
+      results.needsReview += 1;
     }
   }
+
+  results.averageMappingCoverage = coverageCount ? Math.round(totalCoverage / coverageCount) : 0;
 
   await auditEvent({
     workspaceId: input.workspaceId,

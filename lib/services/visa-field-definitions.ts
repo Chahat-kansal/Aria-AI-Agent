@@ -1,4 +1,5 @@
 import { TemplateValueType } from "@prisma/client";
+import { listVisaSubclassCatalog, type VisaSubclassRegistryStatus, type VisaSubclassRegistrySupportLevel } from "@/lib/data/visa-subclass-catalog";
 
 export type VisaFieldDefinition = {
   fieldKey: string;
@@ -40,6 +41,12 @@ export type VisaSubclassDefinition = {
   name: string;
   description: string;
   version: string;
+  family?: string;
+  status?: VisaSubclassRegistryStatus;
+  supportLevel?: VisaSubclassRegistrySupportLevel;
+  sourceUrl?: string;
+  reviewRequired?: boolean;
+  mappingNotes?: string;
   sections: VisaFieldSectionDefinition[];
   requirements: VisaRequirementDefinition[];
   checklist: VisaChecklistDefinition[];
@@ -684,10 +691,166 @@ const defs: Record<string, VisaSubclassDefinition> = {
 defs["190"].sections = [...defs["189"].sections, defs["190"].sections[defs["190"].sections.length - 1]];
 defs["491"].sections = [...defs["189"].sections, defs["491"].sections[defs["491"].sections.length - 1]];
 
+for (const code of ["500", "485", "482", "186", "820/801", "309/100", "189", "190", "491", "600"] as const) {
+  defs[code] = {
+    ...defs[code],
+    family:
+      code === "500" || code === "485"
+        ? "Student / Graduate"
+        : code === "600"
+          ? "Visitor / Temporary"
+          : code === "820/801" || code === "309/100"
+            ? "Partner / Family"
+            : code === "189" || code === "190" || code === "491"
+              ? "Skilled"
+              : "Employer Sponsored",
+    status: "ACTIVE",
+    supportLevel: "FULL_FIELD_AUTOFILL",
+    reviewRequired: true,
+    mappingNotes: "Existing deep field-level autofill flow retained. Agent review is still required before use."
+  };
+}
+
+function scaffoldDefinition(input: {
+  subclassCode: string;
+  stream?: string;
+  name: string;
+  family: string;
+  status: VisaSubclassRegistryStatus;
+  supportLevel: VisaSubclassRegistrySupportLevel;
+  sourceUrl?: string;
+  mappingNotes: string;
+}) {
+  const sectionSpecific: VisaFieldSectionDefinition[] =
+    input.family === "Student / Graduate"
+      ? [{
+          key: "study",
+          title: "Study / education context",
+          sortOrder: 30,
+          fields: [
+            field("study.provider", "Education provider", TemplateValueType.TEXT, false, ["Education"], 10, ["provider", "institution", "education provider"]),
+            field("study.course_name", "Course / qualification", TemplateValueType.TEXT, false, ["Education"], 20, ["course name", "qualification", "program"]),
+            field("study.coe_number", "CoE / enrolment number", TemplateValueType.TEXT, false, ["Education"], 30, ["coe number", "confirmation of enrolment"]),
+            field("english.test_type", "English test type", TemplateValueType.TEXT, false, ["Education"], 40, ["ielts", "pte", "toefl", "oet"])
+          ]
+        }]
+      : input.family === "Visitor / Temporary"
+        ? [{
+            key: "travel",
+            title: "Travel / visit context",
+            sortOrder: 30,
+            fields: [
+              field("travel.purpose", "Purpose of visit or activity", TemplateValueType.TEXT, false, ["Travel", "Statements / Declarations"], 10, ["purpose of visit", "activity purpose"], { clientConfirmationCategory: "visitor_travel" }),
+              field("travel.itinerary", "Itinerary / travel plan", TemplateValueType.TEXT, false, ["Travel"], 20, ["itinerary", "travel itinerary"]),
+              field("financial.available_funds", "Available funds", TemplateValueType.CURRENCY, false, ["Financial"], 30, ["available funds", "balance", "funds"])
+            ]
+          }]
+        : input.family === "Partner / Family"
+          ? [{
+              key: "relationship_family",
+              title: "Relationship / family context",
+              sortOrder: 30,
+              fields: [
+                field("relationship.start_date", "Relationship / family event date", TemplateValueType.DATE, false, ["Relationship"], 10, ["relationship start date", "marriage date", "birth date"]),
+                field("relationship.timeline", "Relationship / family timeline", TemplateValueType.TEXT, false, ["Relationship", "Statements / Declarations"], 20, ["timeline", "relationship history"], { unsafe: true, clientConfirmationCategory: "relationship_family" }),
+                field("family.parental_responsibility", "Parental responsibility / custody", TemplateValueType.TEXT, false, ["Relationship", "Forms"], 30, ["custody", "parental responsibility"], { unsafe: true, clientConfirmationCategory: "relationship_family" })
+              ]
+            }]
+          : input.family === "Skilled"
+            ? [{
+                key: "skills",
+                title: "Skills / nomination context",
+                sortOrder: 30,
+                fields: [
+                  field("skills.occupation", "Occupation", TemplateValueType.TEXT, false, ["Employment", "Education"], 10, ["occupation", "nominated occupation"]),
+                  field("skills.anzsco", "ANZSCO", TemplateValueType.TEXT, false, ["Employment", "Education"], 20, ["anzsco"]),
+                  field("points.total", "Total points", TemplateValueType.NUMBER, false, ["Employment", "Education", "Forms"], 30, ["total points"], { clientConfirmationCategory: "skilled_points" })
+                ]
+              }]
+            : input.family === "Employer Sponsored"
+              ? [{
+                  key: "sponsor_employer",
+                  title: "Employer / sponsor context",
+                  sortOrder: 30,
+                  fields: [
+                    field("sponsor.business_name", "Sponsor / employer", TemplateValueType.TEXT, false, ["Employment", "Forms"], 10, ["sponsor business name", "employer"]),
+                    field("sponsor.abn", "ABN / ACN", TemplateValueType.TEXT, false, ["Employment", "Forms"], 20, ["abn", "acn"]),
+                    field("employment.position", "Position / role", TemplateValueType.TEXT, false, ["Employment"], 30, ["position", "role", "occupation"])
+                  ]
+                }]
+              : input.family === "Citizenship"
+                ? [{
+                    key: "citizenship",
+                    title: "Citizenship context",
+                    sortOrder: 30,
+                    fields: [
+                      field("citizenship.pathway", "Citizenship pathway", TemplateValueType.TEXT, false, ["Identity", "Forms"], 10, ["conferral", "descent", "evidence of citizenship"]),
+                      field("citizenship.eligibility_context", "Eligibility context", TemplateValueType.TEXT, false, ["Identity", "Statements / Declarations"], 20, ["eligibility", "citizenship context"], { unsafe: true })
+                    ]
+                  }]
+                : [{
+                    key: "workflow_context",
+                    title: "Workflow context",
+                    sortOrder: 30,
+                    fields: [
+                      field("workflow.summary", "Workflow summary", TemplateValueType.TEXT, false, ["Other Evidence", "Forms"], 10, ["summary", "workflow", "matter context"])
+                    ]
+                  }];
+
+  return {
+    subclassCode: input.subclassCode,
+    stream: input.stream ?? input.family,
+    name: input.name,
+    description: `${input.name} scaffold definition for migration matter preparation. Registered migration agent review required before use.`,
+    version: "2026.05",
+    family: input.family,
+    status: input.status,
+    supportLevel: input.supportLevel,
+    sourceUrl: input.sourceUrl,
+    reviewRequired: true,
+    mappingNotes: input.mappingNotes,
+    sections: [
+      { key: "applicant", title: "Applicant identity", sortOrder: 10, fields: applicantIdentityFields() },
+      { key: "contact", title: "Contact details", sortOrder: 20, fields: contactFields() },
+      ...sectionSpecific,
+      { key: "declarations", title: "Declarations", sortOrder: 90, fields: declarationFields() }
+    ],
+    requirements: [
+      { category: "Identity", label: "Identity evidence", description: "Current identity evidence should be source-linked and reviewed.", ruleKey: `${input.subclassCode}.identity`, required: true },
+      { category: "Forms", label: "Official form / online path review", description: "Confirm the current official form or online pathway before client-facing use.", ruleKey: `${input.subclassCode}.forms`, required: true },
+      { category: "Statements / Declarations", label: "Declarations reviewed", description: "Unsafe declarations require client confirmation and agent review.", ruleKey: `${input.subclassCode}.declarations`, required: true }
+    ],
+    checklist: [
+      { category: "Identity", label: "Identity details reviewed", required: true, sortOrder: 10 },
+      { category: "Forms", label: "Official source and form path reviewed", required: true, sortOrder: 20 },
+      { category: "Client review", label: "Unsafe declarations and confirmations reviewed", required: true, sortOrder: 30 }
+    ]
+  } satisfies VisaSubclassDefinition;
+}
+
+for (const item of listVisaSubclassCatalog()) {
+  if (defs[item.normalizedCode]) continue;
+  defs[item.normalizedCode] = scaffoldDefinition({
+    subclassCode: item.normalizedCode,
+    stream: item.stream,
+    name: `${item.name}${item.subclassCode !== item.normalizedCode ? ` (${item.subclassCode})` : ""}`,
+    family: item.family,
+    status: item.status,
+    supportLevel: item.supportLevel,
+    sourceUrl: item.sourceUrl,
+    mappingNotes: item.mappingNotes
+  });
+}
+
 export function normalizeVisaSubclassCode(value: string) {
   const trimmed = value.trim();
   if (trimmed === "820" || trimmed === "801") return "820/801";
   if (trimmed === "309" || trimmed === "100") return "309/100";
+  if (trimmed === "010" || trimmed === "020" || trimmed === "030" || trimmed === "050" || trimmed === "051") return trimmed;
+  if (trimmed.toUpperCase() === "BVA") return "010";
+  if (trimmed.toUpperCase() === "BVB") return "020";
+  if (trimmed.toUpperCase() === "BVC") return "030";
+  if (trimmed.toUpperCase() === "BVE") return "050";
   return trimmed;
 }
 

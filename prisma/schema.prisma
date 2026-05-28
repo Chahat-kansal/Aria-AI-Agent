@@ -263,6 +263,7 @@ enum OfficialFormLifecycleStatus {
   CURRENT
   NEEDS_REVIEW
   SUPERSEDED
+  UNKNOWN
 }
 
 enum OfficialFormSupportStatus {
@@ -270,6 +271,25 @@ enum OfficialFormSupportStatus {
   MANUAL_ONLY
   FILLABLE_PDF
   MAPPING_REQUIRED
+  NEEDS_REVIEW
+  SUPERSEDED
+  UNKNOWN
+}
+
+enum RegistryRecordStatus {
+  ACTIVE
+  CLOSED
+  SUPERSEDED
+  UNKNOWN
+  NEEDS_REVIEW
+}
+
+enum RegistrySupportLevel {
+  FULL_FIELD_AUTOFILL
+  DRAFT_TEMPLATE
+  CHECKLIST_ONLY
+  SCAFFOLD_ONLY
+  NEEDS_REVIEW
 }
 
 enum MatterOfficialFormDraftStatus {
@@ -1054,6 +1074,47 @@ model OfficialSource {
 
   @@unique([url])
   @@index([active, sourceType])
+}
+
+model ImmigrationSourceSnapshot {
+  id                    String    @id @default(cuid())
+  sourceId              String
+  url                   String
+  authority             String
+  sourceType            String
+  fetchedAt             DateTime  @default(now())
+  httpStatus            Int?
+  checksum              String?
+  title                 String?
+  extractedMetadataJson Json?
+  rawTextPreview        String?
+  fullTextStored        Boolean   @default(false)
+  error                 String?
+  createdAt             DateTime  @default(now())
+
+  @@index([sourceId, fetchedAt])
+}
+
+model VisaSubclassRegistry {
+  id                    String               @id @default(cuid())
+  subclassCode          String               @unique
+  normalizedCode        String
+  name                  String
+  stream                String?
+  family                String
+  status                RegistryRecordStatus @default(UNKNOWN)
+  supportLevel          RegistrySupportLevel @default(NEEDS_REVIEW)
+  sourceUrl             String?
+  sourceLastCheckedAt   DateTime?
+  sourceChecksum        String?
+  fieldCoveragePercent  Float                @default(0)
+  formCoveragePercent   Float                @default(0)
+  mappingNotes          String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([family, supportLevel])
+  @@index([status, sourceLastCheckedAt])
 }
 
 model MatterImpact {

@@ -1,5 +1,7 @@
 export type DocumentExtractionSchemaKey =
   | "PASSPORT"
+  | "NATIONAL_ID"
+  | "VEVO_CHECK"
   | "CURRENT_VISA_EVIDENCE"
   | "PTE"
   | "IELTS"
@@ -25,8 +27,20 @@ export type DocumentExtractionSchemaKey =
   | "POLICE_CLEARANCE"
   | "AFP_CHECK"
   | "HEALTH_INSURANCE_POLICY"
+  | "HEALTH_EXAMINATION"
   | "SPONSOR_NOMINATION"
   | "STATE_NOMINATION"
+  | "JOINT_LEASE"
+  | "JOINT_ACCOUNT"
+  | "HOUSEHOLD_BILL"
+  | "DEGREE_CERTIFICATE"
+  | "POSITION_DESCRIPTION"
+  | "FORM_956"
+  | "FORM_956A"
+  | "FORM_80"
+  | "FORM_1221"
+  | "FORM_1229"
+  | "FORM_157A"
   | "STATEMENT"
   | "OTHER";
 
@@ -40,17 +54,26 @@ export function detectExtractionSchema(fileName: string, extractedText = ""): {
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
   if (/passport|travel document|mrz/.test(haystack)) return { schema: "PASSPORT", supported: true };
+  if (/national id|identity card|identity document/.test(haystack)) return { schema: "NATIONAL_ID", supported: true };
+  if (/vevo check|visa entitlement verification online/.test(haystack)) return { schema: "VEVO_CHECK", supported: true };
   if (/vevo|current visa|bridging visa|grant details/.test(haystack)) return { schema: "CURRENT_VISA_EVIDENCE", supported: true };
   if (/\bpte\b|pearson/.test(haystack)) return { schema: "PTE", supported: true };
   if (/\bielts\b/.test(haystack)) return { schema: "IELTS", supported: true };
   if (/toefl|\boet\b/.test(haystack)) return { schema: "TOEFL_OET", supported: true };
   if (/confirmation of enrolment|\bcoe\b|cricos/.test(haystack)) return { schema: "COE", supported: true };
   if (/completion letter|course completion|award letter|successful completion/.test(haystack)) return { schema: "COMPLETION_LETTER", supported: true };
+  if (/degree certificate|award certificate|testamur/.test(haystack)) return { schema: "DEGREE_CERTIFICATE", supported: true };
   if (/academic transcript|official transcript|record of results/.test(haystack)) return { schema: "TRANSCRIPT", supported: true };
   if (/resume|curriculum vitae|\bcv\b/.test(haystack)) return { schema: "RESUME", supported: true };
   if (/nomination approval|sponsor nomination|labour market testing|abn|acn/.test(haystack)) return { schema: "SPONSOR_NOMINATION", supported: true };
-  if (/form 956|registered migration agent|authorised recipient|marn/.test(haystack)) return { schema: "OTHER", supported: false, manualReviewReason: "Form 956 extraction is stored with source-linked fields, but a dedicated schema is not configured yet. Agent review is required." };
+  if (/form 956a|authorised recipient/.test(haystack)) return { schema: "FORM_956A", supported: true };
+  if (/form 956|registered migration agent|marn/.test(haystack)) return { schema: "FORM_956", supported: true };
+  if (/form 80|character assessment/.test(haystack)) return { schema: "FORM_80", supported: true };
+  if (/form 1221|personal particulars/.test(haystack)) return { schema: "FORM_1221", supported: true };
+  if (/form 1229|consent form to grant an australian visa to a child/.test(haystack)) return { schema: "FORM_1229", supported: true };
+  if (/form 157a|application for a student visa/.test(haystack)) return { schema: "FORM_157A", supported: true };
   if (/employment contract|contract of employment|letter of offer/.test(haystack)) return { schema: "EMPLOYMENT_CONTRACT", supported: true };
+  if (/position description|duty statement|role description/.test(haystack)) return { schema: "POSITION_DESCRIPTION", supported: true };
   if (/payslip|pay slip|salary/.test(haystack)) return { schema: "PAYSLIP", supported: true };
   if (/group certificate|payment summary|tax return|notice of assessment|superannuation|super fund/.test(haystack)) return { schema: "TAX_SUPER_EVIDENCE", supported: true };
   if (/bank statement|transaction account|available balance/.test(haystack)) return { schema: "BANK_STATEMENT", supported: true };
@@ -60,12 +83,16 @@ export function detectExtractionSchema(fileName: string, extractedText = ""): {
   if (/marriage certificate/.test(haystack)) return { schema: "MARRIAGE_CERTIFICATE", supported: true };
   if (/birth certificate/.test(haystack)) return { schema: "BIRTH_CERTIFICATE", supported: true };
   if (/citizenship certificate|certificate of citizenship|permanent resident evidence/.test(haystack)) return { schema: "CITIZENSHIP_CERTIFICATE", supported: true };
+  if (/joint lease|residential tenancy agreement|lease agreement/.test(haystack)) return { schema: "JOINT_LEASE", supported: true };
+  if (/joint account|joint bank account/.test(haystack)) return { schema: "JOINT_ACCOUNT", supported: true };
+  if (/utility bill|household bill|electricity bill|gas bill|internet bill/.test(haystack)) return { schema: "HOUSEHOLD_BILL", supported: true };
   if (/relationship statement|partner statement|personal statement of relationship/.test(haystack)) return { schema: "RELATIONSHIP_STATEMENT", supported: true };
   if (/form 888|statutory declaration.*relationship|supporting witness/.test(haystack)) return { schema: "FORM_888", supported: true };
   if (/invitation letter|letter of invitation|inviter/.test(haystack)) return { schema: "INVITATION_LETTER", supported: true };
   if (/itinerary|flight booking|travel plan|travel itinerary/.test(haystack)) return { schema: "TRAVEL_ITINERARY", supported: true };
   if (/police clearance|national police|criminal history/.test(haystack)) return { schema: "POLICE_CLEARANCE", supported: true };
   if (/\bafp\b|australian federal police/.test(haystack)) return { schema: "AFP_CHECK", supported: true };
+  if (/health examination|medical examination|hapu|bupa medical visa services/.test(haystack)) return { schema: "HEALTH_EXAMINATION", supported: true };
   if (/health insurance|oshc|ovhc|policy number/.test(haystack)) return { schema: "HEALTH_INSURANCE_POLICY", supported: true };
   if (/state nomination|invitation to apply|regional nomination/.test(haystack)) return { schema: "STATE_NOMINATION", supported: true };
   if (/statement|sop|genuine student|declaration/.test(haystack)) return { schema: "STATEMENT", supported: true };

@@ -8,3 +8,5 @@ artifacts/*.tar.gz
 artifacts/*.bundle
 artifacts/*.patch
 docs/demo/*preview.png
+docs/demo/.live-video-temp/
+data/generated/
