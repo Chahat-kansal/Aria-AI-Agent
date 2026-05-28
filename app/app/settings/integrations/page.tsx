@@ -16,9 +16,16 @@ function ProviderCard(props: {
   providerName: string;
   configured: boolean;
   state: string;
+  connected: boolean;
+  connectionState: string;
+  connectedAccountLabel?: string | null;
   lastSuccessfulTestAt?: string | null;
+  lastSuccessfulActionAt?: string | null;
+  lastSyncAt?: string | null;
   lastErrorSummary?: string | null;
   missingEnv: string[];
+  requiredSetupSteps: string[];
+  disabledReason?: string | null;
   notes: string[];
   actions?: ReactNode;
 }) {
@@ -29,17 +36,23 @@ function ProviderCard(props: {
           <h3 className="text-lg font-semibold text-white">{props.title}</h3>
           <p className="mt-1 text-sm text-slate-400">{props.providerName}</p>
         </div>
-        <StatusPill tone={props.configured ? "success" : props.state === "disabled" ? "neutral" : "warning"}>
-          {props.configured ? "Configured" : props.state === "disabled" ? "Disabled" : "Not configured"}
+        <StatusPill tone={props.state === "disabled" ? "neutral" : props.configured && props.connected ? "success" : "warning"}>
+          {props.state === "disabled" ? "Disabled" : props.configured && props.connected ? "Configured" : props.configured ? "Needs connection" : "Not configured"}
         </StatusPill>
       </div>
       <div className="space-y-2 text-sm text-slate-300">
+        <p>Connection: <span className="text-white">{props.connectionState.replaceAll("_", " ")}</span></p>
+        {props.connectedAccountLabel ? <p>Connected account: <span className="text-white">{props.connectedAccountLabel}</span></p> : null}
         <p>Last successful test: <span className="text-white">{props.lastSuccessfulTestAt ? new Date(props.lastSuccessfulTestAt).toLocaleString("en-AU") : "Not recorded"}</span></p>
+        <p>Last successful action: <span className="text-white">{props.lastSuccessfulActionAt ? new Date(props.lastSuccessfulActionAt).toLocaleString("en-AU") : "Not recorded"}</span></p>
+        <p>Last sync: <span className="text-white">{props.lastSyncAt ? new Date(props.lastSyncAt).toLocaleString("en-AU") : "Not recorded"}</span></p>
         <p>Last error summary: <span className="text-white">{props.lastErrorSummary || "No recent redacted error recorded"}</span></p>
         {props.missingEnv.length ? <p>Missing: <span className="text-white">{props.missingEnv.join(", ")}</span></p> : null}
+        {props.disabledReason ? <p>Disabled reason: <span className="text-white">{props.disabledReason}</span></p> : null}
       </div>
       <ul className="space-y-2 text-xs leading-6 text-slate-400">
         {props.notes.map((note) => <li key={note}>{note}</li>)}
+        {props.requiredSetupSteps.map((step) => <li key={step}>Setup: {step}</li>)}
       </ul>
       {props.actions}
     </Card>
@@ -112,9 +125,16 @@ export default async function IntegrationsSettingsPage() {
             providerName={byKey.email.providerName}
             configured={byKey.email.configured}
             state={byKey.email.state}
+            connected={byKey.email.connected}
+            connectionState={byKey.email.connectionState}
+            connectedAccountLabel={byKey.email.connectedAccountLabel}
             lastSuccessfulTestAt={byKey.email.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.email.lastSuccessfulActionAt}
+            lastSyncAt={byKey.email.lastSyncAt}
             lastErrorSummary={byKey.email.lastErrorSummary}
             missingEnv={byKey.email.missingEnv}
+            requiredSetupSteps={byKey.email.requiredSetupSteps}
+            disabledReason={byKey.email.disabledReason}
             notes={byKey.email.notes}
             actions={
               <form action={sendTestEmail}>
@@ -129,9 +149,16 @@ export default async function IntegrationsSettingsPage() {
             providerName={byKey.sms.providerName}
             configured={byKey.sms.configured}
             state={byKey.sms.state}
+            connected={byKey.sms.connected}
+            connectionState={byKey.sms.connectionState}
+            connectedAccountLabel={byKey.sms.connectedAccountLabel}
             lastSuccessfulTestAt={byKey.sms.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.sms.lastSuccessfulActionAt}
+            lastSyncAt={byKey.sms.lastSyncAt}
             lastErrorSummary={byKey.sms.lastErrorSummary}
             missingEnv={byKey.sms.missingEnv}
+            requiredSetupSteps={byKey.sms.requiredSetupSteps}
+            disabledReason={byKey.sms.disabledReason}
             notes={byKey.sms.notes}
             actions={
               <form action={sendTestSms} className="flex flex-col gap-3 sm:flex-row">
@@ -154,9 +181,16 @@ export default async function IntegrationsSettingsPage() {
               providerName={status.providerName}
               configured={status.configured}
               state={status.state}
+              connected={status.connected}
+              connectionState={status.connectionState}
+              connectedAccountLabel={status.connectedAccountLabel}
               lastSuccessfulTestAt={status.lastSuccessfulTestAt}
+              lastSuccessfulActionAt={status.lastSuccessfulActionAt}
+              lastSyncAt={status.lastSyncAt}
               lastErrorSummary={status.lastErrorSummary}
               missingEnv={status.missingEnv}
+              requiredSetupSteps={status.requiredSetupSteps}
+              disabledReason={status.disabledReason}
               notes={status.notes}
             />
           ))}

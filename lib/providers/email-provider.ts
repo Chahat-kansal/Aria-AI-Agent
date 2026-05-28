@@ -1,5 +1,5 @@
 import type { ProviderStatus, ProviderTestResult } from "@/lib/providers/types";
-import { hasConfiguredSecret, hasConfiguredValue } from "@/lib/providers/shared";
+import { buildProviderStatus, hasConfiguredSecret, hasConfiguredValue } from "@/lib/providers/shared";
 
 export function getEmailProviderStatus(): ProviderStatus {
   const provider = "resend";
@@ -8,18 +8,19 @@ export function getEmailProviderStatus(): ProviderStatus {
     hasConfiguredValue(process.env.EMAIL_FROM) &&
     hasConfiguredValue(process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM);
 
-  return {
+  return buildProviderStatus({
     key: "email",
     label: "Email",
     providerName: configured ? provider : "not configured",
     configured,
     state: configured ? "configured" : "not_configured",
     missingEnv: configured ? [] : ["RESEND_API_KEY", "EMAIL_FROM", "EMAIL_REPLY_TO"],
+    requiredSetupSteps: configured ? [] : ["Add Resend credentials in environment settings.", "Set EMAIL_FROM and EMAIL_REPLY_TO before sending live notifications."],
     notes: [
       "Portal and workflow emails must use secure app links only.",
       "No passport, DOB, grant, or raw document details are included in email bodies."
     ]
-  };
+  });
 }
 
 export async function sendWithResend(input: {

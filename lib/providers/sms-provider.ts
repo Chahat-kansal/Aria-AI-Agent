@@ -1,5 +1,5 @@
 import type { ProviderStatus, ProviderTestResult } from "@/lib/providers/types";
-import { hasConfiguredSecret, hasConfiguredValue } from "@/lib/providers/shared";
+import { buildProviderStatus, hasConfiguredSecret, hasConfiguredValue } from "@/lib/providers/shared";
 
 export function getSmsProviderStatus(): ProviderStatus {
   const configured =
@@ -7,7 +7,7 @@ export function getSmsProviderStatus(): ProviderStatus {
     hasConfiguredSecret(process.env.TWILIO_AUTH_TOKEN) &&
     (hasConfiguredValue(process.env.TWILIO_MESSAGING_SERVICE_SID) || hasConfiguredValue(process.env.TWILIO_FROM_NUMBER));
 
-  return {
+  return buildProviderStatus({
     key: "sms",
     label: "SMS",
     providerName: configured ? "twilio" : "not configured",
@@ -19,8 +19,9 @@ export function getSmsProviderStatus(): ProviderStatus {
     notes: [
       "SMS content must stay generic and never include sensitive client facts.",
       "Use for reminders and alerts only when contact consent exists."
-    ]
-  };
+    ],
+    requiredSetupSteps: configured ? [] : ["Configure Twilio credentials.", "Confirm consent rules before sending client SMS reminders."]
+  });
 }
 
 export async function sendWithTwilio(input: { to: string; body: string }) {

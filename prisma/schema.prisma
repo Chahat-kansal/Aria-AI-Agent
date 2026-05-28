@@ -862,6 +862,7 @@ model WorkspaceOperationalSettings {
   appointmentCutoffHours         Int       @default(24)
   appointmentRequestFallback     Boolean   @default(true)
   formsDefaultSettingsJson       Json?
+  integrationConnectionsJson     Json?
   createdAt                      DateTime  @default(now())
   updatedAt                      DateTime  @updatedAt
 }

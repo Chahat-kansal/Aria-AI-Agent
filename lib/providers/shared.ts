@@ -1,3 +1,5 @@
+import type { ProviderStatus } from "@/lib/providers/types";
+
 function normalizeSecret(value?: string | null) {
   return (value || "").trim();
 }
@@ -32,4 +34,35 @@ export function redactErrorSummary(value?: string | null) {
     .replace(/pk_[A-Za-z0-9_-]+/g, "pk_[redacted]")
     .replace(/https?:\/\/[^\s]+/gi, "[redacted-url]")
     .slice(0, 180);
+}
+
+export function buildProviderStatus(input: {
+  key: ProviderStatus["key"];
+  label: string;
+  providerName: string;
+  configured: boolean;
+  state: ProviderStatus["state"];
+  missingEnv?: string[];
+  requiredSetupSteps?: string[];
+  notes?: string[];
+  disabledReason?: string | null;
+}) {
+  return {
+    key: input.key,
+    label: input.label,
+    providerName: input.providerName,
+    configured: input.configured,
+    state: input.state,
+    connected: input.configured,
+    connectionState: input.configured ? "connected" : input.state === "disabled" ? "disconnected" : "attention_required",
+    missingEnv: input.missingEnv ?? [],
+    requiredSetupSteps: input.requiredSetupSteps ?? [],
+    notes: input.notes ?? [],
+    disabledReason: input.disabledReason ?? null,
+    connectedAccountLabel: null,
+    lastSuccessfulTestAt: null,
+    lastSuccessfulActionAt: null,
+    lastSyncAt: null,
+    lastErrorSummary: null
+  } satisfies ProviderStatus;
 }

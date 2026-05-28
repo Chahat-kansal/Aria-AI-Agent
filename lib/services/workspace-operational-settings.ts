@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 const DEFAULT_ALLOWED_MIME_TYPES = [
   "application/pdf",
@@ -60,8 +61,9 @@ export async function getOrCreateWorkspaceOperationalSettings(workspaceId: strin
       documentCategoriesJson: DEFAULT_DOCUMENT_CATEGORIES,
       appointmentTypesJson: DEFAULT_APPOINTMENT_TYPES,
       appointmentAvailabilityJson: DEFAULT_AVAILABILITY,
-      appointmentMeetingMethodsJson: DEFAULT_APPOINTMENT_METHODS
-    },
+      appointmentMeetingMethodsJson: DEFAULT_APPOINTMENT_METHODS,
+      integrationConnectionsJson: {}
+    } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput,
     update: {}
   });
 }
@@ -83,4 +85,3 @@ export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
     aiNoticeText: stringOrFallback(settings.aiNoticeText, "AI-assisted output. Registered migration agent review required before use.")
   };
 }
-
