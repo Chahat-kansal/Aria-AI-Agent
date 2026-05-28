@@ -98,6 +98,7 @@ export default async function SettingsPage() {
                     <Link href={"/app/settings/forms" as any} className="inline-flex text-cyan-300 transition hover:text-white">Form library settings</Link>
                     <Link href={"/app/settings/ai" as any} className="inline-flex text-cyan-300 transition hover:text-white">AI settings</Link>
                     <Link href={"/app/settings/integrations" as any} className="inline-flex text-cyan-300 transition hover:text-white">Integrations</Link>
+                    <Link href={"/app/settings/beta" as any} className="inline-flex text-cyan-300 transition hover:text-white">Beta readiness</Link>
                     <Link href={"/app/settings/documents" as any} className="inline-flex text-cyan-300 transition hover:text-white">Document settings</Link>
                     <Link href={"/app/invoices/setup" as any} className="inline-flex text-cyan-300 transition hover:text-white">Invoice setup</Link>
                   </div>

@@ -11,6 +11,7 @@ const nav = [
   ["/admin/audit", "Audit"],
   ["/admin/support", "Support"],
   ["/admin/billing", "Billing"],
+  ["/admin/beta", "Beta"],
   ["/admin/feature-flags", "Feature Flags"],
   ["/admin/subclass-support", "Subclass Support"],
   ["/admin/deployments", "Deployments"]
