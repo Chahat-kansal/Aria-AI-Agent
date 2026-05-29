@@ -121,6 +121,28 @@ export default async function IntegrationsSettingsPage() {
 
         <section className="grid gap-4 xl:grid-cols-2">
           <ProviderCard
+            title="Accounting"
+            providerName={byKey.accounting.providerName}
+            configured={byKey.accounting.configured}
+            state={byKey.accounting.state}
+            connected={byKey.accounting.connected}
+            connectionState={byKey.accounting.connectionState}
+            connectedAccountLabel={byKey.accounting.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.accounting.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.accounting.lastSuccessfulActionAt}
+            lastSyncAt={byKey.accounting.lastSyncAt}
+            lastErrorSummary={byKey.accounting.lastErrorSummary}
+            missingEnv={byKey.accounting.missingEnv}
+            requiredSetupSteps={byKey.accounting.requiredSetupSteps}
+            disabledReason={byKey.accounting.disabledReason}
+            notes={byKey.accounting.notes}
+            actions={
+              <Link href={"/app/settings/integrations/accounting" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open accounting settings
+              </Link>
+            }
+          />
+          <ProviderCard
             title="Email"
             providerName={byKey.email.providerName}
             configured={byKey.email.configured}
@@ -174,7 +196,7 @@ export default async function IntegrationsSettingsPage() {
               </form>
             }
           />
-          {statuses.filter((item) => item.key !== "email" && item.key !== "sms").map((status) => (
+          {statuses.filter((item) => !["accounting", "email", "sms"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}

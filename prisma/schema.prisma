@@ -1383,6 +1383,7 @@ model Invoice {
   paymentInstructions   String?
   generatedContent      String?
   aiReasoningJson       Json?
+  accountingSyncJson    Json?
   reviewRequired        Boolean       @default(true)
   status                InvoiceStatus @default(DRAFT)
   sentAt                DateTime?
