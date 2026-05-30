@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { AriaAutoprepPanel } from "@/components/app/aria-autoprep-panel";
 import { MatterEmailWorkspace } from "@/components/app/matter-email-workspace";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
+import { MatterAcknowledgementPanel } from "@/components/app/matter-acknowledgement-panel";
 import { PortalAccessManager } from "@/components/app/portal-access-manager";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
@@ -572,6 +573,14 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                     templatePreviews={emailWorkspace.templatePreviews}
                     canSend={canSendClientRequests}
                   />
+                </SectionCard>
+              </PageSection>
+            ) : null}
+
+            {canSendClientRequests ? (
+              <PageSection title="Client acknowledgement / confirmation" description="Acknowledgements stay review-required and are never represented here as legal e-signatures.">
+                <SectionCard>
+                  <MatterAcknowledgementPanel matterId={matter.id} />
                 </SectionCard>
               </PageSection>
             ) : null}

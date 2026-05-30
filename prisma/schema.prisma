@@ -168,6 +168,22 @@ enum EmailSyncStatus {
   DISCONNECTED
 }
 
+enum EsignStatus {
+  DRAFT
+  SENT
+  VIEWED
+  SUBMITTED
+  REVOKED
+  EXPIRED
+  FAILED
+}
+
+enum AcknowledgementReviewStatus {
+  AGENT_REVIEW_REQUIRED
+  REVIEWED
+  FLAGGED
+}
+
 enum GeneratedDocumentType {
   COVER_LETTER
   STATUTORY_DECLARATION_TEMPLATE
@@ -363,6 +379,10 @@ model Workspace {
   matterEmailThreads    MatterEmailThread[]
   matterEmailMessages   MatterEmailMessage[]
   emailSyncEvents       EmailSyncEvent[]
+  acknowledgementRequests ClientAcknowledgementRequest[]
+  acknowledgementResponses ClientAcknowledgementResponse[]
+  acknowledgementRecords AcknowledgementRecord[]
+  esignEvents           EsignEvent[]
   generatedDocuments    GeneratedDocument[]
   portalAccessTokens    ClientPortalAccessToken[]
   timelineEvents        MatterTimelineEvent[]
@@ -417,6 +437,8 @@ model User {
   calendarSyncEvents CalendarSyncEvent[]  @relation("CalendarSyncActor")
   linkedMatterEmailThreads MatterEmailThread[] @relation("MatterEmailThreadLinkedBy")
   emailSyncEvents   EmailSyncEvent[]      @relation("EmailSyncActor")
+  acknowledgementRequests ClientAcknowledgementRequest[] @relation("AcknowledgementRequestedBy")
+  esignEvents       EsignEvent[]          @relation("EsignActor")
   generatedDocuments GeneratedDocument[]
   timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
   invoicesCreated   Invoice[]             @relation("InvoiceCreator")
@@ -455,6 +477,9 @@ model Client {
   intakeRequests   ClientIntakeRequest[]
   documentRequests DocumentRequest[]
   appointments     Appointment[]
+  acknowledgementRequests ClientAcknowledgementRequest[]
+  acknowledgementResponses ClientAcknowledgementResponse[]
+  acknowledgementRecords AcknowledgementRecord[]
   portalAccessTokens ClientPortalAccessToken[]
   invoices         Invoice[]
   matterImpacts    MatterImpact[]
@@ -499,6 +524,10 @@ model Matter {
   intakeRequests      ClientIntakeRequest[]
   documentRequests    DocumentRequest[]
   appointments        Appointment[]
+  acknowledgementRequests ClientAcknowledgementRequest[]
+  acknowledgementResponses ClientAcknowledgementResponse[]
+  acknowledgementRecords AcknowledgementRecord[]
+  esignEvents         EsignEvent[]
   matterEmailThreads  MatterEmailThread[]
   matterEmailMessages MatterEmailMessage[]
   emailSyncEvents     EmailSyncEvent[]
@@ -819,6 +848,115 @@ model MatterReviewRequest {
   returnedAt     DateTime?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
+}
+
+model ClientAcknowledgementRequest {
+  id                   String                      @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId             String
+  matter               Matter                      @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId             String
+  client               Client                      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestedByUserId    String
+  requestedByUser      User                        @relation("AcknowledgementRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  provider             String
+  status               EsignStatus                 @default(DRAFT)
+  title                String
+  requestType          String
+  safeSummary          String?
+  requestJson          String?
+  externalEnvelopeId   String?
+  sentAt               DateTime?
+  viewedAt             DateTime?
+  submittedAt          DateTime?
+  revokedAt            DateTime?
+  expiresAt            DateTime?
+  lastErrorSummary     String?
+  latestClientSessionId String?
+  latestClientIpHash   String?
+  latestUserAgentHash  String?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  response             ClientAcknowledgementResponse?
+  record               AcknowledgementRecord?
+  events               EsignEvent[]
+
+  @@index([workspaceId, status, createdAt])
+  @@index([matterId, status, createdAt])
+  @@index([clientId, status, createdAt])
+}
+
+model ClientAcknowledgementResponse {
+  id                    String                    @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId              String
+  matter                Matter                    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId              String
+  client                Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestId             String                    @unique
+  request               ClientAcknowledgementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider              String
+  reviewStatus          AcknowledgementReviewStatus @default(AGENT_REVIEW_REQUIRED)
+  submittedAt           DateTime                  @default(now())
+  clientSessionId       String?
+  clientIpHash          String?
+  userAgentHash         String?
+  responseJson          String?
+  safeSummary           String?
+  riskFlagsJson         Json?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  @@index([workspaceId, reviewStatus, submittedAt])
+  @@index([matterId, reviewStatus, submittedAt])
+}
+
+model AcknowledgementRecord {
+  id                  String                    @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId            String
+  matter              Matter                    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId            String
+  client              Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestId           String                    @unique
+  request             ClientAcknowledgementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  responseId          String?
+  provider            String
+  title               String
+  safeSummary         String?
+  fileName            String
+  mimeType            String                    @default("text/plain")
+  recordContent       String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([matterId, createdAt])
+}
+
+model EsignEvent {
+  id                  String       @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId            String?
+  matter              Matter?      @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  requestId           String?
+  request             ClientAcknowledgementRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  actorUserId         String?
+  actorUser           User?        @relation("EsignActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  provider            String
+  status              EsignStatus  @default(DRAFT)
+  action              String
+  lastErrorSummary    String?
+  payloadPreviewJson  Json?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([workspaceId, status, createdAt])
+  @@index([provider, action, createdAt])
 }
 
 model ClientIntakeRequest {

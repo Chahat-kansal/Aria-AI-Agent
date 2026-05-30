@@ -240,7 +240,29 @@ export default async function IntegrationsSettingsPage() {
               </form>
             }
           />
-          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms"].includes(item.key)).map((status) => (
+          <ProviderCard
+            title="Client acknowledgement"
+            providerName={byKey.esign.providerName}
+            configured={byKey.esign.configured}
+            state={byKey.esign.state}
+            connected={byKey.esign.connected}
+            connectionState={byKey.esign.connectionState}
+            connectedAccountLabel={byKey.esign.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.esign.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.esign.lastSuccessfulActionAt}
+            lastSyncAt={byKey.esign.lastSyncAt}
+            lastErrorSummary={byKey.esign.lastErrorSummary}
+            missingEnv={byKey.esign.missingEnv}
+            requiredSetupSteps={byKey.esign.requiredSetupSteps}
+            disabledReason={byKey.esign.disabledReason}
+            notes={byKey.esign.notes}
+            actions={
+              <Link href={"/app/settings/integrations/esign" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open client acknowledgement settings
+              </Link>
+            }
+          />
+          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}

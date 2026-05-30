@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createPortalAcknowledgement, createPortalMessage, getClientPortalByToken } from "@/lib/services/client-workflows";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
+import { getPortalAcknowledgementRequestsByToken } from "@/lib/services/esign/client-acknowledgement";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { buildMobilePortalGuidance, buildNotificationSafetyView } from "@/lib/services/mobile-notification-safety";
 import {
@@ -47,7 +48,7 @@ function nextActionForMatter(matter: NonNullable<Awaited<ReturnType<typeof getCl
   return "No client action is currently required. Your migration team will contact you after agent review.";
 }
 
-function actionItems(matter: NonNullable<Awaited<ReturnType<typeof getClientPortalByToken>>>["matter"], token: string) {
+function actionItems(matter: NonNullable<Awaited<ReturnType<typeof getClientPortalByToken>>>["matter"], token: string, pendingAcknowledgementCount: number) {
   if (!matter) return [];
   const missing = matter.checklistItems.filter((item) => !item.documentId && item.required);
   const pendingDocs = matter.checklistItems.filter((item) => item.documentId && item.document?.reviewStatus !== "VERIFIED");
@@ -56,7 +57,7 @@ function actionItems(matter: NonNullable<Awaited<ReturnType<typeof getClientPort
   const items = [
     ...(missing.length ? [{ title: "Upload missing documents", detail: `${missing.length} required item${missing.length === 1 ? "" : "s"} still needed.`, href: `/client/documents/${token}`, tone: "warning" as const }] : []),
     ...(pendingDocs.length ? [{ title: "Wait for document review", detail: `${pendingDocs.length} uploaded item${pendingDocs.length === 1 ? " is" : "s are"} being checked by your migration team.`, href: `/client/checklist/${token}`, tone: "info" as const }] : []),
-    ...(pendingReviews.length ? [{ title: "Confirm requested details", detail: "Your migration team has sent details for confirmation.", href: `/client/intake/${token}`, tone: "warning" as const }] : []),
+    ...(pendingReviews.length || pendingAcknowledgementCount ? [{ title: "Confirm requested details", detail: "Your migration team has sent details for confirmation.", href: `/client/portal/${token}#confirmations`, tone: "warning" as const }] : []),
     ...(!hasAppointment ? [{ title: "Request an appointment", detail: "Choose a preferred time for a consultation or follow-up.", href: `/client/book/${token}`, tone: "neutral" as const }] : [])
   ];
   return items.length ? items : [{ title: "No action needed right now", detail: "Your migration team will contact you after review.", href: `/client/checklist/${token}`, tone: "success" as const }];
@@ -118,8 +119,11 @@ export default async function ClientPortalPage({ params, searchParams }: { param
   const approvedItems = matter?.checklistItems.filter((item) => item.document?.reviewStatus === "VERIFIED" || item.reviewedAt) ?? [];
   const latestAppointment = matter?.appointments[0] ?? null;
   const confirmationEvents = visibleTimelineEvents.filter((event) => event.eventType === "portal.client_acknowledgement" || event.eventType.startsWith("client.review"));
+  const acknowledgementRequests = await getPortalAcknowledgementRequestsByToken(params.token) ?? [];
+  const pendingAcknowledgements = acknowledgementRequests.filter((item) => item.status !== "SUBMITTED" && item.status !== "REVOKED" && item.status !== "EXPIRED");
+  const completedAcknowledgements = acknowledgementRequests.filter((item) => item.status === "SUBMITTED");
   const messageEvents = visibleTimelineEvents.filter((event) => event.eventType === "portal.client_message" || event.eventType === "documents.reminder_sent");
-  const nextActions = actionItems(matter, params.token);
+  const nextActions = actionItems(matter, params.token, pendingAcknowledgements.length);
   const handleMessage = submitPortalMessage.bind(null, params.token);
   const handleAck = submitPortalAcknowledgement.bind(null, params.token);
   const notificationChannels = buildNotificationSafetyView({
@@ -221,11 +225,28 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                 <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-semibold text-slate-950">Confirm contact and study details</p>
-                    <PortalStatusBadge tone={matter.reviewRequests.length ? "warning" : "neutral"}>{matter.reviewRequests.length ? "Pending" : "Not requested"}</PortalStatusBadge>
+                    <PortalStatusBadge tone={pendingAcknowledgements.length ? "warning" : completedAcknowledgements.length ? "success" : "neutral"}>
+                      {pendingAcknowledgements.length ? "Pending" : completedAcknowledgements.length ? "Completed" : "Not requested"}
+                    </PortalStatusBadge>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{matter.reviewRequests.length ? "Your migration team has details waiting for confirmation." : "No separate confirmation is waiting right now."}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{pendingAcknowledgements.length ? "Your migration team has details waiting for confirmation." : completedAcknowledgements.length ? "You have already submitted a recent acknowledgement / confirmation." : "No separate confirmation is waiting right now."}</p>
                 </div>
               </div>
+              {pendingAcknowledgements.length ? (
+                <div className="mt-5 space-y-3">
+                  {pendingAcknowledgements.map((request) => (
+                    <Link key={request.id} href={`/client/acknowledgements/token/${params.token}/${request.id}` as any} className="block rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:bg-violet-50">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-slate-950">{request.title}</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">{request.definition?.clientNotice || request.safeSummary || "Client acknowledgement / confirmation request"}</p>
+                        </div>
+                        <PortalStatusBadge tone="warning">{request.status.replaceAll("_", " ")}</PortalStatusBadge>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
               <form action={handleAck} className="mt-5 space-y-3">
                 <input type="hidden" name="acknowledgementType" value="Portal information and document review acknowledgement" />
                 <label className="flex items-start gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">

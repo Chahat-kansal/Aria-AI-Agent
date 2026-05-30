@@ -26,7 +26,21 @@ const actionsByProvider: Record<ProviderStatus["key"], { success: string[]; erro
   ai: { success: ["provider.ai.test_success"], error: ["provider.ai.test_failed"] },
   storage: { success: ["provider.storage.test_success"], error: ["provider.storage.test_failed"] },
   payments: { success: ["provider.payments.test_success"], error: ["provider.payments.test_failed"] },
-  esign: { success: ["provider.esign.test_success"], error: ["provider.esign.test_failed"] },
+  esign: {
+    success: [
+      "provider.esign.test_success",
+      "esign.connection_tested",
+      "esign.external_envelope_created",
+      "acknowledgement.request_created",
+      "acknowledgement.request_sent",
+      "acknowledgement.request_submitted",
+      "acknowledgement.record_generated"
+    ],
+    error: [
+      "provider.esign.test_failed",
+      "esign.external_envelope_failed"
+    ]
+  },
   monitoring: { success: ["provider.monitoring.test_success"], error: ["provider.monitoring.test_failed"] },
   analytics: { success: ["provider.analytics.test_success"], error: ["provider.analytics.test_failed"] },
   accounting: { success: ["integration.provider_tested", "integration.sync_completed"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
