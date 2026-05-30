@@ -98,6 +98,7 @@ export default async function SettingsPage() {
                     <Link href={"/app/settings/forms" as any} className="inline-flex text-cyan-300 transition hover:text-white">Form library settings</Link>
                     <Link href={"/app/settings/ai" as any} className="inline-flex text-cyan-300 transition hover:text-white">AI settings</Link>
                     <Link href={"/app/settings/integrations" as any} className="inline-flex text-cyan-300 transition hover:text-white">Integrations</Link>
+                    <Link href={"/app/settings/billing" as any} className="inline-flex text-cyan-300 transition hover:text-white">Billing</Link>
                     <Link href={"/app/settings/beta" as any} className="inline-flex text-cyan-300 transition hover:text-white">Beta readiness</Link>
                     <Link href={"/app/settings/documents" as any} className="inline-flex text-cyan-300 transition hover:text-white">Document settings</Link>
                     <Link href={"/app/invoices/setup" as any} className="inline-flex text-cyan-300 transition hover:text-white">Invoice setup</Link>
@@ -228,9 +229,10 @@ export default async function SettingsPage() {
             </div>
             <p className="mt-3 text-xs text-slate-400">
               {paymentStatus.configured
-                ? "Stripe plan configuration is present. Billing still needs webhook verification and workspace-facing subscription workflow rollout before live charging."
+                ? "Stripe configuration is present. Review workspace subscription status, webhook state, and billing permissions before live charging."
                 : `Billing is not configured yet. Missing ${paymentStatus.missingEnv.join(", ")}.`}
             </p>
+            <Link href={"/app/settings/billing" as any} className="mt-4 inline-flex text-sm text-cyan-300 transition hover:text-white">Open billing settings</Link>
           </Card> : null}
         </section>
       ) : (

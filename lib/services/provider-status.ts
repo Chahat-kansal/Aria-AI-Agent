@@ -25,7 +25,26 @@ const actionsByProvider: Record<ProviderStatus["key"], { success: string[]; erro
   ocr: { success: ["provider.ocr.test_success"], error: ["provider.ocr.test_failed"] },
   ai: { success: ["provider.ai.test_success"], error: ["provider.ai.test_failed"] },
   storage: { success: ["provider.storage.test_success"], error: ["provider.storage.test_failed"] },
-  payments: { success: ["provider.payments.test_success"], error: ["provider.payments.test_failed"] },
+  payments: {
+    success: [
+      "provider.payments.test_success",
+      "billing.checkout_created",
+      "billing.customer_portal_created",
+      "billing.subscription_created",
+      "billing.subscription_updated",
+      "billing.payment_succeeded",
+      "billing.invoice_payment_link_created",
+      "billing.invoice_payment_succeeded",
+      "billing.webhook_received"
+    ],
+    error: [
+      "provider.payments.test_failed",
+      "billing.checkout_failed",
+      "billing.payment_failed",
+      "billing.invoice_payment_failed",
+      "billing.webhook_rejected"
+    ]
+  },
   esign: {
     success: [
       "provider.esign.test_success",

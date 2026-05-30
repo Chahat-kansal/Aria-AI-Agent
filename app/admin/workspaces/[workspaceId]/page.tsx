@@ -51,6 +51,14 @@ export default async function WorkspaceDetailPage({ params }: { params: { worksp
       <section className="grid gap-4 lg:grid-cols-2">
         <SectionCard>
           <h2 className="text-lg font-semibold">Plan / billing metadata</h2>
+          <div className="mt-4 space-y-2 text-sm text-[color:var(--text-secondary)]">
+            <p>Subscription plan: <span className="text-white">{workspace.billingPlan ?? "Not configured"}</span></p>
+            <p>Subscription status: <span className="text-white">{workspace.subscriptionStatus.replaceAll("_", " ").toLowerCase()}</span></p>
+            <p>Billing provider: <span className="text-white">{workspace.billingProvider ?? "Not configured"}</span></p>
+            <p>Billing email: <span className="text-white">{workspace.billingEmail ?? "Not recorded"}</span></p>
+            <p>Stripe customer ID: <span className="text-white">{workspace.stripeCustomerIdPresent ? "present" : "missing"}</span></p>
+            <p>Stripe subscription ID: <span className="text-white">{workspace.stripeSubscriptionIdPresent ? "present" : "missing"}</span></p>
+          </div>
           <form action={updateWorkspaceMetadata} className="mt-4 grid gap-3">
             <input type="hidden" name="workspaceId" value={workspace.id} />
             <select name="plan" defaultValue={workspace.plan} className="rounded-2xl bg-[color:var(--surface-soft)] px-4 py-3">
@@ -99,4 +107,3 @@ export default async function WorkspaceDetailPage({ params }: { params: { worksp
     </div>
   );
 }
-

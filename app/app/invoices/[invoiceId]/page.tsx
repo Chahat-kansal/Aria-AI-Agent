@@ -5,11 +5,14 @@ import { InvoiceBuilder } from "@/components/app/invoice-builder";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusPill } from "@/components/ui/status-pill";
+import { revalidatePath } from "next/cache";
 import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace";
 import { canManageInvoiceFeature, canSendInvoiceFeature, canViewInvoiceFeature, getInvoiceByIdForUser, getInvoiceWorkspaceReferences } from "@/lib/services/invoices";
 import { formatCurrency } from "@/lib/invoice-calculations";
 import { getBaseUrl } from "@/lib/services/runtime-config";
 import { getInvoiceAccountingSyncView } from "@/lib/services/accounting-integration";
+import { createInvoicePaymentLink, getLatestInvoicePaymentLink } from "@/lib/services/payments/invoice-payments";
+import { getPaymentProviderStatus } from "@/lib/providers/payment-provider";
 
 export default async function InvoiceDetailPage({ params }: { params: { invoiceId: string } }) {
   const context = await requireCurrentWorkspaceContext();
@@ -21,6 +24,21 @@ export default async function InvoiceDetailPage({ params }: { params: { invoiceI
   ]);
   if (!invoice) notFound();
   const accountingSync = getInvoiceAccountingSyncView(invoice as any);
+  const paymentProvider = getPaymentProviderStatus();
+  const latestPaymentLink = await getLatestInvoicePaymentLink(invoice.id);
+
+  async function createPaymentLinkAction() {
+    "use server";
+    const context = await requireCurrentWorkspaceContext();
+    if (!canManageInvoiceFeature(context.user)) return;
+    await createInvoicePaymentLink({
+      workspaceId: context.workspace.id,
+      invoiceId: params.invoiceId,
+      user: context.user
+    });
+    revalidatePath(`/app/invoices/${params.invoiceId}`);
+    revalidatePath("/app/settings/billing");
+  }
 
   return (
     <AppShell title="Invoices">
@@ -57,6 +75,35 @@ export default async function InvoiceDetailPage({ params }: { params: { invoiceI
             <p>Last attempt: <span className="text-white">{accountingSync.lastAttemptAt ? new Date(accountingSync.lastAttemptAt).toLocaleString("en-AU") : "Not recorded"}</span></p>
           </div>
           {accountingSync.lastErrorSummary ? <p className="text-xs text-slate-400">Last error: {accountingSync.lastErrorSummary}</p> : null}
+        </Card>
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Invoice payment link</p>
+              <p className="mt-1 text-xs text-slate-400">Optional Stripe payment flow only. No visa or document data is sent to Stripe metadata.</p>
+            </div>
+            <StatusPill tone={latestPaymentLink?.paymentStatus === "PAID" ? "success" : latestPaymentLink?.paymentStatus === "OPEN" ? "info" : paymentProvider.configured ? "warning" : "neutral"}>
+              {latestPaymentLink?.paymentStatus?.replaceAll("_", " ") || (paymentProvider.configured ? "not created" : "not configured")}
+            </StatusPill>
+          </div>
+          <div className="grid gap-3 text-sm text-slate-300 md:grid-cols-3">
+            <p>Provider: <span className="text-white">{paymentProvider.providerName}</span></p>
+            <p>Link mode: <span className="text-white">{paymentProvider.configured ? "Stripe checkout" : "Disabled until configured"}</span></p>
+            <p>Last created: <span className="text-white">{latestPaymentLink ? new Date(latestPaymentLink.createdAt).toLocaleString("en-AU") : "Not recorded"}</span></p>
+          </div>
+          {!paymentProvider.configured ? (
+            <p className="text-xs text-slate-400">Stripe payments are not configured.</p>
+          ) : null}
+          {latestPaymentLink?.paymentUrl ? (
+            <p className="text-xs text-slate-400">A client-safe payment link has been prepared through Stripe. Review invoice details before sharing externally.</p>
+          ) : null}
+          {canManageInvoiceFeature(context.user) ? (
+            <form action={createPaymentLinkAction}>
+              <button className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                {latestPaymentLink ? "Create new payment link" : "Create payment link"}
+              </button>
+            </form>
+          ) : null}
         </Card>
         <InvoiceBuilder
           mode="edit"

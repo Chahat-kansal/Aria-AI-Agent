@@ -108,6 +108,14 @@ export async function getWorkspaceRows() {
       name: workspace.name,
       slug: workspace.slug,
       plan: workspace.plan,
+      billingPlan: workspace.billingPlan,
+      subscriptionStatus: workspace.subscriptionStatus,
+      billingProvider: workspace.billingProvider,
+      billingEmail: workspace.billingEmail,
+      stripeCustomerIdPresent: Boolean(workspace.stripeCustomerId),
+      stripeSubscriptionIdPresent: Boolean(workspace.stripeSubscriptionId),
+      trialEndsAt: workspace.trialEndsAt,
+      currentPeriodEnd: workspace.currentPeriodEnd,
       createdAt: workspace.createdAt,
       ownerName: workspace.users[0]?.name ?? "No owner",
       ownerEmail: workspace.users[0]?.email ?? "Not recorded",
@@ -143,6 +151,14 @@ export async function getWorkspaceDetail(workspaceId: string) {
     name: workspace.name,
     slug: workspace.slug,
     plan: workspace.plan,
+    billingPlan: workspace.billingPlan,
+    subscriptionStatus: workspace.subscriptionStatus,
+    billingProvider: workspace.billingProvider,
+    billingEmail: workspace.billingEmail,
+    stripeCustomerIdPresent: Boolean(workspace.stripeCustomerId),
+    stripeSubscriptionIdPresent: Boolean(workspace.stripeSubscriptionId),
+    trialEndsAt: workspace.trialEndsAt,
+    currentPeriodEnd: workspace.currentPeriodEnd,
     legalName: workspace.legalName,
     businessType: workspace.businessType,
     contactEmail: workspace.contactEmail,
@@ -214,4 +230,3 @@ export function redactedAuditEvent(event: any) {
 export function safeJson(value: unknown) {
   return JSON.stringify(redactSensitive(value), null, 2);
 }
-

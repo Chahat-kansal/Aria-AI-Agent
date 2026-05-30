@@ -202,6 +202,34 @@ enum InvoiceStatus {
   OVERDUE
 }
 
+enum BillingPlan {
+  STARTER
+  PRO
+  TEAM
+}
+
+enum WorkspaceSubscriptionStatus {
+  NOT_CONFIGURED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+}
+
+enum InvoicePaymentStatus {
+  NOT_CONFIGURED
+  DISABLED
+  DRAFT
+  OPEN
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
 enum InvoiceAssetKind {
   LOGO
   SIGNATURE
@@ -356,6 +384,14 @@ model Workspace {
   timezone              String                 @default("Australia/Sydney")
   logoUrl               String?
   brandColor            String?
+  stripeCustomerId      String?                @unique
+  stripeSubscriptionId  String?                @unique
+  billingPlan           BillingPlan?
+  subscriptionStatus    WorkspaceSubscriptionStatus @default(NOT_CONFIGURED)
+  trialEndsAt           DateTime?
+  currentPeriodEnd      DateTime?
+  billingEmail          String?
+  billingProvider       String?
   createdAt             DateTime               @default(now())
   users                 User[]
   clients               Client[]
@@ -392,6 +428,9 @@ model Workspace {
   invoiceServices       InvoiceService[]
   invoices              Invoice[]
   invoiceAssets         InvoiceAsset[]
+  subscriptions         WorkspaceSubscription[]
+  billingEvents         BillingEvent[]
+  invoicePaymentLinks   InvoicePaymentLink[]
   securityIncidents     SecurityIncident[]
   operationalSettings   WorkspaceOperationalSettings?
   officialFormTemplates OfficialFormTemplate[]
@@ -1657,6 +1696,8 @@ model Invoice {
   sentAt                DateTime?
   paidAt                DateTime?
   cancelledAt           DateTime?
+  paymentLinks          InvoicePaymentLink[]
+  billingEvents         BillingEvent[]
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   assets                InvoiceAsset[] @relation("InvoiceAttachment")
@@ -1687,4 +1728,72 @@ model InvoiceAsset {
   updatedAt            DateTime         @updatedAt
 
   @@index([workspaceId, kind])
+}
+
+model WorkspaceSubscription {
+  id                     String                     @id @default(cuid())
+  workspaceId            String
+  workspace              Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider               String
+  providerCustomerId     String?
+  providerSubscriptionId String?                    @unique
+  plan                   BillingPlan
+  status                 WorkspaceSubscriptionStatus
+  billingEmail           String?
+  trialEndsAt            DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean                    @default(false)
+  providerMetadataJson   Json?
+  lastSyncedAt           DateTime?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  billingEvents          BillingEvent[]
+
+  @@index([workspaceId, status])
+  @@index([provider, lastSyncedAt])
+}
+
+model BillingEvent {
+  id                 String                 @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  subscriptionId     String?
+  subscription       WorkspaceSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  invoiceId          String?
+  invoice            Invoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  provider           String
+  eventType          String
+  providerEventId    String?                @unique
+  status             String
+  summary            String?
+  payloadPreviewJson Json?
+  createdAt          DateTime               @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([provider, eventType, createdAt])
+}
+
+model InvoicePaymentLink {
+  id                  String               @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invoiceId           String
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  provider            String
+  stripePaymentLinkId String?              @unique
+  checkoutSessionId   String?              @unique
+  paymentIntentId     String?              @unique
+  paymentStatus       InvoicePaymentStatus @default(DRAFT)
+  paymentUrl          String?
+  amountCents         Int?
+  amountPaidCents     Int?
+  currency            String?
+  providerMetadataJson Json?
+  paidAt              DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([workspaceId, paymentStatus, createdAt])
+  @@index([invoiceId, createdAt])
 }

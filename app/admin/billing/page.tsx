@@ -11,7 +11,11 @@ export default async function AdminBillingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="BILLING" title="Plan and usage control" description="Non-payment metadata only. Card, bank, payment secrets, and private client data are not stored or shown here." />
+      <PageHeader
+        eyebrow="BILLING"
+        title="Plan and billing metadata"
+        description="Non-payment metadata only. Card, bank, payment secrets, and private client data are not stored or shown here."
+      />
       <SectionCard>
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <div>
@@ -25,12 +29,12 @@ export default async function AdminBillingPage() {
       </SectionCard>
       <SectionCard>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-left text-sm">
+          <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-tertiary)]">
               <tr>
                 <th className="p-3">Workspace</th>
                 <th className="p-3">Plan</th>
-                <th className="p-3">Usage counts</th>
+                <th className="p-3">Subscription metadata</th>
                 <th className="p-3">Billing status</th>
                 <th className="p-3">Action</th>
               </tr>
@@ -39,14 +43,27 @@ export default async function AdminBillingPage() {
               {workspaces.map((workspace) => (
                 <tr key={workspace.id} className="border-t border-white/5">
                   <td className="p-3">{workspace.name}</td>
-                  <td className="p-3"><StatusPill tone="info">{workspace.plan}</StatusPill></td>
-                  <td className="p-3">{workspace.counts.users} users · {workspace.counts.matters} matters · {workspace.counts.documents} docs</td>
+                  <td className="p-3">
+                    <StatusPill tone="info">{workspace.billingPlan ?? workspace.plan}</StatusPill>
+                  </td>
+                  <td className="p-3">
+                    <div className="space-y-1 text-xs text-[color:var(--text-secondary)]">
+                      <p>{workspace.counts.users} users · {workspace.counts.matters} matters · {workspace.counts.documents} docs</p>
+                      <p>Status: {workspace.subscriptionStatus.replaceAll("_", " ").toLowerCase()}</p>
+                      <p>Billing email: {workspace.billingEmail || "Not recorded"}</p>
+                      <p>Stripe customer: {workspace.stripeCustomerIdPresent ? "present" : "missing"} · subscription: {workspace.stripeSubscriptionIdPresent ? "present" : "missing"}</p>
+                    </div>
+                  </td>
                   <td className="p-3">
                     <StatusPill tone={paymentStatus.configured ? "success" : "warning"}>
-                      {paymentStatus.configured ? "provider ready" : "not integrated"}
+                      {paymentStatus.configured ? workspace.billingProvider || "provider ready" : "not integrated"}
                     </StatusPill>
                   </td>
-                  <td className="p-3"><Link href={`/admin/workspaces/${workspace.id}` as any} className="text-violet-400">Change plan</Link></td>
+                  <td className="p-3">
+                    <Link href={`/admin/workspaces/${workspace.id}` as any} className="text-violet-400">
+                      View workspace metadata
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

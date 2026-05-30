@@ -262,7 +262,29 @@ export default async function IntegrationsSettingsPage() {
               </Link>
             }
           />
-          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign"].includes(item.key)).map((status) => (
+          <ProviderCard
+            title="Payments"
+            providerName={byKey.payments.providerName}
+            configured={byKey.payments.configured}
+            state={byKey.payments.state}
+            connected={byKey.payments.connected}
+            connectionState={byKey.payments.connectionState}
+            connectedAccountLabel={byKey.payments.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.payments.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.payments.lastSuccessfulActionAt}
+            lastSyncAt={byKey.payments.lastSyncAt}
+            lastErrorSummary={byKey.payments.lastErrorSummary}
+            missingEnv={byKey.payments.missingEnv}
+            requiredSetupSteps={byKey.payments.requiredSetupSteps}
+            disabledReason={byKey.payments.disabledReason}
+            notes={byKey.payments.notes}
+            actions={
+              <Link href={"/app/settings/integrations/payments" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open payments settings
+              </Link>
+            }
+          />
+          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign", "payments"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}
