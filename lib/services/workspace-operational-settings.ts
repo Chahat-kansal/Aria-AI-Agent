@@ -46,26 +46,39 @@ function stringOrFallback(value: unknown, fallback: string) {
 }
 
 export async function getOrCreateWorkspaceOperationalSettings(workspaceId: string) {
-  return prisma.workspaceOperationalSettings.upsert({
-    where: { workspaceId },
-    create: {
-      workspaceId,
-      clientPortalExpiryDays: 30,
-      clientPortalConsentNotice:
-        "I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting.",
-      clientPortalHelpText:
-        "Your migration agent will review all information before use.",
-      aiNoticeText:
-        "AI-assisted output. Registered migration agent review required before use.",
-      documentAllowedMimeTypesJson: DEFAULT_ALLOWED_MIME_TYPES,
-      documentCategoriesJson: DEFAULT_DOCUMENT_CATEGORIES,
-      appointmentTypesJson: DEFAULT_APPOINTMENT_TYPES,
-      appointmentAvailabilityJson: DEFAULT_AVAILABILITY,
-      appointmentMeetingMethodsJson: DEFAULT_APPOINTMENT_METHODS,
-      integrationConnectionsJson: {}
-    } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput,
-    update: {}
-  });
+  try {
+    return await prisma.workspaceOperationalSettings.upsert({
+      where: { workspaceId },
+      create: {
+        workspaceId,
+        clientPortalExpiryDays: 30,
+        clientPortalConsentNotice:
+          "I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting.",
+        clientPortalHelpText:
+          "Your migration agent will review all information before use.",
+        aiNoticeText:
+          "AI-assisted output. Registered migration agent review required before use.",
+        documentAllowedMimeTypesJson: DEFAULT_ALLOWED_MIME_TYPES,
+        documentCategoriesJson: DEFAULT_DOCUMENT_CATEGORIES,
+        appointmentTypesJson: DEFAULT_APPOINTMENT_TYPES,
+        appointmentAvailabilityJson: DEFAULT_AVAILABILITY,
+        appointmentMeetingMethodsJson: DEFAULT_APPOINTMENT_METHODS,
+        integrationConnectionsJson: {}
+      } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput,
+      update: {}
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.workspaceOperationalSettings.findUnique({
+        where: { workspaceId }
+      });
+      if (existing) return existing;
+    }
+    throw error;
+  }
 }
 
 export async function getWorkspaceOperationalSettingsView(workspaceId: string) {

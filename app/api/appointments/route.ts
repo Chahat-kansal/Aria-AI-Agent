@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { createAppointment, ensureClientPortalToken } from "@/lib/services/client-workflows";
 import { sendClientWorkflowEmail } from "@/lib/services/email";
 import { resolveBaseUrl, serverLog } from "@/lib/services/runtime-config";
+import { syncAppointmentToCalendar } from "@/lib/services/calendar/calendar-sync";
 
 const schema = z.object({
   matterId: z.string().optional(),
@@ -59,6 +60,15 @@ export async function POST(req: Request) {
       startsAt,
       notes: parsed.data.notes
     });
+    const calendarSync = await syncAppointmentToCalendar({
+      workspaceId: context.workspace.id,
+      appointmentId: appointment.id,
+      userId: context.user.id
+    }).catch((error) => ({
+      ok: false,
+      state: "FAILED",
+      reason: error instanceof Error ? error.message : String(error)
+    }));
 
     let portalLink: string | null = null;
     if (parsed.data.clientId) {
@@ -85,7 +95,15 @@ export async function POST(req: Request) {
         })
       : { delivered: false, reason: "No client email was supplied.", actionLink: portalLink };
 
-    return NextResponse.json({ appointment, emailDelivery }, { status: 201 });
+    return NextResponse.json({
+      appointment,
+      emailDelivery,
+      calendarSync: {
+        ok: calendarSync.ok,
+        state: calendarSync.state,
+        reason: "reason" in calendarSync ? calendarSync.reason : null
+      }
+    }, { status: 201 });
   } catch (error) {
     serverLog("appointment.create_error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Unable to create the appointment right now." }, { status: 500 });

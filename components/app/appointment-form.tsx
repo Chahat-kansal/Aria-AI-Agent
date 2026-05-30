@@ -37,13 +37,18 @@ export function AppointmentForm({ matters, assignees }: { matters: MatterOption[
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const result = await response.json().catch(() => null) as { error?: string; emailDelivery?: { reason?: string } } | null;
+    const result = await response.json().catch(() => null) as {
+      error?: string;
+      emailDelivery?: { reason?: string };
+      calendarSync?: { state?: string; reason?: string | null };
+    } | null;
     setIsSubmitting(false);
     if (!response.ok) {
       setError(result?.error ?? "Unable to create the appointment.");
       return;
     }
-    setMessage(result?.emailDelivery?.reason ?? "Appointment recorded.");
+    const calendarTail = result?.calendarSync?.state ? ` Calendar: ${String(result.calendarSync.state).replaceAll("_", " ").toLowerCase()}.` : "";
+    setMessage(`${result?.emailDelivery?.reason ?? "Appointment recorded."}${calendarTail}`);
     event.currentTarget.reset();
     router.refresh();
   }

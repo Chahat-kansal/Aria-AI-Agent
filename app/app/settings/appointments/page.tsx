@@ -51,7 +51,7 @@ export default async function AppointmentSettingsPage() {
         <PageHeader
           eyebrow="APPOINTMENT SETTINGS"
           title="Client booking controls"
-          description="These settings drive real internal appointment scheduling only. Aria does not pretend external Google or Outlook calendar sync exists."
+          description="These settings drive Aria booking windows, fallback request mode, and the privacy-safe appointment flow. External Google or Outlook sync remains disabled until a calendar provider is configured."
         />
 
         <form action={saveSettings} className="space-y-6">
@@ -97,4 +97,3 @@ export default async function AppointmentSettingsPage() {
     </AppShell>
   );
 }
-

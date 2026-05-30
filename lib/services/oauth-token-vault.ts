@@ -17,6 +17,7 @@ export type WorkspaceProviderConnection = {
   lastSyncAt: string | null;
   lastSuccessfulActionAt: string | null;
   lastErrorSummary: string | null;
+  metadataJson?: Record<string, unknown> | null;
   encryptedAccessToken?: string | null;
   encryptedRefreshToken?: string | null;
 };
@@ -70,6 +71,7 @@ export async function upsertWorkspaceProviderConnection(input: {
   lastSyncAt?: Date | null;
   lastSuccessfulActionAt?: Date | null;
   lastErrorSummary?: string | null;
+  metadataJson?: Record<string, unknown> | null;
 }) {
   const connections = await getWorkspaceProviderConnections(input.workspaceId);
   const next: WorkspaceProviderConnection = serializeConnection({
@@ -85,6 +87,7 @@ export async function upsertWorkspaceProviderConnection(input: {
     lastSyncAt: input.lastSyncAt?.toISOString() ?? connections[input.key]?.lastSyncAt ?? null,
     lastSuccessfulActionAt: input.lastSuccessfulActionAt?.toISOString() ?? new Date().toISOString(),
     lastErrorSummary: input.lastErrorSummary ?? null,
+    metadataJson: input.metadataJson ?? connections[input.key]?.metadataJson ?? null,
     encryptedAccessToken: input.accessToken ? encryptString(input.accessToken) : connections[input.key]?.encryptedAccessToken ?? null,
     encryptedRefreshToken: input.refreshToken ? encryptString(input.refreshToken) : connections[input.key]?.encryptedRefreshToken ?? null
   });
@@ -115,6 +118,7 @@ export async function markWorkspaceProviderDisconnected(input: {
     lastSyncAt: current?.lastSyncAt ?? null,
     lastSuccessfulActionAt: current?.lastSuccessfulActionAt ?? null,
     lastErrorSummary: input.lastErrorSummary ?? current?.lastErrorSummary ?? null,
+    metadataJson: current?.metadataJson ?? null,
     encryptedAccessToken: input.revokeTokens ? null : current?.encryptedAccessToken ?? null,
     encryptedRefreshToken: input.revokeTokens ? null : current?.encryptedRefreshToken ?? null
   });
@@ -131,6 +135,7 @@ export async function recordWorkspaceProviderActivity(input: {
   lastSuccessfulActionAt?: Date | null;
   lastErrorSummary?: string | null;
   connectionState?: ProviderConnectionState;
+  metadataJson?: Record<string, unknown> | null;
 }) {
   const connections = await getWorkspaceProviderConnections(input.workspaceId);
   const current = connections[input.key];
@@ -143,7 +148,8 @@ export async function recordWorkspaceProviderActivity(input: {
     connected: (input.connectionState ?? current.connectionState) === "connected",
     lastSyncAt: input.lastSyncAt?.toISOString() ?? current.lastSyncAt ?? null,
     lastSuccessfulActionAt: input.lastSuccessfulActionAt?.toISOString() ?? current.lastSuccessfulActionAt ?? null,
-    lastErrorSummary: input.lastErrorSummary ?? current.lastErrorSummary ?? null
+    lastErrorSummary: input.lastErrorSummary ?? current.lastErrorSummary ?? null,
+    metadataJson: input.metadataJson ?? current.metadataJson ?? null
   });
 
   await saveConnectionMap(input.workspaceId, { ...connections, [input.key]: next });

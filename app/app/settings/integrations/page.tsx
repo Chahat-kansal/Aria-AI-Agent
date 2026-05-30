@@ -143,6 +143,28 @@ export default async function IntegrationsSettingsPage() {
             }
           />
           <ProviderCard
+            title="Calendar sync"
+            providerName={byKey.calendar.providerName}
+            configured={byKey.calendar.configured}
+            state={byKey.calendar.state}
+            connected={byKey.calendar.connected}
+            connectionState={byKey.calendar.connectionState}
+            connectedAccountLabel={byKey.calendar.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.calendar.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.calendar.lastSuccessfulActionAt}
+            lastSyncAt={byKey.calendar.lastSyncAt}
+            lastErrorSummary={byKey.calendar.lastErrorSummary}
+            missingEnv={byKey.calendar.missingEnv}
+            requiredSetupSteps={byKey.calendar.requiredSetupSteps}
+            disabledReason={byKey.calendar.disabledReason}
+            notes={byKey.calendar.notes}
+            actions={
+              <Link href={"/app/settings/integrations/calendar" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open calendar settings
+              </Link>
+            }
+          />
+          <ProviderCard
             title="Email"
             providerName={byKey.email.providerName}
             configured={byKey.email.configured}
@@ -196,7 +218,7 @@ export default async function IntegrationsSettingsPage() {
               </form>
             }
           />
-          {statuses.filter((item) => !["accounting", "email", "sms"].includes(item.key)).map((status) => (
+          {statuses.filter((item) => !["accounting", "calendar", "email", "sms"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}

@@ -2,48 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getClientPortalByToken, createAppointment } from "@/lib/services/client-workflows";
-import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
-
-function nextSlots(
-  availability: Array<{ weekday: number; start: string; end: string }>,
-  durationMinutes: number,
-  minNoticeHours: number,
-  timezone: string
-) {
-  const slots: Array<{ label: string; value: string }> = [];
-  const now = new Date();
-  const minStart = new Date(now.getTime() + minNoticeHours * 60 * 60 * 1000);
-  for (let dayOffset = 0; dayOffset < 14 && slots.length < 9; dayOffset += 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() + dayOffset);
-    const windows = availability.filter((item) => item.weekday === day.getDay());
-    for (const window of windows) {
-      const [startHour, startMinute] = window.start.split(":").map(Number);
-      const [endHour, endMinute] = window.end.split(":").map(Number);
-      const start = new Date(day);
-      start.setHours(startHour, startMinute, 0, 0);
-      const end = new Date(day);
-      end.setHours(endHour, endMinute, 0, 0);
-      for (let cursor = new Date(start); cursor < end && slots.length < 9; cursor = new Date(cursor.getTime() + durationMinutes * 60 * 1000)) {
-        if (cursor < minStart) continue;
-        const nextEnd = new Date(cursor.getTime() + durationMinutes * 60 * 1000);
-        if (nextEnd > end) continue;
-        slots.push({
-          value: cursor.toISOString(),
-          label: cursor.toLocaleString("en-AU", { timeZone: timezone, weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
-        });
-      }
-    }
-  }
-  return slots;
-}
+import { getWorkspaceAppointmentBookingExperience } from "@/lib/services/calendar/calendar-integration";
 
 function fallbackDateTime(formData: FormData) {
   const preferredDate = String(formData.get("preferredDate") || "");
   const preferredWindow = String(formData.get("preferredWindow") || "morning");
-  const date = preferredDate ? new Date(`${preferredDate}T${preferredWindow === "afternoon" ? "14:00" : preferredWindow === "evening" ? "17:00" : "10:00"}:00`) : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  const date = preferredDate
+    ? new Date(
+        `${preferredDate}T${preferredWindow === "afternoon" ? "14:00" : preferredWindow === "evening" ? "17:00" : "10:00"}:00`
+      )
+    : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
   if (Number.isNaN(date.getTime())) return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
   return date;
 }
@@ -62,14 +32,11 @@ export default async function ClientBookingPage({ params, searchParams }: { para
   const portal = await getClientPortalByToken(params.token);
   if (!portal) return unavailable();
   const activePortal = portal;
-  const settings = await getWorkspaceOperationalSettingsView(activePortal.workspaceId);
-  const appointmentTypes = settings.appointmentTypes as Array<{ key: string; label: string; durationMinutes: number }>;
-  const meetingMethods = settings.appointmentMeetingMethods as string[];
-  const availability = settings.appointmentAvailability as Array<{ weekday: number; start: string; end: string }>;
-  const defaultType = appointmentTypes[0] ?? { key: "consultation", label: "Consultation", durationMinutes: 45 };
-  const availableSlots = availability.length
-    ? nextSlots(availability, defaultType.durationMinutes, settings.appointmentMinNoticeHours, settings.appointmentTimezone)
-    : [];
+  const booking = await getWorkspaceAppointmentBookingExperience({ workspaceId: activePortal.workspaceId, userId: activePortal.matter?.assignedToUserId || "" });
+  const appointmentTypes = booking.appointmentTypes;
+  const meetingMethods = booking.meetingMethods;
+  const defaultType = booking.defaultType;
+  const availableSlots = booking.availableSlots;
 
   async function handleSubmit(formData: FormData) {
     "use server";
@@ -93,7 +60,7 @@ export default async function ClientBookingPage({ params, searchParams }: { para
       assignedToUserId: activePortal.matter?.assignedToUserId || undefined,
       requestedByName: `${activePortal.client.firstName} ${activePortal.client.lastName}`,
       requestedByEmail: activePortal.client.email,
-      meetingType: `${meetingType}${meetingMethod ? ` · ${meetingMethod}` : ""}`,
+      meetingType: `${meetingType}${meetingMethod ? ` - ${meetingMethod}` : ""}`,
       startsAt,
       notes
     });
@@ -121,9 +88,9 @@ export default async function ClientBookingPage({ params, searchParams }: { para
 
         <PortalCard>
           {availableSlots.length ? (
-            <PortalSectionHeading title="Choose an available time" description="Select one of the available appointment times below." />
+            <PortalSectionHeading title="Choose an available time" description={`Select one of the available appointment times below. ${booking.providerDetail}`} />
           ) : (
-            <PortalSectionHeading title="No live availability is configured yet" description="Send your preferred date and time window. Your migration team will confirm manually." />
+            <PortalSectionHeading title="No live availability is configured yet" description={`Send your preferred date and time window. Your migration team will confirm manually. ${booking.providerDetail}`} />
           )}
           <form action={handleSubmit} className="mt-5 space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
@@ -182,4 +149,3 @@ export default async function ClientBookingPage({ params, searchParams }: { para
     </PortalShell>
   );
 }
-

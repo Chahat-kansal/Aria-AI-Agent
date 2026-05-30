@@ -148,6 +148,15 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum AppointmentSyncStatus {
+  NOT_CONFIGURED
+  NEEDS_CONNECTION
+  DRY_RUN_READY
+  SYNCED
+  CANCELLED
+  FAILED
+}
+
 enum GeneratedDocumentType {
   COVER_LETTER
   STATUTORY_DECLARATION_TEMPLATE
@@ -339,6 +348,7 @@ model Workspace {
   intakeRequests        ClientIntakeRequest[]
   documentRequests      DocumentRequest[]
   appointments          Appointment[]
+  appointmentSyncEvents CalendarSyncEvent[]
   generatedDocuments    GeneratedDocument[]
   portalAccessTokens    ClientPortalAccessToken[]
   timelineEvents        MatterTimelineEvent[]
@@ -390,6 +400,7 @@ model User {
   intakeRequests    ClientIntakeRequest[] @relation("IntakeRequestCreator")
   documentRequests  DocumentRequest[]     @relation("DocumentRequestCreator")
   appointments      Appointment[]         @relation("AppointmentAssignee")
+  calendarSyncEvents CalendarSyncEvent[]  @relation("CalendarSyncActor")
   generatedDocuments GeneratedDocument[]
   timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
   invoicesCreated   Invoice[]             @relation("InvoiceCreator")
@@ -986,8 +997,32 @@ model Appointment {
   startsAt         DateTime
   notes            String?
   tokenHash        String?           @unique
+  calendarSyncEvent CalendarSyncEvent?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+}
+
+model CalendarSyncEvent {
+  id                 String                @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  appointmentId      String                @unique
+  appointment        Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  actorUserId        String?
+  actorUser          User?                 @relation("CalendarSyncActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  provider           String
+  calendarId         String?
+  providerEventId    String?
+  syncStatus         AppointmentSyncStatus @default(NOT_CONFIGURED)
+  lastAttemptedAt    DateTime?
+  lastSyncedAt       DateTime?
+  lastErrorSummary   String?
+  payloadPreviewJson Json?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([workspaceId, syncStatus])
+  @@index([provider, lastAttemptedAt])
 }
 
 model GeneratedDocument {

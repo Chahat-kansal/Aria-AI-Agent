@@ -10,6 +10,9 @@ import { requireCurrentWorkspaceContext } from "@/lib/services/current-workspace
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
 import { prisma } from "@/lib/prisma";
 import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-operational-settings";
+import { listAppointmentCalendarSyncViews } from "@/lib/services/calendar/calendar-sync";
+import { getCalendarProviderStatus } from "@/lib/providers/calendar-provider";
+import { getAppointmentReminderHooks } from "@/lib/services/calendar/calendar-integration";
 
 export default async function AppointmentsPage() {
   const context = await requireCurrentWorkspaceContext();
@@ -22,7 +25,7 @@ export default async function AppointmentsPage() {
     );
   }
 
-  const [appointments, matters, users, settings] = await Promise.all([
+  const [appointments, matters, users, settings, calendarProvider, reminderHooks] = await Promise.all([
     prisma.appointment.findMany({
       where: { workspaceId: context.workspace.id, ...(context.user ? { OR: [{ matter: scopedMatterWhere(context.user) }, { assignedToUserId: context.user.id }] } : {}) },
       include: { matter: { include: { client: true } }, assignedToUser: true },
@@ -40,8 +43,11 @@ export default async function AppointmentsPage() {
       select: { id: true, name: true, email: true },
       orderBy: { name: "asc" }
     }),
-    getWorkspaceOperationalSettingsView(context.workspace.id)
+    getWorkspaceOperationalSettingsView(context.workspace.id),
+    Promise.resolve(getCalendarProviderStatus()),
+    Promise.resolve(getAppointmentReminderHooks())
   ]);
+  const syncViews = await listAppointmentCalendarSyncViews(context.workspace.id, appointments.map((item) => item.id));
 
   return (
     <AppShell title="Appointments">
@@ -55,9 +61,11 @@ export default async function AppointmentsPage() {
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300">Consultations</p>
             <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">Book or record appointment</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-300">Create a consultation booking for a client matter. If email is configured, the confirmation is sent automatically. {settings.appointmentAvailability.length ? "Availability windows are configured for client self-service booking." : "Availability is not configured, so client booking falls back to request mode."}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">Create a consultation booking for a client matter. If email is configured, the confirmation is sent automatically. {settings.appointmentAvailability.length ? "Availability windows are configured for client self-service booking." : "Availability is not configured, so client booking falls back to request mode."} {calendarProvider.state === "disabled" || !calendarProvider.configured ? "Calendar provider not configured; Aria keeps bookings internal until you connect Google or Microsoft." : "Connected calendars use privacy-safe event titles only."} {reminderHooks.emailEnabled || reminderHooks.smsEnabled ? "Reminder hooks are available through configured provider channels." : "In-app reminders remain available even when email or SMS providers are not configured."}</p>
           </div>
-          <StatusPill tone="info">Client linked</StatusPill>
+          <StatusPill tone={calendarProvider.state === "disabled" || !calendarProvider.configured ? "neutral" : "info"}>
+            {calendarProvider.state === "disabled" || !calendarProvider.configured ? "Provider disabled" : "Calendar ready"}
+          </StatusPill>
         </div>
         <AppointmentForm matters={matters} assignees={users} />
       </Card>
@@ -71,11 +79,14 @@ export default async function AppointmentsPage() {
                 <th className="aria-table-th">Matter</th>
                 <th className="aria-table-th">Assigned</th>
                 <th className="aria-table-th">Status</th>
+                <th className="aria-table-th">Calendar sync</th>
                 <th className="aria-table-th">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {appointments.map((appointment) => (
+              {appointments.map((appointment) => {
+                const sync = syncViews.get(appointment.id);
+                return (
                 <tr key={appointment.id} className="aria-table-row">
                   <td className="aria-table-td">
                     <p className="font-medium text-white">{appointment.meetingType}</p>
@@ -84,9 +95,21 @@ export default async function AppointmentsPage() {
                   <td className="aria-table-td text-slate-300">{appointment.matter?.title || "Unlinked matter"}</td>
                   <td className="aria-table-td text-slate-300">{appointment.assignedToUser?.name || "Unassigned"}</td>
                   <td className="aria-table-td"><StatusPill>{appointment.status.toLowerCase()}</StatusPill></td>
-                  <td className="aria-table-td"><AppointmentManager appointmentId={appointment.id} currentStatus={appointment.status} /></td>
+                  <td className="aria-table-td">
+                    <StatusPill tone={sync?.tone || "neutral"}>{sync?.label || "Not checked"}</StatusPill>
+                    <p className="mt-1 text-xs text-slate-400">{sync?.detail || "No sync activity yet."}</p>
+                  </td>
+                  <td className="aria-table-td">
+                    <AppointmentManager
+                      appointmentId={appointment.id}
+                      currentStatus={appointment.status}
+                      calendarSyncLabel={sync?.label}
+                      canRetrySync={Boolean(sync?.hasRetryAction || sync?.state === "PROVIDER_DISABLED" || sync?.state === "NEEDS_CONNECTION")}
+                    />
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         ) : (
