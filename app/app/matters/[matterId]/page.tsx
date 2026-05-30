@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AgentClientFolderActions } from "@/components/app/agent-client-folder-actions";
 import { AppShell } from "@/components/app/app-shell";
 import { AriaAutoprepPanel } from "@/components/app/aria-autoprep-panel";
+import { MatterEmailWorkspace } from "@/components/app/matter-email-workspace";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { PortalAccessManager } from "@/components/app/portal-access-manager";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
@@ -23,6 +24,7 @@ import { getWorkspaceOperationalSettingsView } from "@/lib/services/workspace-op
 import { getSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-support";
 import { getAgentClientFolderConfirmation, isAssignedAgentForPrivateFolder } from "@/lib/services/agent-client-folder";
 import { buildMatterDeadlineIntelligence } from "@/lib/services/deadline-intelligence";
+import { getMatterEmailWorkspace } from "@/lib/services/email-sync/matter-email-linking";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -77,6 +79,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   const latestDraft = matter.applicationDrafts[0];
   const canReassign = canManageTeam(context.user) || hasFirmWideAccess(context.user) || hasTeamOversight(context.user);
   const canManageClients = hasPermission(context.user, "can_manage_clients");
+  const canSendClientRequests = hasPermission(context.user, "can_send_client_requests");
   const canEditMatter = hasPermission(context.user, "can_edit_matters");
   const canUseAi = hasPermission(context.user, "can_access_ai");
   const canManageAppointments = hasPermission(context.user, "can_manage_appointments");
@@ -90,7 +93,7 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
       orderBy: { name: "asc" }
     })
     : [];
-  const [portalLinks, relatedForms, appointmentCount, documentRequestCount, intakeCount, settingsView] = await Promise.all([
+  const [portalLinks, relatedForms, appointmentCount, documentRequestCount, intakeCount, settingsView, emailWorkspace] = await Promise.all([
     canManageClients
       ? prisma.clientPortalAccessToken.findMany({
           where: { workspaceId: context.workspace.id, matterId: matter.id },
@@ -108,7 +111,8 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     prisma.appointment.count({ where: { workspaceId: context.workspace.id, matterId: matter.id } }),
     prisma.documentRequest.count({ where: { workspaceId: context.workspace.id, matterId: matter.id } }),
     prisma.clientIntakeRequest.count({ where: { workspaceId: context.workspace.id, matterId: matter.id } }),
-    getWorkspaceOperationalSettingsView(context.workspace.id)
+    getWorkspaceOperationalSettingsView(context.workspace.id),
+    getMatterEmailWorkspace({ workspaceId: context.workspace.id, matterId: matter.id, user: context.user })
   ]);
   const emailConfigured = getEmailConfigStatus().configured;
   const deadlineIntelligence = buildMatterDeadlineIntelligence(matter, { emailConfigured });
@@ -183,14 +187,14 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
     {
       label: "Send document request",
       href: `/app/document-requests?matterId=${matter.id}`,
-      status: hasPermission(context.user, "can_send_client_requests") ? "ready" : "blocked",
-      reason: hasPermission(context.user, "can_send_client_requests") ? `${documentRequestCount} document request record(s) exist for this matter.` : "You do not have permission to send client requests."
+      status: canSendClientRequests ? "ready" : "blocked",
+      reason: canSendClientRequests ? `${documentRequestCount} document request record(s) exist for this matter.` : "You do not have permission to send client requests."
     },
     {
       label: "Send intake request",
       href: `/app/intake?matterId=${matter.id}`,
-      status: hasPermission(context.user, "can_send_client_requests") ? "ready" : "blocked",
-      reason: hasPermission(context.user, "can_send_client_requests") ? `${intakeCount} intake request record(s) exist for this matter.` : "You do not have permission to send intake requests."
+      status: canSendClientRequests ? "ready" : "blocked",
+      reason: canSendClientRequests ? `${intakeCount} intake request record(s) exist for this matter.` : "You do not have permission to send intake requests."
     },
     {
       label: "Book appointment / view appointments",
@@ -554,6 +558,23 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                 ) : <p className="text-xs text-slate-500">You do not have permission to manage client portal access for this matter.</p>}
               </SectionCard>
             </PageSection>
+
+            {emailWorkspace ? (
+              <PageSection title="Mailbox sync" description="Optional mailbox sync keeps thread metadata scoped to this matter. Sensitive content stays out of email by default.">
+                <SectionCard>
+                  <MatterEmailWorkspace
+                    matterId={matter.id}
+                    provider={emailWorkspace.provider}
+                    providerEnv={emailWorkspace.providerEnv}
+                    connection={emailWorkspace.connection}
+                    linkedThreads={emailWorkspace.linkedThreads}
+                    recentThreads={emailWorkspace.recentThreads}
+                    templatePreviews={emailWorkspace.templatePreviews}
+                    canSend={canSendClientRequests}
+                  />
+                </SectionCard>
+              </PageSection>
+            ) : null}
 
             <PageSection title="Documents, forms, and exports">
               <SectionCard className="space-y-3">

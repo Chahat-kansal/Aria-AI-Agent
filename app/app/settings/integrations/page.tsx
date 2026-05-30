@@ -189,6 +189,28 @@ export default async function IntegrationsSettingsPage() {
             }
           />
           <ProviderCard
+            title="Email sync"
+            providerName={byKey.email_sync.providerName}
+            configured={byKey.email_sync.configured}
+            state={byKey.email_sync.state}
+            connected={byKey.email_sync.connected}
+            connectionState={byKey.email_sync.connectionState}
+            connectedAccountLabel={byKey.email_sync.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.email_sync.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.email_sync.lastSuccessfulActionAt}
+            lastSyncAt={byKey.email_sync.lastSyncAt}
+            lastErrorSummary={byKey.email_sync.lastErrorSummary}
+            missingEnv={byKey.email_sync.missingEnv}
+            requiredSetupSteps={byKey.email_sync.requiredSetupSteps}
+            disabledReason={byKey.email_sync.disabledReason}
+            notes={byKey.email_sync.notes}
+            actions={
+              <Link href={"/app/settings/integrations/email-sync" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open email sync settings
+              </Link>
+            }
+          />
+          <ProviderCard
             title="SMS"
             providerName={byKey.sms.providerName}
             configured={byKey.sms.configured}
@@ -218,7 +240,7 @@ export default async function IntegrationsSettingsPage() {
               </form>
             }
           />
-          {statuses.filter((item) => !["accounting", "calendar", "email", "sms"].includes(item.key)).map((status) => (
+          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}

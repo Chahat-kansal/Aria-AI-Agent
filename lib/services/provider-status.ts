@@ -34,7 +34,25 @@ const actionsByProvider: Record<ProviderStatus["key"], { success: string[]; erro
     success: ["integration.provider_tested", "integration.sync_completed", "calendar.connection_tested", "calendar.event_created", "calendar.event_updated", "calendar.event_cancelled", "calendar.appointment_synced", "calendar.provider_connected"],
     error: ["integration.sync_failed", "integration.webhook_rejected", "calendar.appointment_sync_failed"]
   },
-  email_sync: { success: ["integration.provider_tested", "integration.sync_completed"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
+  email_sync: {
+    success: [
+      "integration.provider_tested",
+      "integration.sync_completed",
+      "email_sync.connection_tested",
+      "email_sync.provider_connected",
+      "email_sync.token_refreshed",
+      "email_sync.email_sent",
+      "email_sync.thread_listed",
+      "email_sync.thread_linked_to_matter",
+      "email_sync.message_imported_to_matter"
+    ],
+    error: [
+      "integration.sync_failed",
+      "integration.webhook_rejected",
+      "email_sync.email_send_failed",
+      "email_sync.sync_failed"
+    ]
+  },
   cloud_drive: { success: ["integration.provider_tested", "integration.sync_completed"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
   push: { success: ["integration.provider_tested"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
   mobile: { success: [], error: [] },

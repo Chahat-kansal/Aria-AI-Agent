@@ -157,6 +157,17 @@ enum AppointmentSyncStatus {
   FAILED
 }
 
+enum EmailSyncStatus {
+  NOT_CONFIGURED
+  NEEDS_CONNECTION
+  DRY_RUN_READY
+  LINKED
+  CONTENT_IMPORTED
+  SENT
+  FAILED
+  DISCONNECTED
+}
+
 enum GeneratedDocumentType {
   COVER_LETTER
   STATUTORY_DECLARATION_TEMPLATE
@@ -349,6 +360,9 @@ model Workspace {
   documentRequests      DocumentRequest[]
   appointments          Appointment[]
   appointmentSyncEvents CalendarSyncEvent[]
+  matterEmailThreads    MatterEmailThread[]
+  matterEmailMessages   MatterEmailMessage[]
+  emailSyncEvents       EmailSyncEvent[]
   generatedDocuments    GeneratedDocument[]
   portalAccessTokens    ClientPortalAccessToken[]
   timelineEvents        MatterTimelineEvent[]
@@ -401,6 +415,8 @@ model User {
   documentRequests  DocumentRequest[]     @relation("DocumentRequestCreator")
   appointments      Appointment[]         @relation("AppointmentAssignee")
   calendarSyncEvents CalendarSyncEvent[]  @relation("CalendarSyncActor")
+  linkedMatterEmailThreads MatterEmailThread[] @relation("MatterEmailThreadLinkedBy")
+  emailSyncEvents   EmailSyncEvent[]      @relation("EmailSyncActor")
   generatedDocuments GeneratedDocument[]
   timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
   invoicesCreated   Invoice[]             @relation("InvoiceCreator")
@@ -483,6 +499,9 @@ model Matter {
   intakeRequests      ClientIntakeRequest[]
   documentRequests    DocumentRequest[]
   appointments        Appointment[]
+  matterEmailThreads  MatterEmailThread[]
+  matterEmailMessages MatterEmailMessage[]
+  emailSyncEvents     EmailSyncEvent[]
   generatedDocuments  GeneratedDocument[]
   portalAccessTokens  ClientPortalAccessToken[]
   timelineEvents      MatterTimelineEvent[]
@@ -1023,6 +1042,82 @@ model CalendarSyncEvent {
 
   @@index([workspaceId, syncStatus])
   @@index([provider, lastAttemptedAt])
+}
+
+model MatterEmailThread {
+  id                 String          @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId           String
+  matter             Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  linkedByUserId     String
+  linkedByUser       User            @relation("MatterEmailThreadLinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+  provider           String
+  externalThreadId   String
+  externalMessageId  String?
+  subjectPreview     String?
+  fromMetadataJson   Json?
+  toMetadataJson     Json?
+  messageCount       Int             @default(0)
+  lastMessageAt      DateTime?
+  bodyImportedAt     DateTime?
+  bodyImportSummary  String?
+  syncStatus         EmailSyncStatus @default(LINKED)
+  lastSyncAt         DateTime?
+  lastErrorSummary   String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  messages           MatterEmailMessage[]
+
+  @@unique([workspaceId, matterId, externalThreadId])
+  @@index([workspaceId, provider, lastMessageAt])
+  @@index([matterId, syncStatus])
+}
+
+model MatterEmailMessage {
+  id                 String    @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId           String
+  matter             Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  threadId           String
+  thread             MatterEmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  externalMessageId  String
+  direction          String
+  senderLabel        String?
+  recipientLabelsJson Json?
+  subjectPreview     String?
+  sentAt             DateTime?
+  bodyImported       Boolean   @default(false)
+  bodyPreview        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([threadId, externalMessageId])
+  @@index([workspaceId, matterId, sentAt])
+}
+
+model EmailSyncEvent {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId          String?
+  matter            Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  actorUserId       String?
+  actorUser         User?           @relation("EmailSyncActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  provider          String
+  externalThreadId  String?
+  externalMessageId String?
+  syncStatus        EmailSyncStatus @default(DRY_RUN_READY)
+  action            String
+  lastSyncAt        DateTime?
+  lastErrorSummary  String?
+  payloadPreviewJson Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([workspaceId, syncStatus, createdAt])
+  @@index([provider, action, createdAt])
 }
 
 model GeneratedDocument {
