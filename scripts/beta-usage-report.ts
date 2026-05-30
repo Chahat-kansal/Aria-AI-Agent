@@ -21,7 +21,7 @@ async function main() {
       const draftsGenerated = events.filter((event) => event.action === "ai.used").length;
       const portalInvitesSent = events.filter((event) => event.action === "portal.link.create" || event.action === "portal.used" || event.action === "portal.session_used").length;
       const confirmationsCompleted = events.filter((event) => event.action === "client_confirmation.submitted" || event.action === "portal.acknowledgement.created").length;
-      const remindersSent = events.filter((event) => event.action === "provider.email.sent" || event.action === "provider.sms.sent" || event.action === "provider.email.test_success" || event.action === "provider.sms.test_success").length;
+      const remindersSent = events.filter((event) => event.action === "provider.email.sent" || event.action === "provider.sms.sent" || event.action === "provider.email.test_success" || event.action === "provider.sms.test_success" || event.action === "sms.sent" || event.action === "sms.template_sent").length;
       const pathwayAnalyses = events.filter((event) => event.action === "pathway.generate").length;
       const invoicesCreated = events.filter((event) => event.action === "invoice.created").length;
 

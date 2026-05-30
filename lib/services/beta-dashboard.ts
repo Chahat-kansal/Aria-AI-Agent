@@ -12,7 +12,7 @@ const PRODUCTIVITY_ACTIONS = {
   draftsGenerated: ["ai.used"],
   portalInvitesSent: ["portal.link.create", "portal.used", "portal.session_used"],
   confirmationsCompleted: ["client_confirmation.submitted", "portal.acknowledgement.created"],
-  remindersSent: ["provider.email.sent", "provider.sms.sent", "provider.email.test_success", "provider.sms.test_success"],
+  remindersSent: ["provider.email.sent", "provider.sms.sent", "provider.email.test_success", "provider.sms.test_success", "sms.sent", "sms.template_sent"],
   pathwayAnalyses: ["pathway.generate"],
   invoicesCreated: ["invoice.created"]
 } as const;

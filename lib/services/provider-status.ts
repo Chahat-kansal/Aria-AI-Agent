@@ -21,7 +21,10 @@ import { getWorkspaceProviderConnections } from "@/lib/services/oauth-token-vaul
 
 const actionsByProvider: Record<ProviderStatus["key"], { success: string[]; error: string[] }> = {
   email: { success: ["provider.email.test_success"], error: ["provider.email.test_failed"] },
-  sms: { success: ["provider.sms.test_success"], error: ["provider.sms.test_failed"] },
+  sms: {
+    success: ["provider.sms.test_success", "sms.provider_tested", "sms.sent", "sms.template_sent", "sms.consent_recorded"],
+    error: ["provider.sms.test_failed", "sms.failed", "sms.blocked_no_consent", "sms.blocked_rate_limited", "sms.provider_not_configured"]
+  },
   ocr: { success: ["provider.ocr.test_success"], error: ["provider.ocr.test_failed"] },
   ai: { success: ["provider.ai.test_success"], error: ["provider.ai.test_failed"] },
   storage: { success: ["provider.storage.test_success"], error: ["provider.storage.test_failed"] },

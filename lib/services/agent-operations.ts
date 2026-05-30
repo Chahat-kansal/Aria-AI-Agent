@@ -64,7 +64,7 @@ export async function getAgentOperationsSnapshot(user: ScopedUser) {
     prisma.auditEvent.findMany({
       where: {
         workspaceId: user.workspaceId,
-        action: { in: ["document.uploaded", "ai.used", "provider.email.test_success", "provider.sms.test_success"] }
+        action: { in: ["document.uploaded", "ai.used", "provider.email.test_success", "provider.sms.test_success", "sms.sent", "sms.template_sent"] }
       },
       orderBy: { createdAt: "desc" },
       take: 300
@@ -131,7 +131,7 @@ export async function getAgentOperationsSnapshot(user: ScopedUser) {
     activeMatters: matters.length,
     documentsProcessed: auditEvents.filter((event) => event.action === "document.uploaded").length,
     draftsGenerated: auditEvents.filter((event) => event.action === "ai.used").length,
-    remindersSent: auditEvents.filter((event) => /provider\.(email|sms)\.test_success/.test(event.action)).length,
+    remindersSent: auditEvents.filter((event) => /provider\.(email|sms)\.test_success/.test(event.action) || /^sms\.(sent|template_sent)$/.test(event.action)).length,
     pendingRequests: pendingRequests.length,
     pendingAppointments: pendingAppointments.length,
     pendingConfirmations: openReviewRequests.length,

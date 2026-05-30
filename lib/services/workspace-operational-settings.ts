@@ -63,6 +63,9 @@ export async function getOrCreateWorkspaceOperationalSettings(workspaceId: strin
         appointmentTypesJson: DEFAULT_APPOINTMENT_TYPES,
         appointmentAvailabilityJson: DEFAULT_AVAILABILITY,
         appointmentMeetingMethodsJson: DEFAULT_APPOINTMENT_METHODS,
+        smsEnabled: false,
+        smsClientConsentRequired: true,
+        smsAgentAlertsEnabled: true,
         integrationConnectionsJson: {}
       } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput,
       update: {}
@@ -95,6 +98,9 @@ export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
       "I understand my information will be provided to my migration agent and may be processed by Aria to assist with document review and drafting."
     ),
     clientPortalHelpText: stringOrFallback(settings.clientPortalHelpText, "Your migration agent will review all information before use."),
-    aiNoticeText: stringOrFallback(settings.aiNoticeText, "AI-assisted output. Registered migration agent review required before use.")
+    aiNoticeText: stringOrFallback(settings.aiNoticeText, "AI-assisted output. Registered migration agent review required before use."),
+    smsEnabled: settings.smsEnabled,
+    smsClientConsentRequired: settings.smsClientConsentRequired,
+    smsAgentAlertsEnabled: settings.smsAgentAlertsEnabled
   };
 }

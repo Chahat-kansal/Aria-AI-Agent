@@ -100,10 +100,12 @@ export default async function IntegrationsSettingsPage() {
     if (!phone) return;
     await sendSms({
       to: phone,
-      body: `${context.workspace.name}: this is a safe Aria test reminder. Please use your secure portal for any client-specific details.`,
       workspaceId: context.workspace.id,
       userId: context.user.id,
-      rateLimitKey: `provider.sms.test:${context.workspace.id}:${phone.slice(-6)}`
+      body: `${context.workspace.name}: this is a safe Aria test reminder. Please use your secure portal for any client-specific details.`,
+      rateLimitKey: `provider.sms.test:${context.workspace.id}:${phone.slice(-6)}`,
+      isAgentAlert: true,
+      allowWithoutConsent: true
     });
     revalidatePath("/app/settings/integrations");
     revalidatePath("/app/settings");
@@ -227,17 +229,22 @@ export default async function IntegrationsSettingsPage() {
             disabledReason={byKey.sms.disabledReason}
             notes={byKey.sms.notes}
             actions={
-              <form action={sendTestSms} className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="Test phone number"
-                  className="h-11 flex-1 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-slate-500"
-                />
-                <button className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
-                  Send test SMS
-                </button>
-              </form>
+              <div className="flex flex-col gap-3">
+                <form action={sendTestSms} className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Test phone number"
+                    className="h-11 flex-1 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-slate-500"
+                  />
+                  <button className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                    Send test SMS
+                  </button>
+                </form>
+                <Link href={"/app/settings/integrations/sms" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                  Open SMS settings
+                </Link>
+              </div>
             }
           />
           <ProviderCard

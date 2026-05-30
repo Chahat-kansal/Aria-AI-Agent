@@ -230,6 +230,24 @@ enum InvoicePaymentStatus {
   EXPIRED
 }
 
+enum SmsStatus {
+  DRAFT
+  DRY_RUN
+  SENT
+  FAILED
+  BLOCKED_NO_CONSENT
+  BLOCKED_RATE_LIMITED
+  NOT_CONFIGURED
+  OPTED_OUT
+}
+
+enum SmsConsentStatus {
+  UNKNOWN
+  CONSENTED
+  OPTED_OUT
+  INTERNAL_ONLY
+}
+
 enum InvoiceAssetKind {
   LOGO
   SIGNATURE
@@ -431,6 +449,10 @@ model Workspace {
   subscriptions         WorkspaceSubscription[]
   billingEvents         BillingEvent[]
   invoicePaymentLinks   InvoicePaymentLink[]
+  smsMessages           SmsMessage[]
+  smsEvents             SmsEvent[]
+  smsConsents           SmsConsent[]
+  smsOptOuts            SmsOptOut[]
   securityIncidents     SecurityIncident[]
   operationalSettings   WorkspaceOperationalSettings?
   officialFormTemplates OfficialFormTemplate[]
@@ -487,6 +509,10 @@ model User {
   approvedFormDrafts    MatterOfficialFormDraft[] @relation("OfficialFormDraftApprover")
   createdOfficialFormTemplates OfficialFormTemplate[] @relation("OfficialFormTemplateCreator")
   createdOfficialFormDrafts MatterOfficialFormDraft[] @relation("OfficialFormDraftCreator")
+  smsMessages          SmsMessage[]               @relation("SmsActor")
+  smsConsentsRecorded  SmsConsent[]               @relation("SmsConsentRecorder")
+  smsOptOutsRecorded   SmsOptOut[]                @relation("SmsOptOutRecorder")
+  smsEvents            SmsEvent[]                 @relation("SmsEventActor")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -522,6 +548,9 @@ model Client {
   portalAccessTokens ClientPortalAccessToken[]
   invoices         Invoice[]
   matterImpacts    MatterImpact[]
+  smsMessages      SmsMessage[]
+  smsConsents      SmsConsent[]
+  smsOptOuts       SmsOptOut[]
 }
 
 model Matter {
@@ -570,6 +599,7 @@ model Matter {
   matterEmailThreads  MatterEmailThread[]
   matterEmailMessages MatterEmailMessage[]
   emailSyncEvents     EmailSyncEvent[]
+  smsMessages         SmsMessage[]
   generatedDocuments  GeneratedDocument[]
   portalAccessTokens  ClientPortalAccessToken[]
   timelineEvents      MatterTimelineEvent[]
@@ -1068,6 +1098,9 @@ model WorkspaceOperationalSettings {
   appointmentMinNoticeHours      Int       @default(24)
   appointmentCutoffHours         Int       @default(24)
   appointmentRequestFallback     Boolean   @default(true)
+  smsEnabled                     Boolean   @default(false)
+  smsClientConsentRequired       Boolean   @default(true)
+  smsAgentAlertsEnabled          Boolean   @default(true)
   formsDefaultSettingsJson       Json?
   integrationConnectionsJson     Json?
   createdAt                      DateTime  @default(now())
@@ -1796,4 +1829,90 @@ model InvoicePaymentLink {
 
   @@index([workspaceId, paymentStatus, createdAt])
   @@index([invoiceId, createdAt])
+}
+
+model SmsMessage {
+  id                     String           @id @default(cuid())
+  workspaceId            String
+  workspace              Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId               String?
+  matter                 Matter?          @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId               String?
+  client                 Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  userId                 String?
+  user                   User?            @relation("SmsActor", fields: [userId], references: [id], onDelete: SetNull)
+  provider               String
+  recipientEncrypted     String?
+  recipientHash          String?
+  recipientLast4         String?
+  templateKey            String?
+  messagePreviewRedacted String?
+  status                 SmsStatus        @default(DRAFT)
+  providerMessageId      String?
+  sentAt                 DateTime?
+  failedAt               DateTime?
+  lastError              String?
+  consentStatus          SmsConsentStatus @default(UNKNOWN)
+  providerMetadataJson   Json?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  events                 SmsEvent[]
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, status, createdAt])
+  @@index([matterId, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model SmsEvent {
+  id            String      @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  smsMessageId  String?
+  smsMessage    SmsMessage? @relation(fields: [smsMessageId], references: [id], onDelete: SetNull)
+  userId        String?
+  user          User?       @relation("SmsEventActor", fields: [userId], references: [id], onDelete: SetNull)
+  eventType     String
+  status        SmsStatus
+  summary       String?
+  metadataJson  Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model SmsConsent {
+  id                String           @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId          String
+  client            Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  recordedByUserId  String?
+  recordedByUser    User?            @relation("SmsConsentRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  consentStatus     SmsConsentStatus @default(UNKNOWN)
+  source            String?
+  notesRedacted     String?
+  consentRecordedAt DateTime?
+  optOutAt          DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([workspaceId, clientId])
+  @@index([workspaceId, consentStatus])
+}
+
+model SmsOptOut {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  recordedByUserId String?
+  recordedByUser   User?     @relation("SmsOptOutRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  reason           String?
+  createdAt        DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([clientId, createdAt])
 }
