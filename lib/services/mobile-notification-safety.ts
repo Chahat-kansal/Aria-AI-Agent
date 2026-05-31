@@ -40,7 +40,7 @@ export function buildNotificationSafetyView(config: {
       label: "Push notifications",
       status: config.pushConfigured ? "configured" : "placeholder",
       sensitiveContentAllowed: false,
-      messageRule: "Placeholder until a secure push provider exists. Do not expose private matter data in notification payloads."
+      messageRule: "Use generic wording only and route users back into Aria or the secure portal. Never include private matter data, raw document links, or tokenized URLs in push payloads."
     }
   ];
 }

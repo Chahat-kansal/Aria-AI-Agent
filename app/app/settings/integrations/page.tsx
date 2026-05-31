@@ -313,7 +313,29 @@ export default async function IntegrationsSettingsPage() {
               </Link>
             }
           />
-          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign", "payments", "cloud_drive"].includes(item.key)).map((status) => (
+          <ProviderCard
+            title="Push notifications"
+            providerName={byKey.push.providerName}
+            configured={byKey.push.configured}
+            state={byKey.push.state}
+            connected={byKey.push.connected}
+            connectionState={byKey.push.connectionState}
+            connectedAccountLabel={byKey.push.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.push.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.push.lastSuccessfulActionAt}
+            lastSyncAt={byKey.push.lastSyncAt}
+            lastErrorSummary={byKey.push.lastErrorSummary}
+            missingEnv={byKey.push.missingEnv}
+            requiredSetupSteps={byKey.push.requiredSetupSteps}
+            disabledReason={byKey.push.disabledReason}
+            notes={byKey.push.notes}
+            actions={
+              <Link href={"/app/settings/integrations/push" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open push settings
+              </Link>
+            }
+          />
+          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign", "payments", "cloud_drive", "push"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}

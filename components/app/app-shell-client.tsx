@@ -156,6 +156,7 @@ export function AppShellClient({
   workspaceNavItems,
   accountNavItems,
   canAccessVisaKnowledge,
+  unreadNotificationCount,
   children
 }: {
   userName: string;
@@ -166,6 +167,7 @@ export function AppShellClient({
   workspaceNavItems: NavItem[];
   accountNavItems: NavItem[];
   canAccessVisaKnowledge: boolean;
+  unreadNotificationCount: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -383,8 +385,13 @@ export function AppShellClient({
             <div className="flex items-center justify-between gap-5 rounded-[22px] bg-[color:var(--bg-glass)] px-6 py-4 shadow-[var(--shadow-sm)] backdrop-blur-xl">
               <div className="min-w-0 flex-1">{topbarSearch}</div>
               <div className="flex items-center gap-3">
-                <Link href="/app/updates" className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] bg-[color:var(--surface)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] hover:-translate-y-[1px] hover:text-[color:var(--violet)]">
+                <Link href={"/app/settings/notifications" as any} className="relative inline-flex h-11 w-11 items-center justify-center rounded-[12px] bg-[color:var(--surface)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] hover:-translate-y-[1px] hover:text-[color:var(--violet)]">
                   <Bell className="h-5 w-5" />
+                  {unreadNotificationCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[color:var(--violet)] px-1.5 text-[10px] font-semibold text-white">
+                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                    </span>
+                  ) : null}
                 </Link>
                 <Link href="/app/settings" className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] bg-[color:var(--surface)] text-[color:var(--text-secondary)] shadow-[var(--shadow-sm)] hover:-translate-y-[1px] hover:text-[color:var(--violet)]">
                   <Settings className="h-5 w-5" />

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppPage } from "@/components/ui/app-page";
 import { GlassCard } from "@/components/ui/glass-card";
 import { getCurrentWorkspaceContext } from "@/lib/services/current-workspace";
+import { getUnreadInAppNotificationCount } from "@/lib/services/push/device-subscriptions";
 import { canAccessCompanyWorkspace, canManageTeam, hasPermission, roleLabel, type PermissionKey } from "@/lib/services/roles";
 import { isPlatformAdminEmail } from "@/lib/services/platform-admin";
 import { AppShellClient } from "@/components/app/app-shell-client";
@@ -73,6 +74,7 @@ export async function AppShell({ title, children }: { title: string; children: R
   }
 
   const { user, workspace } = context;
+  const unreadNotificationCount = await getUnreadInAppNotificationCount(workspace.id, user.id);
   const canOpenTeam = user.role === UserRole.COMPANY_OWNER || canManageTeam(user);
   const workspaceNavItems = nav.filter((item) => !item.permission || hasPermission(user, item.permission));
   const accountNavItems = [
@@ -93,6 +95,7 @@ export async function AppShell({ title, children }: { title: string; children: R
       workspaceNavItems={workspaceNavItems}
       accountNavItems={accountNavItems}
       canAccessVisaKnowledge={hasPermission(user, "can_access_visa_knowledge")}
+      unreadNotificationCount={unreadNotificationCount}
     >
       {children}
     </AppShellClient>

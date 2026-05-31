@@ -66,6 +66,10 @@ export async function getOrCreateWorkspaceOperationalSettings(workspaceId: strin
         smsEnabled: false,
         smsClientConsentRequired: true,
         smsAgentAlertsEnabled: true,
+        pushEnabled: false,
+        pushClientOptInRequired: true,
+        pushAgentAlertsEnabled: true,
+        pushQuietHoursJson: { enabled: false, start: null, end: null },
         integrationConnectionsJson: {}
       } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput,
       update: {}
@@ -86,6 +90,12 @@ export async function getOrCreateWorkspaceOperationalSettings(workspaceId: strin
 
 export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
   const settings = await getOrCreateWorkspaceOperationalSettings(workspaceId);
+  const pushSettings = settings as typeof settings & {
+    pushEnabled?: boolean;
+    pushClientOptInRequired?: boolean;
+    pushAgentAlertsEnabled?: boolean;
+    pushQuietHoursJson?: unknown;
+  };
   return {
     ...settings,
     appointmentTypes: arrayFromJson(settings.appointmentTypesJson, DEFAULT_APPOINTMENT_TYPES),
@@ -101,6 +111,10 @@ export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
     aiNoticeText: stringOrFallback(settings.aiNoticeText, "AI-assisted output. Registered migration agent review required before use."),
     smsEnabled: settings.smsEnabled,
     smsClientConsentRequired: settings.smsClientConsentRequired,
-    smsAgentAlertsEnabled: settings.smsAgentAlertsEnabled
+    smsAgentAlertsEnabled: settings.smsAgentAlertsEnabled,
+    pushEnabled: pushSettings.pushEnabled ?? false,
+    pushClientOptInRequired: pushSettings.pushClientOptInRequired ?? true,
+    pushAgentAlertsEnabled: pushSettings.pushAgentAlertsEnabled ?? true,
+    pushQuietHours: typeof pushSettings.pushQuietHoursJson === "object" && pushSettings.pushQuietHoursJson ? pushSettings.pushQuietHoursJson : { enabled: false, start: null, end: null }
   };
 }

@@ -248,6 +248,25 @@ enum SmsConsentStatus {
   INTERNAL_ONLY
 }
 
+enum PushStatus {
+  DRAFT
+  DRY_RUN
+  SENT
+  FAILED
+  BLOCKED_NO_CONSENT
+  BLOCKED_RATE_LIMITED
+  NOT_CONFIGURED
+  OPTED_OUT
+  IN_APP_ONLY
+}
+
+enum PushConsentStatus {
+  UNKNOWN
+  OPTED_IN
+  OPTED_OUT
+  INTERNAL_ONLY
+}
+
 enum CloudDriveExportStatus {
   STARTED
   DRY_RUN
@@ -456,13 +475,17 @@ model Workspace {
   subscriptions         WorkspaceSubscription[]
   billingEvents         BillingEvent[]
   invoicePaymentLinks   InvoicePaymentLink[]
-  smsMessages           SmsMessage[]
-  smsEvents             SmsEvent[]
-  smsConsents           SmsConsent[]
-  smsOptOuts            SmsOptOut[]
-  cloudDriveExportJobs  CloudDriveExportJob[]
-  cloudDriveExportItems CloudDriveExportItem[]
-  cloudDriveEvents      CloudDriveEvent[]
+    smsMessages           SmsMessage[]
+    smsEvents             SmsEvent[]
+    smsConsents           SmsConsent[]
+    smsOptOuts            SmsOptOut[]
+    pushSubscriptions     PushSubscription[]
+    pushEvents            PushEvent[]
+    notificationPreferences NotificationPreference[]
+    inAppNotifications    InAppNotification[]
+    cloudDriveExportJobs  CloudDriveExportJob[]
+    cloudDriveExportItems CloudDriveExportItem[]
+    cloudDriveEvents      CloudDriveEvent[]
   securityIncidents     SecurityIncident[]
   operationalSettings   WorkspaceOperationalSettings?
   officialFormTemplates OfficialFormTemplate[]
@@ -520,11 +543,15 @@ model User {
   createdOfficialFormTemplates OfficialFormTemplate[] @relation("OfficialFormTemplateCreator")
   createdOfficialFormDrafts MatterOfficialFormDraft[] @relation("OfficialFormDraftCreator")
   smsMessages          SmsMessage[]               @relation("SmsActor")
-  smsConsentsRecorded  SmsConsent[]               @relation("SmsConsentRecorder")
-  smsOptOutsRecorded   SmsOptOut[]                @relation("SmsOptOutRecorder")
-  smsEvents            SmsEvent[]                 @relation("SmsEventActor")
-  cloudDriveExportJobs CloudDriveExportJob[]      @relation("CloudDriveExportActor")
-  cloudDriveEvents     CloudDriveEvent[]          @relation("CloudDriveEventActor")
+    smsConsentsRecorded  SmsConsent[]               @relation("SmsConsentRecorder")
+    smsOptOutsRecorded   SmsOptOut[]                @relation("SmsOptOutRecorder")
+    smsEvents            SmsEvent[]                 @relation("SmsEventActor")
+    pushSubscriptions    PushSubscription[]         @relation("PushSubscriptionUser")
+    pushEvents           PushEvent[]                @relation("PushEventActor")
+    notificationPreferences NotificationPreference[]
+    inAppNotifications   InAppNotification[]
+    cloudDriveExportJobs CloudDriveExportJob[]      @relation("CloudDriveExportActor")
+    cloudDriveEvents     CloudDriveEvent[]          @relation("CloudDriveEventActor")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -558,12 +585,14 @@ model Client {
   acknowledgementResponses ClientAcknowledgementResponse[]
   acknowledgementRecords AcknowledgementRecord[]
   portalAccessTokens ClientPortalAccessToken[]
-  invoices         Invoice[]
-  matterImpacts    MatterImpact[]
-  smsMessages      SmsMessage[]
-  smsConsents      SmsConsent[]
-  smsOptOuts       SmsOptOut[]
-}
+    invoices         Invoice[]
+    matterImpacts    MatterImpact[]
+    smsMessages      SmsMessage[]
+    smsConsents      SmsConsent[]
+    smsOptOuts       SmsOptOut[]
+    pushSubscriptions PushSubscription[]
+    inAppNotifications InAppNotification[]
+  }
 
 model Matter {
   id                  String                   @id @default(cuid())
@@ -611,14 +640,15 @@ model Matter {
   matterEmailThreads  MatterEmailThread[]
   matterEmailMessages MatterEmailMessage[]
   emailSyncEvents     EmailSyncEvent[]
-  smsMessages         SmsMessage[]
-  generatedDocuments  GeneratedDocument[]
-  portalAccessTokens  ClientPortalAccessToken[]
-  timelineEvents      MatterTimelineEvent[]
-  invoices            Invoice[]
-  officialFormDrafts  MatterOfficialFormDraft[]
-  cloudDriveExportJobs CloudDriveExportJob[]
-}
+    smsMessages         SmsMessage[]
+    generatedDocuments  GeneratedDocument[]
+    portalAccessTokens  ClientPortalAccessToken[]
+    timelineEvents      MatterTimelineEvent[]
+    invoices            Invoice[]
+    officialFormDrafts  MatterOfficialFormDraft[]
+    cloudDriveExportJobs CloudDriveExportJob[]
+    inAppNotifications  InAppNotification[]
+  }
 
 model PathwayAnalysis {
   id               String          @id @default(cuid())
@@ -1114,6 +1144,10 @@ model WorkspaceOperationalSettings {
   smsEnabled                     Boolean   @default(false)
   smsClientConsentRequired       Boolean   @default(true)
   smsAgentAlertsEnabled          Boolean   @default(true)
+  pushEnabled                    Boolean   @default(false)
+  pushClientOptInRequired        Boolean   @default(true)
+  pushAgentAlertsEnabled         Boolean   @default(true)
+  pushQuietHoursJson             Json?
   formsDefaultSettingsJson       Json?
   integrationConnectionsJson     Json?
   createdAt                      DateTime  @default(now())
@@ -1928,6 +1962,100 @@ model SmsOptOut {
 
   @@index([workspaceId, createdAt])
   @@index([clientId, createdAt])
+}
+
+model PushSubscription {
+  id                     String            @id @default(cuid())
+  workspaceId            String
+  workspace              Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId                 String
+  user                   User              @relation("PushSubscriptionUser", fields: [userId], references: [id], onDelete: Cascade)
+  clientId               String?
+  client                 Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  provider               String
+  deviceId               String
+  endpointEncrypted      String?
+  endpointHash           String?
+  endpointLast8          String?
+  subscriptionEncrypted  String?
+  userAgentHash          String?
+  platform               String?
+  consentStatus          PushConsentStatus @default(UNKNOWN)
+  optOutAt               DateTime?
+  lastSentAt             DateTime?
+  lastFailureAt          DateTime?
+  lastError              String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  events                 PushEvent[]
+
+  @@unique([workspaceId, deviceId])
+  @@index([workspaceId, userId, createdAt])
+  @@index([workspaceId, consentStatus, createdAt])
+}
+
+model NotificationPreference {
+  id                    String    @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushEnabled           Boolean   @default(false)
+  inAppEnabled          Boolean   @default(true)
+  emailFallbackEnabled  Boolean   @default(true)
+  quietHoursEnabled     Boolean   @default(false)
+  quietHoursStart       String?
+  quietHoursEnd         String?
+  preferenceJson        Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId, updatedAt])
+}
+
+model InAppNotification {
+  id                  String    @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId            String?
+  client              Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId            String?
+  matter              Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  eventType           String
+  title               String
+  bodyPreviewRedacted String
+  route               String?
+  isRead              Boolean   @default(false)
+  readAt              DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  events              PushEvent[]
+
+  @@index([workspaceId, userId, isRead, createdAt])
+  @@index([workspaceId, eventType, createdAt])
+}
+
+model PushEvent {
+  id                   String            @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pushSubscriptionId   String?
+  pushSubscription     PushSubscription? @relation(fields: [pushSubscriptionId], references: [id], onDelete: SetNull)
+  inAppNotificationId  String?
+  inAppNotification    InAppNotification? @relation(fields: [inAppNotificationId], references: [id], onDelete: SetNull)
+  userId               String?
+  user                 User?             @relation("PushEventActor", fields: [userId], references: [id], onDelete: SetNull)
+  eventType            String
+  status               PushStatus
+  summary              String?
+  metadataJson         Json?
+  createdAt            DateTime          @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([eventType, createdAt])
 }
 
 model CloudDriveExportJob {

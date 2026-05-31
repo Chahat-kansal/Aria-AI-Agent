@@ -107,7 +107,25 @@ const actionsByProvider: Record<ProviderStatus["key"], { success: string[]; erro
       "cloud_drive.unauthorised_export_blocked"
     ]
   },
-  push: { success: ["integration.provider_tested"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
+  push: {
+    success: [
+      "push.provider_tested",
+      "push.device_registered",
+      "push.sent",
+      "push.template_sent",
+      "push.consent_recorded",
+      "notification.created",
+      "notification.read",
+      "notification.read_all"
+    ],
+    error: [
+      "push.failed",
+      "push.blocked_no_consent",
+      "push.blocked_rate_limited",
+      "push.opted_out",
+      "push.provider_not_configured"
+    ]
+  },
   mobile: { success: [], error: [] },
   offline_sync: { success: [], error: [] }
 };
