@@ -7,6 +7,7 @@ import { MatterEmailWorkspace } from "@/components/app/matter-email-workspace";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { MatterAcknowledgementPanel } from "@/components/app/matter-acknowledgement-panel";
 import { PortalAccessManager } from "@/components/app/portal-access-manager";
+import { MatterCloudExportPanel } from "@/components/app/matter-cloud-export-panel";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
 import { AIReviewNotice } from "@/components/ui/ai-review-notice";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -598,6 +599,10 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                 {matter.visaSubclass === "500" ? <Link href={`/app/matters/${matter.id}/draft`}><GradientButton className="w-full">Run AI Draft Autofill</GradientButton></Link> : null}
                 {latestDraft ? <p className="text-xs text-slate-500">Latest draft status: {formatEnum(latestDraft.status)}</p> : <p className="text-xs text-slate-500">No matter draft exists yet. Open the draft workspace to start review.</p>}
               </SectionCard>
+            </PageSection>
+
+            <PageSection title="Cloud drive export" description="Export authorised matter records to Google Drive or OneDrive when configured, or use the local secure ZIP fallback.">
+              <MatterCloudExportPanel matterId={matter.id} />
             </PageSection>
 
             <PageSection title="Assigned agent private folder" description="Client-named folder shown only after the assigned agent confirms access.">

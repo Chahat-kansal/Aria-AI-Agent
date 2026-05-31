@@ -89,7 +89,24 @@ const actionsByProvider: Record<ProviderStatus["key"], { success: string[]; erro
       "email_sync.sync_failed"
     ]
   },
-  cloud_drive: { success: ["integration.provider_tested", "integration.sync_completed"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
+  cloud_drive: {
+    success: [
+      "cloud_drive.provider_connected",
+      "cloud_drive.connection_tested",
+      "cloud_drive.token_refreshed",
+      "cloud_drive.folder_listed",
+      "cloud_drive.folder_created",
+      "cloud_drive.export_started",
+      "cloud_drive.export_completed",
+      "cloud_drive.file_uploaded",
+      "cloud_drive.manifest_generated"
+    ],
+    error: [
+      "cloud_drive.export_failed",
+      "cloud_drive.file_skipped",
+      "cloud_drive.unauthorised_export_blocked"
+    ]
+  },
   push: { success: ["integration.provider_tested"], error: ["integration.sync_failed", "integration.webhook_rejected"] },
   mobile: { success: [], error: [] },
   offline_sync: { success: [], error: [] }

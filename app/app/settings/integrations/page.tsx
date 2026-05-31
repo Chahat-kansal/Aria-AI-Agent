@@ -291,7 +291,29 @@ export default async function IntegrationsSettingsPage() {
               </Link>
             }
           />
-          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign", "payments"].includes(item.key)).map((status) => (
+          <ProviderCard
+            title="Cloud drive export"
+            providerName={byKey.cloud_drive.providerName}
+            configured={byKey.cloud_drive.configured}
+            state={byKey.cloud_drive.state}
+            connected={byKey.cloud_drive.connected}
+            connectionState={byKey.cloud_drive.connectionState}
+            connectedAccountLabel={byKey.cloud_drive.connectedAccountLabel}
+            lastSuccessfulTestAt={byKey.cloud_drive.lastSuccessfulTestAt}
+            lastSuccessfulActionAt={byKey.cloud_drive.lastSuccessfulActionAt}
+            lastSyncAt={byKey.cloud_drive.lastSyncAt}
+            lastErrorSummary={byKey.cloud_drive.lastErrorSummary}
+            missingEnv={byKey.cloud_drive.missingEnv}
+            requiredSetupSteps={byKey.cloud_drive.requiredSetupSteps}
+            disabledReason={byKey.cloud_drive.disabledReason}
+            notes={byKey.cloud_drive.notes}
+            actions={
+              <Link href={"/app/settings/integrations/cloud-drive" as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-white">
+                Open cloud drive settings
+              </Link>
+            }
+          />
+          {statuses.filter((item) => !["accounting", "calendar", "email", "email_sync", "sms", "esign", "payments", "cloud_drive"].includes(item.key)).map((status) => (
             <ProviderCard
               key={status.key}
               title={status.label}

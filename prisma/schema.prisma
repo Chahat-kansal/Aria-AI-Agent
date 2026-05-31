@@ -248,6 +248,13 @@ enum SmsConsentStatus {
   INTERNAL_ONLY
 }
 
+enum CloudDriveExportStatus {
+  STARTED
+  DRY_RUN
+  COMPLETED
+  FAILED
+}
+
 enum InvoiceAssetKind {
   LOGO
   SIGNATURE
@@ -453,6 +460,9 @@ model Workspace {
   smsEvents             SmsEvent[]
   smsConsents           SmsConsent[]
   smsOptOuts            SmsOptOut[]
+  cloudDriveExportJobs  CloudDriveExportJob[]
+  cloudDriveExportItems CloudDriveExportItem[]
+  cloudDriveEvents      CloudDriveEvent[]
   securityIncidents     SecurityIncident[]
   operationalSettings   WorkspaceOperationalSettings?
   officialFormTemplates OfficialFormTemplate[]
@@ -513,6 +523,8 @@ model User {
   smsConsentsRecorded  SmsConsent[]               @relation("SmsConsentRecorder")
   smsOptOutsRecorded   SmsOptOut[]                @relation("SmsOptOutRecorder")
   smsEvents            SmsEvent[]                 @relation("SmsEventActor")
+  cloudDriveExportJobs CloudDriveExportJob[]      @relation("CloudDriveExportActor")
+  cloudDriveEvents     CloudDriveEvent[]          @relation("CloudDriveEventActor")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
@@ -605,6 +617,7 @@ model Matter {
   timelineEvents      MatterTimelineEvent[]
   invoices            Invoice[]
   officialFormDrafts  MatterOfficialFormDraft[]
+  cloudDriveExportJobs CloudDriveExportJob[]
 }
 
 model PathwayAnalysis {
@@ -1915,4 +1928,67 @@ model SmsOptOut {
 
   @@index([workspaceId, createdAt])
   @@index([clientId, createdAt])
+}
+
+model CloudDriveExportJob {
+  id                  String                 @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId            String
+  matter              Matter                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  provider            String
+  exportType          String
+  exportStatus        CloudDriveExportStatus @default(STARTED)
+  exportedByUserId    String
+  exportedByUser      User                   @relation("CloudDriveExportActor", fields: [exportedByUserId], references: [id], onDelete: Cascade)
+  providerFolderId    String?
+  rootFolderId        String?
+  selectedFolderId    String?
+  redactedManifestJson Json?
+  lastError           String?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  items               CloudDriveExportItem[]
+  events              CloudDriveEvent[]
+
+  @@index([workspaceId, createdAt])
+  @@index([matterId, createdAt])
+  @@index([workspaceId, exportStatus, createdAt])
+}
+
+model CloudDriveExportItem {
+  id               String             @id @default(cuid())
+  exportJobId      String
+  exportJob        CloudDriveExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
+  workspaceId      String
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  providerFolderId String?
+  providerFileId   String?
+  fileName         String
+  fileCategory     String
+  fileSize         Int?
+  createdAt        DateTime           @default(now())
+
+  @@index([exportJobId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model CloudDriveEvent {
+  id            String                 @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  exportJobId   String?
+  exportJob     CloudDriveExportJob?   @relation(fields: [exportJobId], references: [id], onDelete: SetNull)
+  userId        String?
+  user          User?                  @relation("CloudDriveEventActor", fields: [userId], references: [id], onDelete: SetNull)
+  eventType     String
+  status        CloudDriveExportStatus @default(STARTED)
+  summary       String?
+  metadataJson  Json?
+  createdAt     DateTime               @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([eventType, createdAt])
 }
