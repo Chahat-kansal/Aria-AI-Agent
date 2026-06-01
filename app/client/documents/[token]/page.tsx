@@ -1,68 +1,8 @@
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import Link from "next/link";
-import { attachDocumentToChecklistItem, getClientPortalByToken, getDocumentRequestByToken, markDocumentRequestViewed } from "@/lib/services/client-workflows";
-import { prepareMatterDocumentUpload, persistDocumentStorageObject } from "@/lib/services/storage";
-import { extractReadableText } from "@/lib/services/document-extraction";
-import { uploadDocumentToMatter } from "@/lib/services/application-draft";
-import { checkRateLimit } from "@/lib/security/rate-limit";
-import { cleanClientDescription, documentStatus, dueLabel, PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
-import { PortalUploadForm } from "@/components/client-portal/portal-upload-form";
-
-function clientDocumentStatus(item: { documentId: string | null; reviewedAt: Date | null; status: string; required: boolean; document?: { reviewStatus: string; extractionStatus: string } | null }) {
-  return documentStatus(item);
-}
-
-async function handleClientDocumentUpload(token: string, formData: FormData) {
-  "use server";
-  const headerStore = await headers();
-  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() || headerStore.get("x-real-ip") || "unknown-ip";
-  const uploadLimit = checkRateLimit({ key: `portal.document-upload:${ip}:${token.slice(0, 12)}`, limit: 10, windowMs: 10 * 60 * 1000 });
-  if (!uploadLimit.allowed) redirect(`/client/documents/${token}?error=rate-limited`);
-  const checklistItemId = String(formData.get("checklistItemId") || "");
-  const file = formData.get("file");
-  const consentAccepted = String(formData.get("consent") || "") === "on";
-  const activeRequest = await getDocumentRequestByToken(token);
-  const activePortal = activeRequest ? null : await getClientPortalByToken(token);
-
-  if (!(file instanceof File) || !checklistItemId || !consentAccepted) {
-    redirect(`/client/documents/${token}?error=missing-file`);
-  }
-
-  const requestChecklistItem = activeRequest?.items.find((item) => item.checklistItemId === checklistItemId)?.checklistItem;
-  const portalChecklistItem = activePortal?.matter?.checklistItems.find((item) => item.id === checklistItemId);
-  const allowedChecklistItem = requestChecklistItem ?? portalChecklistItem;
-  const workspaceId = activeRequest?.workspaceId ?? activePortal?.workspaceId;
-  const matterId = activeRequest?.matterId ?? activePortal?.matterId ?? undefined;
-  const uploadedByUserId = activeRequest?.createdByUserId ?? activePortal?.createdByUserId ?? activePortal?.matter?.assignedToUserId;
-
-  if (!allowedChecklistItem || !workspaceId || !matterId || !uploadedByUserId) {
-    redirect(`/client/documents/${token}?error=invalid-request`);
-  }
-
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const upload = await prepareMatterDocumentUpload({
-    workspaceId,
-    matterId,
-    fileName: file.name,
-    bytes,
-    mimeType: file.type || "application/octet-stream"
-  });
-  const extractedText = await extractReadableText(bytes, file.type || "application/octet-stream");
-  const document = await uploadDocumentToMatter({
-    matterId,
-    fileName: file.name,
-    mimeType: file.type || "application/octet-stream",
-    storageKey: upload.storageKey,
-    fileSize: upload.fileSize,
-    contentHash: upload.contentHash,
-    extractedText,
-    uploadedByUserId
-  });
-  await persistDocumentStorageObject({ documentId: document.id, upload });
-  await attachDocumentToChecklistItem(checklistItemId, document.id);
-  redirect(`/client/documents/${token}?uploaded=1`);
-}
+import { getClientPortalByToken, getDocumentRequestByToken, markDocumentRequestViewed } from "@/lib/services/client-workflows";
+import { cleanClientDescription, dueLabel, PortalCard, PortalSectionHeading, PortalShell } from "@/components/client-portal/portal-ui";
+import { MobileDocumentChecklist, type MobileChecklistItem } from "@/components/client/mobile-document-checklist";
+import { getMobileUploadConfigForWorkspace } from "@/lib/services/client-portal-upload";
 
 function unavailable(title: string, description: string) {
   return (
@@ -74,7 +14,53 @@ function unavailable(title: string, description: string) {
   );
 }
 
-export default async function ClientDocumentsPage({ params, searchParams }: { params: { token: string }; searchParams?: { uploaded?: string; error?: string } }) {
+function toChecklistItemView(item: any): MobileChecklistItem {
+  const reviewAccepted = item.reviewedAt || item.document?.reviewStatus === "VERIFIED";
+  const needsReupload = item.document?.reviewStatus === "FLAGGED";
+  const waitingReview = Boolean(item.documentId) && !reviewAccepted && !needsReupload;
+  return {
+    id: item.id,
+    label: item.label,
+    category: item.category,
+    description: cleanClientDescription(item.description),
+    required: Boolean(item.required),
+    dueLabel: dueLabel(item.dueDate),
+    statusLabel: reviewAccepted
+      ? "Accepted"
+      : needsReupload
+        ? "Re-upload requested"
+        : waitingReview
+          ? "Uploaded - waiting for team review"
+          : item.required
+            ? "Missing"
+            : "Optional",
+    statusTone: reviewAccepted
+      ? "success"
+      : needsReupload
+        ? "danger"
+        : waitingReview
+          ? "info"
+          : item.required
+            ? "warning"
+            : "neutral",
+    documentId: item.documentId,
+    fileName: item.document?.fileName ?? null,
+    uploadTimeLabel: item.document?.createdAt ? item.document.createdAt.toLocaleString("en-AU", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    }) : null,
+    teamNote: needsReupload
+      ? "Please upload a clearer copy. Your migration team will review the replacement before use."
+      : item.documentId
+        ? "Your migration team will review this before use."
+        : null,
+    needsReupload
+  };
+}
+
+export default async function ClientDocumentsPage({ params }: { params: { token: string } }) {
   const request = await markDocumentRequestViewed(params.token);
   const portal = request ? null : await getClientPortalByToken(params.token);
   const matter = request?.matter ?? portal?.matter ?? null;
@@ -87,7 +73,7 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
     return unavailable("Upload link unavailable", "This document upload link is invalid, expired, no longer active, or has no checklist items attached. Ask your migration team for a fresh secure link.");
   }
 
-  const handleUpload = handleClientDocumentUpload.bind(null, params.token);
+  const uploadConfig = await getMobileUploadConfigForWorkspace(request?.workspaceId ?? portal!.workspaceId);
   const missing = items.filter((item) => !item.documentId && item.required).length;
   const uploaded = items.filter((item) => item.documentId).length;
   const accepted = items.filter((item) => item.reviewedAt || item.document?.reviewStatus === "VERIFIED").length;
@@ -101,11 +87,11 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
     >
       <div className="space-y-6">
         <PortalCard>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center">
             <PortalSectionHeading
               eyebrow="Documents"
               title="Upload your documents"
-              description="Use this secure page for scans and photos. Your migration team will check quality before using anything."
+              description="This mobile upload page is designed for clear scans and phone photos. Your migration team will review every upload before use."
             />
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
@@ -122,60 +108,42 @@ export default async function ClientDocumentsPage({ params, searchParams }: { pa
               </div>
             </div>
           </div>
-          {searchParams?.uploaded === "1" ? (
-            <p className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-              Document uploaded. Your migration team can now review it.
-            </p>
-          ) : null}
-          {searchParams?.error ? (
-            <p className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-              Upload could not be completed. Please choose a supported file and try again.
-            </p>
-          ) : null}
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <p className="font-semibold text-slate-950">Photo guidance</p>
+              <ul className="mt-3 space-y-2 leading-6">
+                <li>Take a clear photo or upload a scan.</li>
+                <li>Make sure all corners are visible.</li>
+                <li>Make sure the text is sharp and readable.</li>
+                <li>Avoid glare or shadows.</li>
+                <li>Upload one document at a time.</li>
+                <li>Do not crop out any part of the document.</li>
+              </ul>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <p className="font-semibold text-slate-950">Upload rules</p>
+              <p className="mt-3">Accepted formats: {uploadConfig.acceptedFormatsLabel}</p>
+              <p className="mt-2">Max size: {uploadConfig.maxSizeMb} MB</p>
+              <p className="mt-3">Your migration team will review the uploaded file.</p>
+            </div>
+          </div>
         </PortalCard>
 
-        <div className="grid gap-5 lg:grid-cols-2">
-          {items.map((item) => {
-            const status = clientDocumentStatus(item);
-            const needsReupload = status.label === "Needs clearer copy" || status.label === "Re-upload requested";
-            return (
-              <PortalCard key={item.id}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-950">{item.label}</p>
-                    <p className="mt-1 text-xs text-slate-600">{item.category} · {item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
-                    {cleanClientDescription(item.description) ? <p className="mt-3 text-sm leading-6 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
-                  </div>
-                  <PortalStatusBadge tone={status.tone}>{status.label}</PortalStatusBadge>
-                </div>
+        <MobileDocumentChecklist
+          items={items.map(toChecklistItemView)}
+          token={params.token}
+          acceptedMimeTypes={uploadConfig.acceptedMimeTypes}
+          acceptedFormatsLabel={uploadConfig.acceptedFormatsLabel}
+          maxSizeMb={uploadConfig.maxSizeMb}
+          showUploadActions
+        />
 
-                {item.document ? (
-                  <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    <p className="font-semibold text-slate-950">Uploaded file</p>
-                    <p className="mt-1 break-words">{item.document.fileName}</p>
-                    <p className="mt-2 text-xs text-slate-500">Review: {status.label}. Quality: {item.document.extractionStatus === "NEEDS_REVIEW" ? "Re-upload recommended" : "Review by migration team"}.</p>
-                    {needsReupload ? <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Please upload a clearer scan or photo. Make sure all corners are visible and there is no glare.</p> : null}
-                  </div>
-                ) : null}
-
-                {!item.documentId || needsReupload ? (
-                  <PortalUploadForm checklistItemId={item.id} uploadAction={handleUpload} buttonLabel={item.documentId ? "Re-upload document" : "Upload document"} />
-                ) : (
-                  <p className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                    No action needed right now. Your migration team will contact you if they need a clearer copy.
-                  </p>
-                )}
-              </PortalCard>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          {portal ? <Link href={`/client/portal/${params.token}` as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">Back to portal home</Link> : null}
-          <Link href={`/client/book/${params.token}` as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Request appointment</Link>
+        <div className="sticky bottom-4 z-10 flex flex-wrap gap-3 rounded-[1.5rem] border border-slate-200 bg-white/95 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur">
+          {portal ? <Link href={`/client/portal/${params.token}` as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-950">Back to portal home</Link> : null}
+          <Link href={`/client/checklist/${params.token}` as any} className="inline-flex h-11 items-center justify-center rounded-2xl bg-violet-700 px-4 text-sm font-semibold text-white">View checklist</Link>
+          <Link href={`/client/book/${params.token}` as any} className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-950">Request appointment</Link>
         </div>
       </div>
     </PortalShell>
   );
 }
-
