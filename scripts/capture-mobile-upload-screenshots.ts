@@ -377,12 +377,11 @@ async function main() {
 
     await page.goto(`${BASE_URL}/client/documents/${seeded.token}`, { waitUntil: "networkidle" });
     await mobile.setOffline(true);
-    await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
-      name: "offline-demo.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4 offline demo", "utf8")
-    });
-    await page.getByRole("button", { name: /^Upload$/i }).first().click();
+    await page.waitForFunction(
+      (label) => document.body.innerText.includes(label),
+      "You appear to be offline. Please reconnect to upload.",
+      { timeout: 5_000 }
+    );
     await saveShot(page, "11-offline-warning-state.png");
     await mobile.setOffline(false);
     await mobile.close();
