@@ -1,5 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { type ChildProcess } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { hash } from "bcryptjs";
@@ -9,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureClientPortalToken, generateChecklistForMatter } from "@/lib/services/client-workflows";
 import { updateWorkspaceLaunchControls } from "@/lib/services/launch-controls";
 import { defaultPermissionsForRole } from "@/lib/services/roles";
+import { resolveChromiumExecutable, startNextDevServer } from "@/scripts/helpers/cross-platform-runtime";
 
 const ROOT = process.cwd();
 const OUTPUT_DIR = path.join(ROOT, "docs", "demo", "mobile-upload-proof");
@@ -20,16 +20,7 @@ const MOBILE_USER_AGENT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
 function chromiumExecutable() {
-  const local = process.env.LOCALAPPDATA;
-  if (!local) throw new Error("LOCALAPPDATA is not available; cannot locate bundled Chromium.");
-  const candidates = [
-    path.join(local, "ms-playwright", "chromium-1217", "chrome-win", "chrome.exe"),
-    path.join(local, "ms-playwright", "chromium-1217", "chrome-win64", "chrome.exe"),
-    path.join(local, "ms-playwright", "chromium_headless_shell-1217", "chrome-win", "headless_shell.exe")
-  ];
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (!found) throw new Error(`Bundled Chromium not found. Checked: ${candidates.join(", ")}`);
-  return found;
+  return resolveChromiumExecutable();
 }
 
 async function wait(ms: number) {
@@ -49,16 +40,8 @@ async function waitForApp(url: string, timeoutMs = 90_000) {
 }
 
 async function startServer(port: number): Promise<ChildProcess> {
-  const child = spawn("cmd.exe", ["/c", "npm.cmd", "run", "dev", "--", "-p", String(port)], {
-    cwd: ROOT,
-    detached: false,
-    stdio: "ignore",
-    windowsHide: true,
-    env: {
-      ...process.env,
-      NEXTAUTH_URL: `http://localhost:${port}`,
-      PLATFORM_ADMIN_EMAILS: AGENT_EMAIL
-    }
+  const child = startNextDevServer(ROOT, port, {
+    PLATFORM_ADMIN_EMAILS: AGENT_EMAIL
   });
 
   const ready = await waitForApp(`http://localhost:${port}`);
