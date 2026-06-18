@@ -307,6 +307,7 @@ function createFile(name: string, mimeType: string, content: string | Buffer) {
 async function runViewportChecks(token: string) {
   const browser: Browser = await chromium.launch({ executablePath: chromiumExecutable(), headless: true });
   let selectedFileFlowOk = true;
+  let overflowOk = true;
   const deltas: Array<{ width: number; delta: number }> = [];
   try {
     const widths = [390, 430, 768];
@@ -329,8 +330,9 @@ async function runViewportChecks(token: string) {
         page.getByRole("button", { name: /Choose file/i }).first().isVisible()
       ]);
       if (overflow.scrollWidth > overflow.clientWidth + 4 || buttonsVisible.some((visible) => !visible)) {
+        overflowOk = false;
         await context.close();
-        return { overflowOk: false, selectedFileFlowOk, deltas };
+        return { overflowOk, selectedFileFlowOk, deltas };
       }
 
       await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
@@ -338,12 +340,15 @@ async function runViewportChecks(token: string) {
         mimeType: "application/pdf",
         buffer: Buffer.from("%PDF-1.4 demo mobile upload proof", "utf8")
       });
-      const selectedVisible = await page.getByText("demo-student-id.pdf").first().isVisible();
+      const selectedLabel = page.getByText("demo-student-id.pdf").first();
+      const selectedVisible = await selectedLabel.waitFor({ state: "visible", timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
       await context.close();
       selectedFileFlowOk = selectedFileFlowOk && selectedVisible;
-      if (!selectedVisible) return { overflowOk: false, selectedFileFlowOk, deltas };
+      if (!selectedVisible) return { overflowOk, selectedFileFlowOk, deltas };
     }
-    return { overflowOk: true, selectedFileFlowOk, deltas };
+    return { overflowOk, selectedFileFlowOk, deltas };
   } finally {
     await browser.close();
   }
