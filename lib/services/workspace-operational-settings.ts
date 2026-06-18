@@ -49,9 +49,13 @@ function stringOrFallback(value: unknown, fallback: string) {
 
 async function readOrCreateWorkspaceOperationalSettings(workspaceId: string) {
   try {
-    return await prisma.workspaceOperationalSettings.upsert({
-      where: { workspaceId },
-      create: {
+    const existing = await prisma.workspaceOperationalSettings.findUnique({
+      where: { workspaceId }
+    });
+    if (existing) return existing;
+
+    return await prisma.workspaceOperationalSettings.create({
+      data: {
         workspaceId,
         clientPortalExpiryDays: 30,
         clientPortalConsentNotice:
@@ -73,8 +77,7 @@ async function readOrCreateWorkspaceOperationalSettings(workspaceId: string) {
         pushAgentAlertsEnabled: true,
         pushQuietHoursJson: { enabled: false, start: null, end: null },
         integrationConnectionsJson: {}
-      } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput,
-      update: {}
+      } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput
     });
   } catch (error) {
     if (

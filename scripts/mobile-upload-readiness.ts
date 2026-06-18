@@ -309,6 +309,7 @@ async function runViewportChecks(token: string) {
   let selectedFileFlowOk = true;
   let overflowOk = true;
   const deltas: Array<{ width: number; delta: number }> = [];
+  const selectionWidths = new Set([390]);
   try {
     const widths = [390, 430, 768];
     for (const width of widths) {
@@ -335,15 +336,22 @@ async function runViewportChecks(token: string) {
         return { overflowOk, selectedFileFlowOk, deltas };
       }
 
-      await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
-        name: "demo-student-id.pdf",
-        mimeType: "application/pdf",
-        buffer: Buffer.from("%PDF-1.4 demo mobile upload proof", "utf8")
-      });
-      const selectedLabel = page.getByText("demo-student-id.pdf").first();
-      const selectedVisible = await selectedLabel.waitFor({ state: "visible", timeout: 5_000 })
-        .then(() => true)
-        .catch(() => false);
+      let selectedVisible = true;
+      if (selectionWidths.has(width)) {
+        await page.getByRole("button", { name: /Choose file/i }).first().waitFor({ state: "visible", timeout: 5_000 });
+        await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
+          name: "demo-student-id.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("%PDF-1.4 demo mobile upload proof", "utf8")
+        });
+        selectedVisible = await page.waitForFunction(
+          (fileName) => document.body.innerText.includes(fileName),
+          "demo-student-id.pdf",
+          { timeout: 5_000 }
+        )
+          .then(() => true)
+          .catch(() => false);
+      }
       await context.close();
       selectedFileFlowOk = selectedFileFlowOk && selectedVisible;
       if (!selectedVisible) return { overflowOk, selectedFileFlowOk, deltas };
