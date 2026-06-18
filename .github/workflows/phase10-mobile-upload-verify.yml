@@ -30,6 +30,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify required secret presence
+        shell: bash
+        run: |
+          for name in DATABASE_URL DIRECT_URL APP_FIELD_ENCRYPTION_KEY NEXTAUTH_SECRET CRON_SECRET; do
+            if [ -n "${!name}" ]; then
+              echo "${name}: present"
+            else
+              echo "${name}: missing"
+            fi
+          done
+
       - name: Prisma validate
         run: npx prisma validate
 
