@@ -144,28 +144,26 @@ async function validateLocalPrivacyModel() {
     create: { name: "Aria Privacy QA Workspace", slug: WORKSPACE_SLUG, plan: WorkspacePlan.PRO }
   });
 
-  const [owner, admin, agentOne, agentTwo] = await Promise.all([
-    prisma.user.upsert({
-      where: { email: "owner-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE },
-      create: { workspaceId: workspace.id, name: "Privacy QA Owner", email: "owner-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE }
-    }),
-    prisma.user.upsert({
-      where: { email: "admin-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE },
-      create: { workspaceId: workspace.id, name: "Privacy QA Admin", email: "admin-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE }
-    }),
-    prisma.user.upsert({
-      where: { email: "agent-one-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
-      create: { workspaceId: workspace.id, name: "Privacy QA Agent One", email: "agent-one-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
-    }),
-    prisma.user.upsert({
-      where: { email: "agent-two-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
-      create: { workspaceId: workspace.id, name: "Privacy QA Agent Two", email: "agent-two-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
-    })
-  ]);
+  const owner = await prisma.user.upsert({
+    where: { email: "owner-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE },
+    create: { workspaceId: workspace.id, name: "Privacy QA Owner", email: "owner-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE }
+  });
+  const admin = await prisma.user.upsert({
+    where: { email: "admin-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE },
+    create: { workspaceId: workspace.id, name: "Privacy QA Admin", email: "admin-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE }
+  });
+  const agentOne = await prisma.user.upsert({
+    where: { email: "agent-one-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
+    create: { workspaceId: workspace.id, name: "Privacy QA Agent One", email: "agent-one-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
+  });
+  const agentTwo = await prisma.user.upsert({
+    where: { email: "agent-two-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
+    create: { workspaceId: workspace.id, name: "Privacy QA Agent Two", email: "agent-two-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
+  });
 
   const clientA = await prisma.client.upsert({
     where: { clientReference: "privacy-qa-client-a" },

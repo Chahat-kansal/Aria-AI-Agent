@@ -37,6 +37,8 @@ const DEFAULT_AVAILABILITY = [
   { weekday: 5, start: "09:00", end: "16:00" }
 ];
 
+const operationalSettingsInFlight = new Map<string, Promise<Awaited<ReturnType<typeof readOrCreateWorkspaceOperationalSettings>>>>();
+
 function arrayFromJson<T>(value: unknown, fallback: T[]): T[] {
   return Array.isArray(value) ? (value as T[]) : fallback;
 }
@@ -45,7 +47,7 @@ function stringOrFallback(value: unknown, fallback: string) {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-export async function getOrCreateWorkspaceOperationalSettings(workspaceId: string) {
+async function readOrCreateWorkspaceOperationalSettings(workspaceId: string) {
   try {
     return await prisma.workspaceOperationalSettings.upsert({
       where: { workspaceId },
@@ -86,6 +88,21 @@ export async function getOrCreateWorkspaceOperationalSettings(workspaceId: strin
     }
     throw error;
   }
+}
+
+export async function getOrCreateWorkspaceOperationalSettings(workspaceId: string) {
+  const existing = operationalSettingsInFlight.get(workspaceId);
+  if (existing) return existing;
+
+  const pending = readOrCreateWorkspaceOperationalSettings(workspaceId)
+    .finally(() => {
+      if (operationalSettingsInFlight.get(workspaceId) === pending) {
+        operationalSettingsInFlight.delete(workspaceId);
+      }
+    });
+
+  operationalSettingsInFlight.set(workspaceId, pending);
+  return pending;
 }
 
 export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
