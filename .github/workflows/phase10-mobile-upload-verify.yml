@@ -76,3 +76,13 @@ jobs:
 
       - name: Production security validation
         run: npx tsx scripts/production-security-validation.ts
+
+      - name: Capture mobile upload screenshots
+        run: npx tsx scripts/capture-mobile-upload-screenshots.ts
+
+      - name: Upload mobile upload proof artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-upload-proof
+          path: docs/demo/mobile-upload-proof
+          if-no-files-found: error
