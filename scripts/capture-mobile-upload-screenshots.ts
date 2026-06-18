@@ -375,8 +375,8 @@ async function main() {
     await page.getByText("Re-upload requested").first().scrollIntoViewIfNeeded();
     await saveShot(page, "10-re-upload-state.png");
 
+    await page.goto(`${BASE_URL}/client/documents/${seeded.token}`, { waitUntil: "networkidle" });
     await mobile.setOffline(true);
-    await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
       name: "offline-demo.pdf",
       mimeType: "application/pdf",
