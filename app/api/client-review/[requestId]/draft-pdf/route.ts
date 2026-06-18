@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auditEvent } from "@/lib/services/audit";
+import { serverLog } from "@/lib/services/runtime-config";
 import { hashPortalToken } from "@/lib/security/hash";
 import { renderClientReviewDraftPdf } from "@/lib/services/client-review-pdf";
 
@@ -19,6 +20,12 @@ export async function GET(_: Request, { params }: { params: { requestId: string 
       matter: { include: { client: true, workspace: true, assignedToUser: true } },
       draft: { include: { fields: { include: { templateField: true }, orderBy: { templateField: { sortOrder: "asc" } } } } }
     }
+  }).catch((error) => {
+    serverLog("client.review.pdf_lookup_failed", {
+      tokenPreview: params.requestId.slice(0, 6),
+      reason: error instanceof Error ? error.message : "lookup_failed"
+    });
+    return null;
   });
 
   if (!request) {

@@ -25,6 +25,12 @@ export async function PATCH(req: Request, { params }: { params: { requestId: str
       publicTokenHash: hashPortalToken(params.requestId)
     },
     select: { id: true, matterId: true }
+  }).catch((error) => {
+    serverLog("client.review.patch_lookup_failed", {
+      tokenPreview: params.requestId.slice(0, 6),
+      reason: error instanceof Error ? error.message : "lookup_failed"
+    });
+    return null;
   });
 
   if (!existing) {

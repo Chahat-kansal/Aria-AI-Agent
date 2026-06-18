@@ -18,6 +18,12 @@ export default async function ClientReviewPage({ params }: { params: { requestId
       matter: { include: { client: true } },
       draft: { include: { fields: { include: { templateField: true } } } }
     }
+  }).catch((error) => {
+    serverLog("client.review.lookup_failed", {
+      tokenPreview: params.requestId.slice(0, 6),
+      reason: error instanceof Error ? error.message : "lookup_failed"
+    });
+    return null;
   });
 
   if (!request) {
