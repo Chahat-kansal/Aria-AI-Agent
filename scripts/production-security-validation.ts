@@ -34,6 +34,16 @@ const RESULT = {
   canariesHiddenFromPlatformAdmin: false
 };
 
+const DIAGNOSTICS: {
+  loggedOutPrivateRoutes?: Array<{
+    route: string;
+    status: number;
+    location: string | null;
+    cacheControl: string | null;
+    bodyHasSecret: boolean;
+  }>;
+} = {};
+
 const PUBLIC_SECRET_PATTERNS = [
   "DATABASE_URL",
   "DIRECT_URL",
@@ -68,12 +78,13 @@ async function validatePublicSurface() {
     "/client-review/invalid-token-security-test"
   ];
 
-  const responses = await Promise.all(paths.map(async (route) => {
+  const responses = [];
+  for (const route of paths) {
     const response = await fetch(`${base}${route}`, { redirect: "manual" });
     const text = await response.text().catch(() => "");
     const headers = Object.fromEntries(response.headers.entries());
-    return { route, status: response.status, text, headers };
-  }));
+    responses.push({ route, status: response.status, text, headers });
+  }
 
   const privateRoutes = responses.filter((item) => item.route !== "/api/build-info");
   RESULT.publicSurfaceChecked = true;
@@ -81,6 +92,20 @@ async function validatePublicSurface() {
     [200, 301, 302, 303, 307, 308, 401, 403, 404, 405].includes(item.status) &&
     !PUBLIC_SECRET_PATTERNS.some((pattern) => item.text.includes(pattern))
   );
+  if (!RESULT.loggedOutPrivateRoutesProtected) {
+    DIAGNOSTICS.loggedOutPrivateRoutes = privateRoutes
+      .filter((item) =>
+        ![200, 301, 302, 303, 307, 308, 401, 403, 404, 405].includes(item.status) ||
+        PUBLIC_SECRET_PATTERNS.some((pattern) => item.text.includes(pattern))
+      )
+      .map((item) => ({
+        route: item.route,
+        status: item.status,
+        location: item.headers.location ?? null,
+        cacheControl: item.headers["cache-control"] ?? null,
+        bodyHasSecret: PUBLIC_SECRET_PATTERNS.some((pattern) => item.text.includes(pattern))
+      }));
+  }
 
   const buildInfo = responses.find((item) => item.route === "/api/build-info");
   RESULT.buildInfoSafe = Boolean(
@@ -119,28 +144,26 @@ async function validateLocalPrivacyModel() {
     create: { name: "Aria Privacy QA Workspace", slug: WORKSPACE_SLUG, plan: WorkspacePlan.PRO }
   });
 
-  const [owner, admin, agentOne, agentTwo] = await Promise.all([
-    prisma.user.upsert({
-      where: { email: "owner-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE },
-      create: { workspaceId: workspace.id, name: "Privacy QA Owner", email: "owner-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE }
-    }),
-    prisma.user.upsert({
-      where: { email: "admin-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE },
-      create: { workspaceId: workspace.id, name: "Privacy QA Admin", email: "admin-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE }
-    }),
-    prisma.user.upsert({
-      where: { email: "agent-one-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
-      create: { workspaceId: workspace.id, name: "Privacy QA Agent One", email: "agent-one-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
-    }),
-    prisma.user.upsert({
-      where: { email: "agent-two-privacy-qa@example.com" },
-      update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
-      create: { workspaceId: workspace.id, name: "Privacy QA Agent Two", email: "agent-two-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
-    })
-  ]);
+  const owner = await prisma.user.upsert({
+    where: { email: "owner-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE },
+    create: { workspaceId: workspace.id, name: "Privacy QA Owner", email: "owner-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_OWNER, visibilityScope: UserVisibilityScope.FIRM_WIDE }
+  });
+  const admin = await prisma.user.upsert({
+    where: { email: "admin-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE },
+    create: { workspaceId: workspace.id, name: "Privacy QA Admin", email: "admin-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.COMPANY_ADMIN, visibilityScope: UserVisibilityScope.FIRM_WIDE }
+  });
+  const agentOne = await prisma.user.upsert({
+    where: { email: "agent-one-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
+    create: { workspaceId: workspace.id, name: "Privacy QA Agent One", email: "agent-one-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
+  });
+  const agentTwo = await prisma.user.upsert({
+    where: { email: "agent-two-privacy-qa@example.com" },
+    update: { workspaceId: workspace.id, status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY },
+    create: { workspaceId: workspace.id, name: "Privacy QA Agent Two", email: "agent-two-privacy-qa@example.com", status: UserStatus.ACTIVE, role: UserRole.MIGRATION_AGENT, visibilityScope: UserVisibilityScope.ASSIGNED_ONLY }
+  });
 
   const clientA = await prisma.client.upsert({
     where: { clientReference: "privacy-qa-client-a" },
@@ -445,7 +468,7 @@ async function main() {
   const pass = Object.entries(RESULT)
     .filter(([key]) => key !== "target" && key !== "publicSurfaceChecked")
     .every(([, value]) => value === true || value === null);
-  console.log(JSON.stringify({ pass, result: RESULT }, null, 2));
+  console.log(JSON.stringify({ pass, result: RESULT, diagnostics: DIAGNOSTICS }, null, 2));
   if (!pass) process.exitCode = 1;
 }
 

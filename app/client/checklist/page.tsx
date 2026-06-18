@@ -1,62 +1,121 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClientPortalSession } from "@/lib/services/client-portal-session";
-import { cleanClientDescription, documentStatus, dueLabel, PortalCard, PortalSectionHeading, PortalShell, PortalStatusBadge } from "@/components/client-portal/portal-ui";
+import { cleanClientDescription, dueLabel, PortalCard, PortalSectionHeading, PortalShell } from "@/components/client-portal/portal-ui";
+import { MobileDocumentChecklist, type MobileChecklistItem } from "@/components/client/mobile-document-checklist";
+import { getMobileUploadConfigForWorkspace } from "@/lib/services/client-portal-upload";
+
+function toChecklistItemView(item: any): MobileChecklistItem {
+  const reviewAccepted = item.reviewedAt || item.document?.reviewStatus === "VERIFIED";
+  const needsReupload = item.document?.reviewStatus === "FLAGGED";
+  const waitingReview = Boolean(item.documentId) && !reviewAccepted && !needsReupload;
+  return {
+    id: item.id,
+    label: item.label,
+    category: item.category,
+    description: cleanClientDescription(item.description),
+    required: Boolean(item.required),
+    dueLabel: dueLabel(item.dueDate),
+    statusLabel: reviewAccepted
+      ? "Accepted"
+      : needsReupload
+        ? "Re-upload requested"
+        : waitingReview
+          ? "Uploaded - waiting for team review"
+          : item.required
+            ? "Missing"
+            : "Optional",
+    statusTone: reviewAccepted
+      ? "success"
+      : needsReupload
+        ? "danger"
+        : waitingReview
+          ? "info"
+          : item.required
+            ? "warning"
+            : "neutral",
+    documentId: item.documentId,
+    fileName: item.document?.fileName ?? null,
+    uploadTimeLabel: item.document?.createdAt
+      ? item.document.createdAt.toLocaleString("en-AU", {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      : null,
+    teamNote: needsReupload
+      ? "Please upload a clearer copy. Your migration team will review the replacement before use."
+      : item.documentId
+        ? "Your migration team will review this before use."
+        : null,
+    needsReupload
+  };
+}
 
 export default async function ClientChecklistSessionPage() {
   const portal = await getClientPortalSession();
   if (!portal?.matter) redirect("/client/login");
+
   const matter = portal.matter;
-  const grouped = matter.checklistItems.reduce<Record<string, typeof matter.checklistItems>>((acc, item) => {
-    acc[item.category] = acc[item.category] ?? [];
-    acc[item.category].push(item);
-    return acc;
-  }, {});
+  const uploadConfig = await getMobileUploadConfigForWorkspace(portal.workspaceId);
   const missing = matter.checklistItems.filter((item) => !item.documentId && item.required).length;
   const uploaded = matter.checklistItems.filter((item) => item.documentId).length;
   const accepted = matter.checklistItems.filter((item) => item.document?.reviewStatus === "VERIFIED" || item.reviewedAt).length;
 
   return (
-    <PortalShell firmName={portal.workspace.name} clientName={`${portal.client.firstName} ${portal.client.lastName}`} matterTitle={matter.title} subclass={matter.visaSubclass}>
+    <PortalShell
+      firmName={portal.workspace.name}
+      clientName={`${portal.client.firstName} ${portal.client.lastName}`}
+      matterTitle={matter.title}
+      subclass={matter.visaSubclass}
+    >
       <div className="space-y-6">
         <PortalCard>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
-            <PortalSectionHeading eyebrow="Checklist" title="Your document checklist" description="This is the client-facing list for this matter. Internal notes and audit records are not shown." />
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center">
+            <PortalSectionHeading
+              eyebrow="Checklist"
+              title="Your document checklist"
+              description="This is the client-facing list for this matter. Internal notes, staff-only review notes, and audit records are not shown."
+            />
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3"><p className="text-2xl font-semibold text-slate-950">{missing}</p><p className="mt-1 text-xs text-slate-600">Still needed</p></div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3"><p className="text-2xl font-semibold text-slate-950">{uploaded}</p><p className="mt-1 text-xs text-slate-600">Uploaded</p></div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3"><p className="text-2xl font-semibold text-slate-950">{accepted}</p><p className="mt-1 text-xs text-slate-600">Accepted</p></div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{missing}</p>
+                <p className="mt-1 text-xs text-slate-600">Still needed</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{uploaded}</p>
+                <p className="mt-1 text-xs text-slate-600">Uploaded</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-2xl font-semibold text-slate-950">{accepted}</p>
+                <p className="mt-1 text-xs text-slate-600">Accepted</p>
+              </div>
             </div>
           </div>
         </PortalCard>
-        <div className="space-y-5">
-          {Object.entries(grouped).map(([category, items]) => (
-            <PortalCard key={category}>
-              <PortalSectionHeading title={category} />
-              <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                {items.map((item) => {
-                  const status = documentStatus(item);
-                  return (
-                    <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-slate-950">{item.label}</p>
-                          <p className="mt-1 text-xs text-slate-600">{item.required ? "Required" : "Recommended"}{item.dueDate ? ` - Due ${dueLabel(item.dueDate)}` : ""}</p>
-                          {cleanClientDescription(item.description) ? <p className="mt-2 text-sm leading-6 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
-                          {item.document ? <p className="mt-2 text-xs text-slate-500">Uploaded: {item.document.fileName}</p> : null}
-                        </div>
-                        <PortalStatusBadge tone={status.tone}>{status.label}</PortalStatusBadge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </PortalCard>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href={"/client/documents" as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Upload missing documents</Link>
-          <Link href={"/client/portal" as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">Back to portal home</Link>
+
+        <MobileDocumentChecklist
+          items={matter.checklistItems.map(toChecklistItemView)}
+          acceptedMimeTypes={uploadConfig.acceptedMimeTypes}
+          acceptedFormatsLabel={uploadConfig.acceptedFormatsLabel}
+          maxSizeMb={uploadConfig.maxSizeMb}
+          showUploadActions={false}
+        />
+
+        <div className="sticky bottom-4 z-10 flex flex-wrap gap-3 rounded-[1.5rem] border border-slate-200 bg-white/95 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur">
+          <Link
+            href={"/client/documents" as any}
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-violet-700 px-4 text-sm font-semibold text-white"
+          >
+            Upload missing documents
+          </Link>
+          <Link
+            href={"/client/portal" as any}
+            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-950"
+          >
+            Back to portal home
+          </Link>
         </div>
       </div>
     </PortalShell>

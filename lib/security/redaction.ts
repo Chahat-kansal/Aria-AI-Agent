@@ -50,11 +50,21 @@ export function redactSensitive(value: unknown): unknown {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, item]) => [
         key,
-        isSensitiveKey(key) ? redactString(typeof item === "string" ? item : JSON.stringify(item)) : redactSensitive(item)
+        isSensitiveKey(key)
+          ? redactSensitiveLeaf(item)
+          : redactSensitive(item)
       ])
     );
   }
   return "[redacted]";
+}
+
+function redactSensitiveLeaf(value: unknown) {
+  if (value == null) return value;
+  if (typeof value === "string") return redactString(value);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  const serialized = JSON.stringify(value);
+  return typeof serialized === "string" ? redactString(serialized) : "[redacted]";
 }
 
 export function redactAuditMetadata<T>(value: T): T {

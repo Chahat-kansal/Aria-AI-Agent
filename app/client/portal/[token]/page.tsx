@@ -162,6 +162,12 @@ export default async function ClientPortalPage({ params, searchParams }: { param
 
             <PortalCard>
               <PortalSectionHeading eyebrow="Documents" title="Document checklist" description="Upload clear copies only. Your migration team will review each document before use." />
+              <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-semibold text-slate-950">Mobile upload tip</p>
+                <p className="mt-2 leading-6">
+                  Use the upload page to take a photo, choose a file, see progress, and re-upload if your migration team asks for a clearer copy.
+                </p>
+              </div>
               <div className="mt-5 space-y-3">
                 {matter.checklistItems.slice(0, 6).map((item) => {
                   const status = documentStatus(item);
@@ -170,7 +176,7 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-950">{item.label}</p>
-                          <p className="mt-1 text-xs text-slate-600">{item.category} · {item.required ? "Required" : "Recommended"}{item.dueDate ? ` · Due ${dueLabel(item.dueDate)}` : ""}</p>
+                          <p className="mt-1 text-xs text-slate-600">{item.category} - {item.required ? "Required" : "Recommended"}{item.dueDate ? ` - Due ${dueLabel(item.dueDate)}` : ""}</p>
                           {cleanClientDescription(item.description) ? <p className="mt-2 text-sm leading-5 text-slate-600">{cleanClientDescription(item.description)}</p> : null}
                           {item.document ? <p className="mt-2 text-xs text-slate-600">Uploaded: {item.document.fileName}</p> : null}
                         </div>
@@ -181,7 +187,7 @@ export default async function ClientPortalPage({ params, searchParams }: { param
                 })}
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Upload documents</Link>
+                <Link href={`/client/documents/${params.token}` as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Open mobile upload</Link>
                 <Link href={`/client/checklist/${params.token}` as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">View full checklist</Link>
               </div>
             </PortalCard>

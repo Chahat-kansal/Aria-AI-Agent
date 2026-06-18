@@ -124,6 +124,12 @@ export default async function ClientPortalSessionPage({ searchParams }: { search
 
           <PortalCard>
             <PortalSectionHeading eyebrow="Documents" title="Document checklist" description="Upload clear copies only. Your migration team will review each document before use." />
+            <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <p className="font-semibold text-slate-950">Mobile upload tip</p>
+              <p className="mt-2 leading-6">
+                Use the upload page to take a photo, choose a file, see progress, and re-upload if your migration team asks for a clearer copy.
+              </p>
+            </div>
             <div className="mt-5 space-y-3">
               {matter?.checklistItems.slice(0, 6).map((item) => {
                 const status = documentStatus(item);
@@ -143,7 +149,7 @@ export default async function ClientPortalSessionPage({ searchParams }: { search
               })}
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href={"/client/documents" as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Upload documents</Link>
+              <Link href={"/client/documents" as any} className="rounded-2xl bg-violet-700 px-4 py-2 text-sm font-semibold text-[#fff]">Open mobile upload</Link>
               <Link href={"/client/checklist" as any} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-950">View full checklist</Link>
             </div>
           </PortalCard>

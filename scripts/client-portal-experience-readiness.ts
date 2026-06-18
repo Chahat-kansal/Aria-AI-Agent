@@ -239,9 +239,14 @@ async function main() {
     name: "Portal home includes next-action dashboard and secure message thread",
     pass: /What you need to do next/.test(portalPage) && /Message your migration team/.test(portalPage)
   });
+  const mobileUploadCardSource = readFileSync("components/client/mobile-upload-card.tsx", "utf8");
   checks.push({
-    name: "Documents page uses styled upload component instead of visible default file input",
-    pass: /PortalUploadForm/.test(documentsPage) && /Browse files/.test(readFileSync("components/client-portal/portal-upload-form.tsx", "utf8"))
+    name: "Documents page uses styled mobile upload component instead of visible default file input",
+    pass:
+      /MobileDocumentChecklist/.test(documentsPage)
+      && /Take photo/.test(mobileUploadCardSource)
+      && /Choose file/.test(mobileUploadCardSource)
+      && /className=\"sr-only\"/.test(mobileUploadCardSource)
   });
   checks.push({
     name: "Appointment booking supports no-live-availability fallback",
