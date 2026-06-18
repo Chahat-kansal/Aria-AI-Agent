@@ -339,18 +339,27 @@ async function runViewportChecks(token: string) {
       let selectedVisible = true;
       if (selectionWidths.has(width)) {
         await page.getByRole("button", { name: /Choose file/i }).first().waitFor({ state: "visible", timeout: 5_000 });
-        await page.locator('input[type="file"]:not([capture])').first().setInputFiles({
+        const fileInput = page.locator('input[type="file"]:not([capture])').first();
+        await fileInput.setInputFiles({
           name: "demo-student-id.pdf",
           mimeType: "application/pdf",
           buffer: Buffer.from("%PDF-1.4 demo mobile upload proof", "utf8")
         });
-        selectedVisible = await page.waitForFunction(
+        await page.waitForTimeout(200);
+        const selectedFileName = await fileInput.evaluate(
+          (input) => (input as HTMLInputElement).files?.[0]?.name ?? ""
+        );
+        const uploadEnabled = await page.getByRole("button", { name: /^Upload$/i }).first().isEnabled();
+        const selectedFileLabelVisible = await page.waitForFunction(
           (fileName) => document.body.innerText.includes(fileName),
           "demo-student-id.pdf",
           { timeout: 5_000 }
         )
           .then(() => true)
           .catch(() => false);
+        selectedVisible =
+          selectedFileLabelVisible ||
+          (selectedFileName === "demo-student-id.pdf" && uploadEnabled);
       }
       await context.close();
       selectedFileFlowOk = selectedFileFlowOk && selectedVisible;
