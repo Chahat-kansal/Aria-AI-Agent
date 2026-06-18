@@ -306,16 +306,30 @@ async function main() {
       mimeType: "application/pdf",
       buffer: Buffer.from("%PDF-1.4 mobile screenshot proof", "utf8")
     });
+    await page.waitForFunction(
+      (fileName) => document.body.innerText.includes(fileName),
+      "demo-student-id.pdf",
+      { timeout: 5_000 }
+    );
     await saveShot(page, "05-selected-file-state.png");
 
     await page.route("**/api/portal/uploads", async (route) => {
       await wait(1500);
       await route.continue();
     }, { times: 1 });
+    const uploadResponse = page.waitForResponse(
+      (response) => response.url().includes("/api/portal/uploads") && response.request().method() === "POST" && response.ok(),
+      { timeout: 30_000 }
+    );
     await page.getByRole("button", { name: /^Upload$/i }).first().click();
     await wait(300);
     await saveShot(page, "06-upload-progress-state.png");
-    await page.waitForSelector("text=Uploaded - waiting for team review", { timeout: 30_000 });
+    await uploadResponse;
+    await page.waitForFunction(
+      (label) => document.body.innerText.includes(label),
+      "Uploaded - waiting for team review",
+      { timeout: 30_000 }
+    );
     await saveShot(page, "07-uploaded-success-state.png");
 
     await page.reload({ waitUntil: "networkidle" });
