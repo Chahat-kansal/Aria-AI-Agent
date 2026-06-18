@@ -315,16 +315,39 @@ async function main() {
 
     await page.route("**/api/portal/uploads", async (route) => {
       await wait(1500);
-      await route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          document: {
+            fileName: "demo-student-id.pdf",
+            createdAt: new Date().toISOString(),
+            qualityStatus: null,
+            qualityScore: null,
+            reuploadMessage: null
+          },
+          checklist: {
+            itemId: "demo-checklist-item",
+            statusLabel: "Uploaded - waiting for team review",
+            waitingForTeamReview: true,
+            teamNote: "Your migration team will review this before use.",
+            uploadedAtLabel: "18 Jun, 10:00"
+          },
+          notification: {
+            created: true
+          },
+          extraction: {
+            configured: false,
+            qualityStatus: null,
+            reviewMessage: "Your migration team will review the uploaded file."
+          }
+        })
+      });
     }, { times: 1 });
-    const uploadResponse = page.waitForResponse(
-      (response) => response.url().includes("/api/portal/uploads") && response.request().method() === "POST" && response.ok(),
-      { timeout: 30_000 }
-    );
     await page.getByRole("button", { name: /^Upload$/i }).first().click();
     await wait(300);
     await saveShot(page, "06-upload-progress-state.png");
-    await uploadResponse;
     await page.waitForFunction(
       (label) => document.body.innerText.includes(label),
       "Uploaded - waiting for team review",
