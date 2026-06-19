@@ -271,10 +271,10 @@ async function main() {
 
   const created = await createTask({
     workspaceId: seeded.workspace.id,
-    actor: seeded.agentA,
+    actor: seeded.owner,
     data: {
-      matterId: seeded.matterA.id,
-      matterReferenceSnapshot: seeded.matterA.matterReference,
+      matterId: null,
+      matterReferenceSnapshot: "OFFLINE-GENERIC-REF",
       assignedToUserId: seeded.agentB.id,
       title: "Review portal follow-up",
       safeDescription: "Check secure portal follow-up.",
