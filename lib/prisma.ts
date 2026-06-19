@@ -5,8 +5,7 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-function resolveRuntimeDatabaseUrl() {
-  const raw = process.env.DATABASE_URL;
+function normalizePostgresUrl(raw: string | undefined) {
   if (!raw) return undefined;
 
   try {
@@ -22,6 +21,11 @@ function resolveRuntimeDatabaseUrl() {
   } catch {
     return raw;
   }
+}
+
+function resolveRuntimeDatabaseUrl() {
+  const preferDirect = process.env.NODE_ENV !== "production" && process.env.DIRECT_URL;
+  return normalizePostgresUrl(preferDirect || process.env.DATABASE_URL);
 }
 
 export const prisma =

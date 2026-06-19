@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -109,6 +109,7 @@ enum TaskStatus {
   OPEN
   IN_PROGRESS
   DONE
+  BLOCKED
 }
 
 enum TaskPriority {
@@ -116,6 +117,20 @@ enum TaskPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+enum TaskSyncStatus {
+  SYNCED
+  PENDING
+  CONFLICT
+  ERROR
+}
+
+enum TaskConflictStatus {
+  NONE
+  LOCAL_NEWER
+  SERVER_NEWER
+  MERGE_REQUIRED
 }
 
 enum IntakeRequestStatus {
@@ -409,246 +424,247 @@ enum MatterOfficialFormDraftStatus {
 }
 
 model Workspace {
-  id                    String                 @id @default(cuid())
-  name                  String
-  slug                  String                 @unique
-  plan                  WorkspacePlan
-  legalName             String?
-  businessType          String?
-  registrationNumber    String?
-  contactEmail          String?
-  contactPhone          String?
-  website               String?
-  addressLine1          String?
-  addressLine2          String?
-  city                  String?
-  state                 String?
-  postalCode            String?
-  country               String?
-  timezone              String                 @default("Australia/Sydney")
-  logoUrl               String?
-  brandColor            String?
-  stripeCustomerId      String?                @unique
-  stripeSubscriptionId  String?                @unique
-  billingPlan           BillingPlan?
-  subscriptionStatus    WorkspaceSubscriptionStatus @default(NOT_CONFIGURED)
-  trialEndsAt           DateTime?
-  currentPeriodEnd      DateTime?
-  billingEmail          String?
-  billingProvider       String?
-  createdAt             DateTime               @default(now())
-  users                 User[]
-  clients               Client[]
-  matters               Matter[]
-  documents             Document[]
-  tasks                 Task[]
-  aiThreads             AiChatThread[]
-  aiMessages            AiChatMessage[]
-  assistantRuns         AssistantRun[]
-  auditEvents           AuditEvent[]
-  visaSubclassTemplates VisaSubclassTemplate[]
-  visaKnowledgeRecords  VisaKnowledgeRecord[]
-  officialSources       OfficialSource[]
-  migrationIntelItems   OfficialUpdate[]      @relation("WorkspaceIntelItems")
-  migrationIntelSweeps  MigrationIntelSweep[]
-  pathwayAnalyses       PathwayAnalysis[]
-  intakeRequests        ClientIntakeRequest[]
-  documentRequests      DocumentRequest[]
-  appointments          Appointment[]
-  appointmentSyncEvents CalendarSyncEvent[]
-  matterEmailThreads    MatterEmailThread[]
-  matterEmailMessages   MatterEmailMessage[]
-  emailSyncEvents       EmailSyncEvent[]
-  acknowledgementRequests ClientAcknowledgementRequest[]
+  id                       String                          @id @default(cuid())
+  name                     String
+  slug                     String                          @unique
+  plan                     WorkspacePlan
+  legalName                String?
+  businessType             String?
+  registrationNumber       String?
+  contactEmail             String?
+  contactPhone             String?
+  website                  String?
+  addressLine1             String?
+  addressLine2             String?
+  city                     String?
+  state                    String?
+  postalCode               String?
+  country                  String?
+  timezone                 String                          @default("Australia/Sydney")
+  logoUrl                  String?
+  brandColor               String?
+  stripeCustomerId         String?                         @unique
+  stripeSubscriptionId     String?                         @unique
+  billingPlan              BillingPlan?
+  subscriptionStatus       WorkspaceSubscriptionStatus     @default(NOT_CONFIGURED)
+  trialEndsAt              DateTime?
+  currentPeriodEnd         DateTime?
+  billingEmail             String?
+  billingProvider          String?
+  createdAt                DateTime                        @default(now())
+  users                    User[]
+  clients                  Client[]
+  matters                  Matter[]
+  documents                Document[]
+  tasks                    Task[]
+  aiThreads                AiChatThread[]
+  aiMessages               AiChatMessage[]
+  assistantRuns            AssistantRun[]
+  auditEvents              AuditEvent[]
+  visaSubclassTemplates    VisaSubclassTemplate[]
+  visaKnowledgeRecords     VisaKnowledgeRecord[]
+  officialSources          OfficialSource[]
+  migrationIntelItems      OfficialUpdate[]                @relation("WorkspaceIntelItems")
+  migrationIntelSweeps     MigrationIntelSweep[]
+  pathwayAnalyses          PathwayAnalysis[]
+  intakeRequests           ClientIntakeRequest[]
+  documentRequests         DocumentRequest[]
+  appointments             Appointment[]
+  appointmentSyncEvents    CalendarSyncEvent[]
+  matterEmailThreads       MatterEmailThread[]
+  matterEmailMessages      MatterEmailMessage[]
+  emailSyncEvents          EmailSyncEvent[]
+  acknowledgementRequests  ClientAcknowledgementRequest[]
   acknowledgementResponses ClientAcknowledgementResponse[]
-  acknowledgementRecords AcknowledgementRecord[]
-  esignEvents           EsignEvent[]
-  generatedDocuments    GeneratedDocument[]
-  portalAccessTokens    ClientPortalAccessToken[]
-  timelineEvents        MatterTimelineEvent[]
-  knowledgeEmbeddings   KnowledgeEmbedding[]
-  invoiceBranding       InvoiceBranding?
-  invoiceTemplates      InvoiceTemplate[]
-  invoiceServices       InvoiceService[]
-  invoices              Invoice[]
-  invoiceAssets         InvoiceAsset[]
-  subscriptions         WorkspaceSubscription[]
-  billingEvents         BillingEvent[]
-  invoicePaymentLinks   InvoicePaymentLink[]
-    smsMessages           SmsMessage[]
-    smsEvents             SmsEvent[]
-    smsConsents           SmsConsent[]
-    smsOptOuts            SmsOptOut[]
-    pushSubscriptions     PushSubscription[]
-    pushEvents            PushEvent[]
-    notificationPreferences NotificationPreference[]
-    inAppNotifications    InAppNotification[]
-    cloudDriveExportJobs  CloudDriveExportJob[]
-    cloudDriveExportItems CloudDriveExportItem[]
-    cloudDriveEvents      CloudDriveEvent[]
-  securityIncidents     SecurityIncident[]
-  operationalSettings   WorkspaceOperationalSettings?
-  officialFormTemplates OfficialFormTemplate[]
-  officialFormDrafts    MatterOfficialFormDraft[]
+  acknowledgementRecords   AcknowledgementRecord[]
+  esignEvents              EsignEvent[]
+  generatedDocuments       GeneratedDocument[]
+  portalAccessTokens       ClientPortalAccessToken[]
+  timelineEvents           MatterTimelineEvent[]
+  knowledgeEmbeddings      KnowledgeEmbedding[]
+  invoiceBranding          InvoiceBranding?
+  invoiceTemplates         InvoiceTemplate[]
+  invoiceServices          InvoiceService[]
+  invoices                 Invoice[]
+  invoiceAssets            InvoiceAsset[]
+  subscriptions            WorkspaceSubscription[]
+  billingEvents            BillingEvent[]
+  invoicePaymentLinks      InvoicePaymentLink[]
+  smsMessages              SmsMessage[]
+  smsEvents                SmsEvent[]
+  smsConsents              SmsConsent[]
+  smsOptOuts               SmsOptOut[]
+  pushSubscriptions        PushSubscription[]
+  pushEvents               PushEvent[]
+  notificationPreferences  NotificationPreference[]
+  inAppNotifications       InAppNotification[]
+  cloudDriveExportJobs     CloudDriveExportJob[]
+  cloudDriveExportItems    CloudDriveExportItem[]
+  cloudDriveEvents         CloudDriveEvent[]
+  securityIncidents        SecurityIncident[]
+  operationalSettings      WorkspaceOperationalSettings?
+  officialFormTemplates    OfficialFormTemplate[]
+  officialFormDrafts       MatterOfficialFormDraft[]
 }
 
 model User {
-  id                String              @id @default(cuid())
-  name              String
-  email             String              @unique
-  hashedPassword    String?
-  role              UserRole
-  status            UserStatus          @default(ACTIVE)
-  jobTitle          String?
-  notes             String?
-  permissionsJson   Json?
-  visibilityScope   UserVisibilityScope @default(ASSIGNED_ONLY)
-  invitedAt         DateTime?
-  inviteTokenHash   String?             @unique
-  inviteExpiresAt   DateTime?
-  inviteAcceptedAt  DateTime?
-  lastActiveAt      DateTime?
-  deactivatedAt     DateTime?
-  workspaceId       String
-  workspace         Workspace           @relation(fields: [workspaceId], references: [id])
-  supervisorId      String?
-  supervisor        User?               @relation("UserSupervisor", fields: [supervisorId], references: [id])
-  supervisedUsers   User[]              @relation("UserSupervisor")
-  mattersAssigned   Matter[]            @relation("MatterAssignee")
-  clientsAssigned   Client[]            @relation("ClientAssignee")
-  uploadedDocuments Document[]          @relation("DocumentUploader")
-  tasksAssigned     Task[]              @relation("TaskAssignee")
-  createdThreads    AiChatThread[]      @relation("ThreadCreator")
-  assistantMessages AiChatMessage[]     @relation("AssistantMessageUser")
-  assistantRuns     AssistantRun[]
-  auditEvents       AuditEvent[]
-  reviewedIntelItems   OfficialUpdate[] @relation("IntelReviewedBy")
-  reviewedIntelImpacts MatterImpact[]   @relation("IntelImpactReviewedBy")
-  pathwayAnalyses   PathwayAnalysis[]
-  intakeRequests    ClientIntakeRequest[] @relation("IntakeRequestCreator")
-  documentRequests  DocumentRequest[]     @relation("DocumentRequestCreator")
-  appointments      Appointment[]         @relation("AppointmentAssignee")
-  calendarSyncEvents CalendarSyncEvent[]  @relation("CalendarSyncActor")
-  linkedMatterEmailThreads MatterEmailThread[] @relation("MatterEmailThreadLinkedBy")
-  emailSyncEvents   EmailSyncEvent[]      @relation("EmailSyncActor")
-  acknowledgementRequests ClientAcknowledgementRequest[] @relation("AcknowledgementRequestedBy")
-  esignEvents       EsignEvent[]          @relation("EsignActor")
-  generatedDocuments GeneratedDocument[]
-  timelineEvents    MatterTimelineEvent[] @relation("TimelineActor")
-  invoicesCreated   Invoice[]             @relation("InvoiceCreator")
-  invoiceTemplatesCreated InvoiceTemplate[] @relation("InvoiceTemplateCreator")
-  securityIncidents     SecurityIncident[]
-  createdPortalTokens   ClientPortalAccessToken[] @relation("PortalTokenCreator")
-  approvedFormDrafts    MatterOfficialFormDraft[] @relation("OfficialFormDraftApprover")
-  createdOfficialFormTemplates OfficialFormTemplate[] @relation("OfficialFormTemplateCreator")
-  createdOfficialFormDrafts MatterOfficialFormDraft[] @relation("OfficialFormDraftCreator")
-  smsMessages          SmsMessage[]               @relation("SmsActor")
-    smsConsentsRecorded  SmsConsent[]               @relation("SmsConsentRecorder")
-    smsOptOutsRecorded   SmsOptOut[]                @relation("SmsOptOutRecorder")
-    smsEvents            SmsEvent[]                 @relation("SmsEventActor")
-    pushSubscriptions    PushSubscription[]         @relation("PushSubscriptionUser")
-    pushEvents           PushEvent[]                @relation("PushEventActor")
-    notificationPreferences NotificationPreference[]
-    inAppNotifications   InAppNotification[]
-    cloudDriveExportJobs CloudDriveExportJob[]      @relation("CloudDriveExportActor")
-    cloudDriveEvents     CloudDriveEvent[]          @relation("CloudDriveEventActor")
+  id                           String                         @id @default(cuid())
+  name                         String
+  email                        String                         @unique
+  hashedPassword               String?
+  role                         UserRole
+  status                       UserStatus                     @default(ACTIVE)
+  jobTitle                     String?
+  notes                        String?
+  permissionsJson              Json?
+  visibilityScope              UserVisibilityScope            @default(ASSIGNED_ONLY)
+  invitedAt                    DateTime?
+  inviteTokenHash              String?                        @unique
+  inviteExpiresAt              DateTime?
+  inviteAcceptedAt             DateTime?
+  lastActiveAt                 DateTime?
+  deactivatedAt                DateTime?
+  workspaceId                  String
+  workspace                    Workspace                      @relation(fields: [workspaceId], references: [id])
+  supervisorId                 String?
+  supervisor                   User?                          @relation("UserSupervisor", fields: [supervisorId], references: [id])
+  supervisedUsers              User[]                         @relation("UserSupervisor")
+  mattersAssigned              Matter[]                       @relation("MatterAssignee")
+  clientsAssigned              Client[]                       @relation("ClientAssignee")
+  uploadedDocuments            Document[]                     @relation("DocumentUploader")
+  tasksAssigned                Task[]                         @relation("TaskAssignee")
+  tasksCreated                 Task[]                         @relation("TaskCreator")
+  createdThreads               AiChatThread[]                 @relation("ThreadCreator")
+  assistantMessages            AiChatMessage[]                @relation("AssistantMessageUser")
+  assistantRuns                AssistantRun[]
+  auditEvents                  AuditEvent[]
+  reviewedIntelItems           OfficialUpdate[]               @relation("IntelReviewedBy")
+  reviewedIntelImpacts         MatterImpact[]                 @relation("IntelImpactReviewedBy")
+  pathwayAnalyses              PathwayAnalysis[]
+  intakeRequests               ClientIntakeRequest[]          @relation("IntakeRequestCreator")
+  documentRequests             DocumentRequest[]              @relation("DocumentRequestCreator")
+  appointments                 Appointment[]                  @relation("AppointmentAssignee")
+  calendarSyncEvents           CalendarSyncEvent[]            @relation("CalendarSyncActor")
+  linkedMatterEmailThreads     MatterEmailThread[]            @relation("MatterEmailThreadLinkedBy")
+  emailSyncEvents              EmailSyncEvent[]               @relation("EmailSyncActor")
+  acknowledgementRequests      ClientAcknowledgementRequest[] @relation("AcknowledgementRequestedBy")
+  esignEvents                  EsignEvent[]                   @relation("EsignActor")
+  generatedDocuments           GeneratedDocument[]
+  timelineEvents               MatterTimelineEvent[]          @relation("TimelineActor")
+  invoicesCreated              Invoice[]                      @relation("InvoiceCreator")
+  invoiceTemplatesCreated      InvoiceTemplate[]              @relation("InvoiceTemplateCreator")
+  securityIncidents            SecurityIncident[]
+  createdPortalTokens          ClientPortalAccessToken[]      @relation("PortalTokenCreator")
+  approvedFormDrafts           MatterOfficialFormDraft[]      @relation("OfficialFormDraftApprover")
+  createdOfficialFormTemplates OfficialFormTemplate[]         @relation("OfficialFormTemplateCreator")
+  createdOfficialFormDrafts    MatterOfficialFormDraft[]      @relation("OfficialFormDraftCreator")
+  smsMessages                  SmsMessage[]                   @relation("SmsActor")
+  smsConsentsRecorded          SmsConsent[]                   @relation("SmsConsentRecorder")
+  smsOptOutsRecorded           SmsOptOut[]                    @relation("SmsOptOutRecorder")
+  smsEvents                    SmsEvent[]                     @relation("SmsEventActor")
+  pushSubscriptions            PushSubscription[]             @relation("PushSubscriptionUser")
+  pushEvents                   PushEvent[]                    @relation("PushEventActor")
+  notificationPreferences      NotificationPreference[]
+  inAppNotifications           InAppNotification[]
+  cloudDriveExportJobs         CloudDriveExportJob[]          @relation("CloudDriveExportActor")
+  cloudDriveEvents             CloudDriveEvent[]              @relation("CloudDriveEventActor")
 
   @@index([workspaceId, status])
   @@index([inviteExpiresAt])
 }
 
 model Client {
-  id               String            @id @default(cuid())
-  clientReference  String?           @unique
-  workspaceId      String
-  workspace        Workspace         @relation(fields: [workspaceId], references: [id])
-  firstName        String
-  lastName         String
-  dob              DateTime
-  nationality      String
-  email            String
-  phone            String
-  notes            String?
-  assignedToUserId String?
-  assignedToUser   User?             @relation("ClientAssignee", fields: [assignedToUserId], references: [id])
-  createdAt        DateTime          @default(now())
-  currentVisaStatus String?
-  currentVisaExpiry DateTime?
-  archivedAt       DateTime?
-  matters          Matter[]
-  documents        Document[]
-  pathwayAnalyses  PathwayAnalysis[]
-  intakeRequests   ClientIntakeRequest[]
-  documentRequests DocumentRequest[]
-  appointments     Appointment[]
-  acknowledgementRequests ClientAcknowledgementRequest[]
+  id                       String                          @id @default(cuid())
+  clientReference          String?                         @unique
+  workspaceId              String
+  workspace                Workspace                       @relation(fields: [workspaceId], references: [id])
+  firstName                String
+  lastName                 String
+  dob                      DateTime
+  nationality              String
+  email                    String
+  phone                    String
+  notes                    String?
+  assignedToUserId         String?
+  assignedToUser           User?                           @relation("ClientAssignee", fields: [assignedToUserId], references: [id])
+  createdAt                DateTime                        @default(now())
+  currentVisaStatus        String?
+  currentVisaExpiry        DateTime?
+  archivedAt               DateTime?
+  matters                  Matter[]
+  documents                Document[]
+  pathwayAnalyses          PathwayAnalysis[]
+  intakeRequests           ClientIntakeRequest[]
+  documentRequests         DocumentRequest[]
+  appointments             Appointment[]
+  acknowledgementRequests  ClientAcknowledgementRequest[]
   acknowledgementResponses ClientAcknowledgementResponse[]
-  acknowledgementRecords AcknowledgementRecord[]
-  portalAccessTokens ClientPortalAccessToken[]
-    invoices         Invoice[]
-    matterImpacts    MatterImpact[]
-    smsMessages      SmsMessage[]
-    smsConsents      SmsConsent[]
-    smsOptOuts       SmsOptOut[]
-    pushSubscriptions PushSubscription[]
-    inAppNotifications InAppNotification[]
-  }
+  acknowledgementRecords   AcknowledgementRecord[]
+  portalAccessTokens       ClientPortalAccessToken[]
+  invoices                 Invoice[]
+  matterImpacts            MatterImpact[]
+  smsMessages              SmsMessage[]
+  smsConsents              SmsConsent[]
+  smsOptOuts               SmsOptOut[]
+  pushSubscriptions        PushSubscription[]
+  inAppNotifications       InAppNotification[]
+}
 
 model Matter {
-  id                  String                   @id @default(cuid())
-  matterReference     String?                  @unique
-  workspaceId         String
-  workspace           Workspace                @relation(fields: [workspaceId], references: [id])
-  clientId            String
-  client              Client                   @relation(fields: [clientId], references: [id])
-  title               String
-  visaSubclass        String
-  visaStream          String
-  status              MatterStatus
-  stage               MatterStage
-  currentVisaStatus   String?
-  currentVisaExpiry   DateTime?
-  applicationStatus   String?
-  lodgementDate       DateTime?
-  expectedNextMilestone String?
-  criticalDeadline    DateTime?
-  archivedAt          DateTime?
-  lodgementTargetDate DateTime?
-  assignedToUserId    String
-  assignedToUser      User                     @relation("MatterAssignee", fields: [assignedToUserId], references: [id])
-  readinessScore      Int
-  lastReviewedAt      DateTime?
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  documents           Document[]
-  extractedFields     ExtractedField[]
-  validationIssues    ValidationIssue[]
-  checklistItems      ChecklistItem[]
-  impacts             MatterImpact[]
-  tasks               Task[]
-  aiThreads           AiChatThread[]
-  applicationDrafts   MatterApplicationDraft[]
-  reviewRequests      MatterReviewRequest[]
-  pathwayAnalyses     PathwayAnalysis[]
-  intakeRequests      ClientIntakeRequest[]
-  documentRequests    DocumentRequest[]
-  appointments        Appointment[]
-  acknowledgementRequests ClientAcknowledgementRequest[]
+  id                       String                          @id @default(cuid())
+  matterReference          String?                         @unique
+  workspaceId              String
+  workspace                Workspace                       @relation(fields: [workspaceId], references: [id])
+  clientId                 String
+  client                   Client                          @relation(fields: [clientId], references: [id])
+  title                    String
+  visaSubclass             String
+  visaStream               String
+  status                   MatterStatus
+  stage                    MatterStage
+  currentVisaStatus        String?
+  currentVisaExpiry        DateTime?
+  applicationStatus        String?
+  lodgementDate            DateTime?
+  expectedNextMilestone    String?
+  criticalDeadline         DateTime?
+  archivedAt               DateTime?
+  lodgementTargetDate      DateTime?
+  assignedToUserId         String
+  assignedToUser           User                            @relation("MatterAssignee", fields: [assignedToUserId], references: [id])
+  readinessScore           Int
+  lastReviewedAt           DateTime?
+  createdAt                DateTime                        @default(now())
+  updatedAt                DateTime                        @updatedAt
+  documents                Document[]
+  extractedFields          ExtractedField[]
+  validationIssues         ValidationIssue[]
+  checklistItems           ChecklistItem[]
+  impacts                  MatterImpact[]
+  tasks                    Task[]
+  aiThreads                AiChatThread[]
+  applicationDrafts        MatterApplicationDraft[]
+  reviewRequests           MatterReviewRequest[]
+  pathwayAnalyses          PathwayAnalysis[]
+  intakeRequests           ClientIntakeRequest[]
+  documentRequests         DocumentRequest[]
+  appointments             Appointment[]
+  acknowledgementRequests  ClientAcknowledgementRequest[]
   acknowledgementResponses ClientAcknowledgementResponse[]
-  acknowledgementRecords AcknowledgementRecord[]
-  esignEvents         EsignEvent[]
-  matterEmailThreads  MatterEmailThread[]
-  matterEmailMessages MatterEmailMessage[]
-  emailSyncEvents     EmailSyncEvent[]
-    smsMessages         SmsMessage[]
-    generatedDocuments  GeneratedDocument[]
-    portalAccessTokens  ClientPortalAccessToken[]
-    timelineEvents      MatterTimelineEvent[]
-    invoices            Invoice[]
-    officialFormDrafts  MatterOfficialFormDraft[]
-    cloudDriveExportJobs CloudDriveExportJob[]
-    inAppNotifications  InAppNotification[]
-  }
+  acknowledgementRecords   AcknowledgementRecord[]
+  esignEvents              EsignEvent[]
+  matterEmailThreads       MatterEmailThread[]
+  matterEmailMessages      MatterEmailMessage[]
+  emailSyncEvents          EmailSyncEvent[]
+  smsMessages              SmsMessage[]
+  generatedDocuments       GeneratedDocument[]
+  portalAccessTokens       ClientPortalAccessToken[]
+  timelineEvents           MatterTimelineEvent[]
+  invoices                 Invoice[]
+  officialFormDrafts       MatterOfficialFormDraft[]
+  cloudDriveExportJobs     CloudDriveExportJob[]
+  inAppNotifications       InAppNotification[]
+}
 
 model PathwayAnalysis {
   id               String          @id @default(cuid())
@@ -759,21 +775,21 @@ model ValidationIssue {
 }
 
 model ChecklistItem {
-  id       String  @id @default(cuid())
-  matterId String
-  matter   Matter  @relation(fields: [matterId], references: [id])
-  documentId String?
-  document  Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  itemKey   String?
-  category String
-  label    String
-  description String?
-  status   String
-  required Boolean
-  notes    String?
-  dueDate  DateTime?
-  requestedAt DateTime?
-  reviewedAt DateTime?
+  id           String                @id @default(cuid())
+  matterId     String
+  matter       Matter                @relation(fields: [matterId], references: [id])
+  documentId   String?
+  document     Document?             @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  itemKey      String?
+  category     String
+  label        String
+  description  String?
+  status       String
+  required     Boolean
+  notes        String?
+  dueDate      DateTime?
+  requestedAt  DateTime?
+  reviewedAt   DateTime?
   requestItems DocumentRequestItem[]
 }
 
@@ -940,59 +956,59 @@ model DocumentExtractionResult {
 }
 
 model MatterReviewRequest {
-  id             String                 @id @default(cuid())
-  matterId       String
-  matter         Matter                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  draftId        String
-  draft          MatterApplicationDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
-  status         ReviewRequestStatus    @default(REVIEW_REQUESTED)
-  recipientEmail String?
-  recipientName  String?
-  message        String?
-  publicToken    String?                @unique
-  publicTokenHash String?               @unique
+  id                 String                 @id @default(cuid())
+  matterId           String
+  matter             Matter                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  draftId            String
+  draft              MatterApplicationDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  status             ReviewRequestStatus    @default(REVIEW_REQUESTED)
+  recipientEmail     String?
+  recipientName      String?
+  message            String?
+  publicToken        String?                @unique
+  publicTokenHash    String?                @unique
   publicTokenPreview String?
-  expiresAt      DateTime?
-  revokedAt      DateTime?
-  sentAt         DateTime?
-  viewedAt       DateTime?
-  confirmedAt    DateTime?
-  returnedAt     DateTime?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  expiresAt          DateTime?
+  revokedAt          DateTime?
+  sentAt             DateTime?
+  viewedAt           DateTime?
+  confirmedAt        DateTime?
+  returnedAt         DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 }
 
 model ClientAcknowledgementRequest {
-  id                   String                      @id @default(cuid())
-  workspaceId          String
-  workspace            Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId             String
-  matter               Matter                      @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  clientId             String
-  client               Client                      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requestedByUserId    String
-  requestedByUser      User                        @relation("AcknowledgementRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
-  provider             String
-  status               EsignStatus                 @default(DRAFT)
-  title                String
-  requestType          String
-  safeSummary          String?
-  requestJson          String?
-  externalEnvelopeId   String?
-  sentAt               DateTime?
-  viewedAt             DateTime?
-  submittedAt          DateTime?
-  revokedAt            DateTime?
-  expiresAt            DateTime?
-  lastErrorSummary     String?
+  id                    String                         @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId              String
+  matter                Matter                         @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId              String
+  client                Client                         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestedByUserId     String
+  requestedByUser       User                           @relation("AcknowledgementRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  provider              String
+  status                EsignStatus                    @default(DRAFT)
+  title                 String
+  requestType           String
+  safeSummary           String?
+  requestJson           String?
+  externalEnvelopeId    String?
+  sentAt                DateTime?
+  viewedAt              DateTime?
+  submittedAt           DateTime?
+  revokedAt             DateTime?
+  expiresAt             DateTime?
+  lastErrorSummary      String?
   latestClientSessionId String?
-  latestClientIpHash   String?
-  latestUserAgentHash  String?
-  createdAt            DateTime                    @default(now())
-  updatedAt            DateTime                    @updatedAt
-  response             ClientAcknowledgementResponse?
-  record               AcknowledgementRecord?
-  events               EsignEvent[]
+  latestClientIpHash    String?
+  latestUserAgentHash   String?
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  response              ClientAcknowledgementResponse?
+  record                AcknowledgementRecord?
+  events                EsignEvent[]
 
   @@index([workspaceId, status, createdAt])
   @@index([matterId, status, createdAt])
@@ -1000,121 +1016,121 @@ model ClientAcknowledgementRequest {
 }
 
 model ClientAcknowledgementResponse {
-  id                    String                    @id @default(cuid())
-  workspaceId           String
-  workspace             Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId              String
-  matter                Matter                    @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  clientId              String
-  client                Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requestId             String                    @unique
-  request               ClientAcknowledgementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  provider              String
-  reviewStatus          AcknowledgementReviewStatus @default(AGENT_REVIEW_REQUIRED)
-  submittedAt           DateTime                  @default(now())
-  clientSessionId       String?
-  clientIpHash          String?
-  userAgentHash         String?
-  responseJson          String?
-  safeSummary           String?
-  riskFlagsJson         Json?
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
+  id              String                       @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId        String
+  matter          Matter                       @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client                       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestId       String                       @unique
+  request         ClientAcknowledgementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider        String
+  reviewStatus    AcknowledgementReviewStatus  @default(AGENT_REVIEW_REQUIRED)
+  submittedAt     DateTime                     @default(now())
+  clientSessionId String?
+  clientIpHash    String?
+  userAgentHash   String?
+  responseJson    String?
+  safeSummary     String?
+  riskFlagsJson   Json?
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
 
   @@index([workspaceId, reviewStatus, submittedAt])
   @@index([matterId, reviewStatus, submittedAt])
 }
 
 model AcknowledgementRecord {
-  id                  String                    @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId            String
-  matter              Matter                    @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  clientId            String
-  client              Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requestId           String                    @unique
-  request             ClientAcknowledgementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  responseId          String?
-  provider            String
-  title               String
-  safeSummary         String?
-  fileName            String
-  mimeType            String                    @default("text/plain")
-  recordContent       String?
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
+  id            String                       @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId      String
+  matter        Matter                       @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client                       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requestId     String                       @unique
+  request       ClientAcknowledgementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  responseId    String?
+  provider      String
+  title         String
+  safeSummary   String?
+  fileName      String
+  mimeType      String                       @default("text/plain")
+  recordContent String?
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
 
   @@index([workspaceId, createdAt])
   @@index([matterId, createdAt])
 }
 
 model EsignEvent {
-  id                  String       @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId            String?
-  matter              Matter?      @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  requestId           String?
-  request             ClientAcknowledgementRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  actorUserId         String?
-  actorUser           User?        @relation("EsignActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  provider            String
-  status              EsignStatus  @default(DRAFT)
-  action              String
-  lastErrorSummary    String?
-  payloadPreviewJson  Json?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  id                 String                        @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId           String?
+  matter             Matter?                       @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  requestId          String?
+  request            ClientAcknowledgementRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  actorUserId        String?
+  actorUser          User?                         @relation("EsignActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  provider           String
+  status             EsignStatus                   @default(DRAFT)
+  action             String
+  lastErrorSummary   String?
+  payloadPreviewJson Json?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
 
   @@index([workspaceId, status, createdAt])
   @@index([provider, action, createdAt])
 }
 
 model ClientIntakeRequest {
-  id              String              @id @default(cuid())
-  workspaceId     String
-  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  clientId        String?
-  client          Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  matterId        String?
-  matter          Matter?             @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  createdByUserId String
-  createdByUser   User                @relation("IntakeRequestCreator", fields: [createdByUserId], references: [id])
-  title           String
-  recipientName   String?
-  recipientEmail  String?
-  message         String?
-  status          IntakeRequestStatus @default(DRAFT)
-  tokenHash       String              @unique
-  expiresAt       DateTime
-  revokedAt       DateTime?
-  viewedAt        DateTime?
-  submittedAt     DateTime?
-  reviewedAt      DateTime?
+  id                String              @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId          String?
+  client            Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId          String?
+  matter            Matter?             @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  createdByUserId   String
+  createdByUser     User                @relation("IntakeRequestCreator", fields: [createdByUserId], references: [id])
+  title             String
+  recipientName     String?
+  recipientEmail    String?
+  message           String?
+  status            IntakeRequestStatus @default(DRAFT)
+  tokenHash         String              @unique
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  viewedAt          DateTime?
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
   questionnaireJson Json?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 }
 
 model ClientPortalAccessToken {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   workspaceId     String
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   clientId        String
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   matterId        String?
-  matter          Matter?  @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matter          Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
   createdByUserId String?
-  createdByUser   User?    @relation("PortalTokenCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  tokenHash       String   @unique
+  createdByUser   User?     @relation("PortalTokenCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tokenHash       String    @unique
   label           String
   purpose         String?
   expiresAt       DateTime
   revokedAt       DateTime?
   lastViewedAt    DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model WorkspaceOperationalSettings {
@@ -1155,36 +1171,36 @@ model WorkspaceOperationalSettings {
 }
 
 model OfficialFormTemplate {
-  id                  String                     @id @default(cuid())
-  workspaceId         String?
-  workspace           Workspace?                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdByUserId     String?
-  createdByUser       User?                      @relation("OfficialFormTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  sourceType          String
-  formNumber          String
-  title               String
-  category            String
-  sourceUrl           String?
-  sourceName          String?
-  versionLabel        String?
-  designDate          String?
-  subclassCodes       String[]
-  lifecycleStatus     OfficialFormLifecycleStatus @default(CURRENT)
-  supportStatus       OfficialFormSupportStatus  @default(MAPPING_REQUIRED)
-  isFirmProvided      Boolean                    @default(false)
-  downloadedAt        DateTime?
-  lastCheckedAt       DateTime?
-  syncError           String?
-  checksum            String?
-  fileName            String?
-  mimeType            String?
-  fileData            Bytes?
-  fieldSchemaJson     Json?
-  fieldMappingsJson   Json?
-  mappingNotes        String?
-  createdAt           DateTime                   @default(now())
-  updatedAt           DateTime                   @updatedAt
-  matterDrafts        MatterOfficialFormDraft[]
+  id                String                      @id @default(cuid())
+  workspaceId       String?
+  workspace         Workspace?                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUserId   String?
+  createdByUser     User?                       @relation("OfficialFormTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sourceType        String
+  formNumber        String
+  title             String
+  category          String
+  sourceUrl         String?
+  sourceName        String?
+  versionLabel      String?
+  designDate        String?
+  subclassCodes     String[]
+  lifecycleStatus   OfficialFormLifecycleStatus @default(CURRENT)
+  supportStatus     OfficialFormSupportStatus   @default(MAPPING_REQUIRED)
+  isFirmProvided    Boolean                     @default(false)
+  downloadedAt      DateTime?
+  lastCheckedAt     DateTime?
+  syncError         String?
+  checksum          String?
+  fileName          String?
+  mimeType          String?
+  fileData          Bytes?
+  fieldSchemaJson   Json?
+  fieldMappingsJson Json?
+  mappingNotes      String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  matterDrafts      MatterOfficialFormDraft[]
 
   @@unique([workspaceId, formNumber, sourceUrl])
   @@index([workspaceId, formNumber])
@@ -1192,26 +1208,26 @@ model OfficialFormTemplate {
 }
 
 model MatterOfficialFormDraft {
-  id                 String                      @id @default(cuid())
-  workspaceId        String
-  workspace          Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId           String
-  matter             Matter                      @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  templateId         String
-  template           OfficialFormTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  createdByUserId    String?
-  createdByUser      User?                       @relation("OfficialFormDraftCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  approvedByUserId   String?
-  approvedByUser     User?                       @relation("OfficialFormDraftApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  status             MatterOfficialFormDraftStatus @default(DRAFT)
-  generatedFileName  String?
-  generatedPdfData   Bytes?
-  fieldValuesJson    Json?
-  warningsJson       Json?
+  id                  String                        @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId            String
+  matter              Matter                        @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  templateId          String
+  template            OfficialFormTemplate          @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdByUserId     String?
+  createdByUser       User?                         @relation("OfficialFormDraftCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId    String?
+  approvedByUser      User?                         @relation("OfficialFormDraftApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  status              MatterOfficialFormDraftStatus @default(DRAFT)
+  generatedFileName   String?
+  generatedPdfData    Bytes?
+  fieldValuesJson     Json?
+  warningsJson        Json?
   publishedToClientAt DateTime?
-  approvedAt         DateTime?
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
+  approvedAt          DateTime?
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
 
   @@unique([matterId, templateId])
   @@index([workspaceId, status])
@@ -1244,38 +1260,38 @@ model DocumentRequest {
 }
 
 model DocumentRequestItem {
-  id             String                    @id @default(cuid())
-  requestId      String
-  request        DocumentRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  id              String                    @id @default(cuid())
+  requestId       String
+  request         DocumentRequest           @relation(fields: [requestId], references: [id], onDelete: Cascade)
   checklistItemId String
-  checklistItem  ChecklistItem             @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
-  status         DocumentRequestItemStatus @default(MISSING)
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  checklistItem   ChecklistItem             @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  status          DocumentRequestItemStatus @default(MISSING)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
 
   @@unique([requestId, checklistItemId])
 }
 
 model Appointment {
-  id               String            @id @default(cuid())
-  workspaceId      String
-  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  clientId         String?
-  client           Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  matterId         String?
-  matter           Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  assignedToUserId String?
-  assignedToUser   User?             @relation("AppointmentAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
-  requestedByName  String?
-  requestedByEmail String?
-  status           AppointmentStatus @default(REQUESTED)
-  meetingType      String
-  startsAt         DateTime
-  notes            String?
-  tokenHash        String?           @unique
+  id                String             @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId          String?
+  client            Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId          String?
+  matter            Matter?            @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  assignedToUserId  String?
+  assignedToUser    User?              @relation("AppointmentAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  requestedByName   String?
+  requestedByEmail  String?
+  status            AppointmentStatus  @default(REQUESTED)
+  meetingType       String
+  startsAt          DateTime
+  notes             String?
+  tokenHash         String?            @unique
   calendarSyncEvent CalendarSyncEvent?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model CalendarSyncEvent {
@@ -1302,29 +1318,29 @@ model CalendarSyncEvent {
 }
 
 model MatterEmailThread {
-  id                 String          @id @default(cuid())
-  workspaceId        String
-  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId           String
-  matter             Matter          @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  linkedByUserId     String
-  linkedByUser       User            @relation("MatterEmailThreadLinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
-  provider           String
-  externalThreadId   String
-  externalMessageId  String?
-  subjectPreview     String?
-  fromMetadataJson   Json?
-  toMetadataJson     Json?
-  messageCount       Int             @default(0)
-  lastMessageAt      DateTime?
-  bodyImportedAt     DateTime?
-  bodyImportSummary  String?
-  syncStatus         EmailSyncStatus @default(LINKED)
-  lastSyncAt         DateTime?
-  lastErrorSummary   String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  messages           MatterEmailMessage[]
+  id                String               @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId          String
+  matter            Matter               @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  linkedByUserId    String
+  linkedByUser      User                 @relation("MatterEmailThreadLinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+  provider          String
+  externalThreadId  String
+  externalMessageId String?
+  subjectPreview    String?
+  fromMetadataJson  Json?
+  toMetadataJson    Json?
+  messageCount      Int                  @default(0)
+  lastMessageAt     DateTime?
+  bodyImportedAt    DateTime?
+  bodyImportSummary String?
+  syncStatus        EmailSyncStatus      @default(LINKED)
+  lastSyncAt        DateTime?
+  lastErrorSummary  String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  messages          MatterEmailMessage[]
 
   @@unique([workspaceId, matterId, externalThreadId])
   @@index([workspaceId, provider, lastMessageAt])
@@ -1332,46 +1348,46 @@ model MatterEmailThread {
 }
 
 model MatterEmailMessage {
-  id                 String    @id @default(cuid())
-  workspaceId        String
-  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId           String
-  matter             Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  threadId           String
-  thread             MatterEmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  externalMessageId  String
-  direction          String
-  senderLabel        String?
+  id                  String            @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId            String
+  matter              Matter            @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  threadId            String
+  thread              MatterEmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  externalMessageId   String
+  direction           String
+  senderLabel         String?
   recipientLabelsJson Json?
-  subjectPreview     String?
-  sentAt             DateTime?
-  bodyImported       Boolean   @default(false)
-  bodyPreview        String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  subjectPreview      String?
+  sentAt              DateTime?
+  bodyImported        Boolean           @default(false)
+  bodyPreview         String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@unique([threadId, externalMessageId])
   @@index([workspaceId, matterId, sentAt])
 }
 
 model EmailSyncEvent {
-  id                String          @id @default(cuid())
-  workspaceId       String
-  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId          String?
-  matter            Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  actorUserId       String?
-  actorUser         User?           @relation("EmailSyncActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  provider          String
-  externalThreadId  String?
-  externalMessageId String?
-  syncStatus        EmailSyncStatus @default(DRY_RUN_READY)
-  action            String
-  lastSyncAt        DateTime?
-  lastErrorSummary  String?
+  id                 String          @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId           String?
+  matter             Matter?         @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  actorUserId        String?
+  actorUser          User?           @relation("EmailSyncActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  provider           String
+  externalThreadId   String?
+  externalMessageId  String?
+  syncStatus         EmailSyncStatus @default(DRY_RUN_READY)
+  action             String
+  lastSyncAt         DateTime?
+  lastErrorSummary   String?
   payloadPreviewJson Json?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([workspaceId, syncStatus, createdAt])
   @@index([provider, action, createdAt])
@@ -1393,51 +1409,51 @@ model GeneratedDocument {
 }
 
 model MatterTimelineEvent {
-  id          String    @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId    String
-  matter      Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  actorUserId String?
-  actorUser   User?     @relation("TimelineActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  eventType   String
-  title       String
-  description String?
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId     String
+  matter       Matter    @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  actorUserId  String?
+  actorUser    User?     @relation("TimelineActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  eventType    String
+  title        String
+  description  String?
   metadataJson Json?
-  createdAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([matterId, createdAt])
 }
 
 model OfficialUpdate {
-  id               String          @id @default(cuid())
-  workspaceId       String?
-  workspace         Workspace?      @relation("WorkspaceIntelItems", fields: [workspaceId], references: [id], onDelete: Cascade)
-  officialSourceId String?
-  officialSource   OfficialSource? @relation(fields: [officialSourceId], references: [id])
-  source           String
-  sourceType       MigrationIntelSourceType @default(OFFICIAL)
-  sourceUrl        String
-  title            String
-  summary          String
-  updateType       String
-  severity         MigrationIntelSeverity @default(INFO)
-  effectiveDate    DateTime?
-  publishedAt      DateTime
-  fetchedAt        DateTime        @default(now())
-  rawContentHash   String
-  sourceMetadata   Json?
+  id                     String                   @id @default(cuid())
+  workspaceId            String?
+  workspace              Workspace?               @relation("WorkspaceIntelItems", fields: [workspaceId], references: [id], onDelete: Cascade)
+  officialSourceId       String?
+  officialSource         OfficialSource?          @relation(fields: [officialSourceId], references: [id])
+  source                 String
+  sourceType             MigrationIntelSourceType @default(OFFICIAL)
+  sourceUrl              String
+  title                  String
+  summary                String
+  updateType             String
+  severity               MigrationIntelSeverity   @default(INFO)
+  effectiveDate          DateTime?
+  publishedAt            DateTime
+  fetchedAt              DateTime                 @default(now())
+  rawContentHash         String
+  sourceMetadata         Json?
   affectedSubclassesJson Json?
-  tagsJson         Json?
-  aiClassificationJson Json?
-  isArchived       Boolean         @default(false)
-  reviewedByUserId String?
-  reviewedByUser   User?           @relation("IntelReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  reviewedAt       DateTime?
-  ingestedAt       DateTime        @default(now())
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  impacts          MatterImpact[]
+  tagsJson               Json?
+  aiClassificationJson   Json?
+  isArchived             Boolean                  @default(false)
+  reviewedByUserId       String?
+  reviewedByUser         User?                    @relation("IntelReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt             DateTime?
+  ingestedAt             DateTime                 @default(now())
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  impacts                MatterImpact[]
 
   @@unique([sourceUrl, rawContentHash])
   @@index([publishedAt])
@@ -1465,41 +1481,41 @@ model OfficialSource {
 }
 
 model ImmigrationSourceSnapshot {
-  id                    String    @id @default(cuid())
+  id                    String   @id @default(cuid())
   sourceId              String
   url                   String
   authority             String
   sourceType            String
-  fetchedAt             DateTime  @default(now())
+  fetchedAt             DateTime @default(now())
   httpStatus            Int?
   checksum              String?
   title                 String?
   extractedMetadataJson Json?
   rawTextPreview        String?
-  fullTextStored        Boolean   @default(false)
+  fullTextStored        Boolean  @default(false)
   error                 String?
-  createdAt             DateTime  @default(now())
+  createdAt             DateTime @default(now())
 
   @@index([sourceId, fetchedAt])
 }
 
 model VisaSubclassRegistry {
-  id                    String               @id @default(cuid())
-  subclassCode          String               @unique
-  normalizedCode        String
-  name                  String
-  stream                String?
-  family                String
-  status                RegistryRecordStatus @default(UNKNOWN)
-  supportLevel          RegistrySupportLevel @default(NEEDS_REVIEW)
-  sourceUrl             String?
-  sourceLastCheckedAt   DateTime?
-  sourceChecksum        String?
-  fieldCoveragePercent  Float                @default(0)
-  formCoveragePercent   Float                @default(0)
-  mappingNotes          String?
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  id                   String               @id @default(cuid())
+  subclassCode         String               @unique
+  normalizedCode       String
+  name                 String
+  stream               String?
+  family               String
+  status               RegistryRecordStatus @default(UNKNOWN)
+  supportLevel         RegistrySupportLevel @default(NEEDS_REVIEW)
+  sourceUrl            String?
+  sourceLastCheckedAt  DateTime?
+  sourceChecksum       String?
+  fieldCoveragePercent Float                @default(0)
+  formCoveragePercent  Float                @default(0)
+  mappingNotes         String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   @@index([family, supportLevel])
   @@index([status, sourceLastCheckedAt])
@@ -1527,35 +1543,50 @@ model MatterImpact {
 }
 
 model Task {
-  id               String       @id @default(cuid())
-  workspaceId      String
-  workspace        Workspace    @relation(fields: [workspaceId], references: [id])
-  matterId         String
-  matter           Matter       @relation(fields: [matterId], references: [id])
-  assignedToUserId String
-  assignedToUser   User         @relation("TaskAssignee", fields: [assignedToUserId], references: [id])
-  title            String
-  description      String
-  dueDate          DateTime
-  status           TaskStatus
-  priority         TaskPriority
+  id                      String             @id @default(cuid())
+  workspaceId             String
+  workspace               Workspace          @relation(fields: [workspaceId], references: [id])
+  matterId                String?
+  matter                  Matter?            @relation(fields: [matterId], references: [id])
+  assignedToUserId        String
+  assignedToUser          User               @relation("TaskAssignee", fields: [assignedToUserId], references: [id])
+  createdByUserId         String?
+  createdByUser           User?              @relation("TaskCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  title                   String
+  description             String             @default("")
+  safeDescription         String?
+  dueDate                 DateTime
+  status                  TaskStatus         @default(OPEN)
+  priority                TaskPriority       @default(MEDIUM)
+  category                String?
+  matterReferenceSnapshot String?
+  offlineCreatedAt        DateTime?
+  lastSyncedAt            DateTime?
+  syncStatus              TaskSyncStatus     @default(SYNCED)
+  conflictStatus          TaskConflictStatus @default(NONE)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([workspaceId, assignedToUserId, dueDate])
+  @@index([workspaceId, createdByUserId])
+  @@index([workspaceId, syncStatus, conflictStatus])
 }
 
 model AiChatThread {
-  id              String          @id @default(cuid())
+  id              String                @id @default(cuid())
   workspaceId     String
-  workspace       Workspace       @relation(fields: [workspaceId], references: [id])
+  workspace       Workspace             @relation(fields: [workspaceId], references: [id])
   matterId        String?
-  matter          Matter?         @relation(fields: [matterId], references: [id])
+  matter          Matter?               @relation(fields: [matterId], references: [id])
   title           String
   contextType     AssistantContextType?
   contextId       String?
   status          AssistantThreadStatus @default(ACTIVE)
-  lastMessageAt   DateTime        @default(now())
+  lastMessageAt   DateTime              @default(now())
   createdByUserId String
-  createdByUser   User            @relation("ThreadCreator", fields: [createdByUserId], references: [id])
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdByUser   User                  @relation("ThreadCreator", fields: [createdByUserId], references: [id])
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
   messages        AiChatMessage[]
   runs            AssistantRun[]
 
@@ -1564,39 +1595,39 @@ model AiChatThread {
 }
 
 model AiChatMessage {
-  id            String       @id @default(cuid())
-  threadId      String
-  thread        AiChatThread @relation(fields: [threadId], references: [id])
-  workspaceId   String
-  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  userId        String?
-  user          User?        @relation("AssistantMessageUser", fields: [userId], references: [id], onDelete: SetNull)
-  role          ChatRole
-  content       String
+  id             String       @id @default(cuid())
+  threadId       String
+  thread         AiChatThread @relation(fields: [threadId], references: [id])
+  workspaceId    String
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation("AssistantMessageUser", fields: [userId], references: [id], onDelete: SetNull)
+  role           ChatRole
+  content        String
   structuredJson Json?
-  citationsJson Json?
-  model         String?
+  citationsJson  Json?
+  model          String?
   tokenUsageJson Json?
-  createdAt     DateTime     @default(now())
+  createdAt      DateTime     @default(now())
 
   @@index([threadId, createdAt])
   @@index([workspaceId, createdAt])
 }
 
 model AssistantRun {
-  id            String             @id @default(cuid())
-  threadId       String
-  thread         AiChatThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  workspaceId    String
-  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status         AssistantRunStatus
-  inputJson      Json
-  outputJson     Json?
-  errorMessage   String?
-  createdAt      DateTime           @default(now())
-  completedAt    DateTime?
+  id           String             @id @default(cuid())
+  threadId     String
+  thread       AiChatThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  workspaceId  String
+  workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       AssistantRunStatus
+  inputJson    Json
+  outputJson   Json?
+  errorMessage String?
+  createdAt    DateTime           @default(now())
+  completedAt  DateTime?
 
   @@index([threadId, createdAt])
   @@index([workspaceId, createdAt])
@@ -1639,7 +1670,7 @@ model SecurityIncident {
 }
 
 model KnowledgeEmbedding {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   workspaceId   String?
   workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   entityType    String
@@ -1647,26 +1678,26 @@ model KnowledgeEmbedding {
   content       String
   embeddingJson Json?
   sourceUrl     String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  @@index([workspaceId, entityType])
   @@unique([entityType, entityId])
+  @@index([workspaceId, entityType])
 }
 
 model MigrationIntelSweep {
-  id           String                   @id @default(cuid())
+  id           String                    @id @default(cuid())
   workspaceId  String?
-  workspace    Workspace?               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace    Workspace?                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   status       MigrationIntelSweepStatus
   provider     String
   queryJson    Json?
   feedUrlsJson Json?
-  resultCount  Int                      @default(0)
-  addedCount   Int                      @default(0)
-  skippedCount Int                      @default(0)
+  resultCount  Int                       @default(0)
+  addedCount   Int                       @default(0)
+  skippedCount Int                       @default(0)
   errorMessage String?
-  startedAt    DateTime                 @default(now())
+  startedAt    DateTime                  @default(now())
   completedAt  DateTime?
 
   @@index([workspaceId, startedAt])
@@ -1674,113 +1705,113 @@ model MigrationIntelSweep {
 }
 
 model InvoiceBranding {
-  id                     String        @id @default(cuid())
-  workspaceId            String        @unique
-  workspace              Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  businessName           String
-  legalName              String?
-  contactEmail           String?
-  contactPhone           String?
-  addressLine1           String?
-  addressLine2           String?
-  city                   String?
-  state                  String?
-  postalCode             String?
-  country                String?
-  website                String?
-  abnAcn                 String?
-  paymentInstructions    String?
-  bankDetails            String?
-  defaultCurrency        String        @default("AUD")
-  defaultGstRateBps      Int           @default(1000)
-  defaultDueDays         Int           @default(7)
-  logoAssetId            String?        @unique
-  signatureAssetId       String?        @unique
-  logoAsset              InvoiceAsset? @relation("InvoiceBrandingLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
-  signatureAsset         InvoiceAsset? @relation("InvoiceBrandingSignature", fields: [signatureAssetId], references: [id], onDelete: SetNull)
-  invoices               Invoice[]
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
+  id                  String        @id @default(cuid())
+  workspaceId         String        @unique
+  workspace           Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  businessName        String
+  legalName           String?
+  contactEmail        String?
+  contactPhone        String?
+  addressLine1        String?
+  addressLine2        String?
+  city                String?
+  state               String?
+  postalCode          String?
+  country             String?
+  website             String?
+  abnAcn              String?
+  paymentInstructions String?
+  bankDetails         String?
+  defaultCurrency     String        @default("AUD")
+  defaultGstRateBps   Int           @default(1000)
+  defaultDueDays      Int           @default(7)
+  logoAssetId         String?       @unique
+  signatureAssetId    String?       @unique
+  logoAsset           InvoiceAsset? @relation("InvoiceBrandingLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  signatureAsset      InvoiceAsset? @relation("InvoiceBrandingSignature", fields: [signatureAssetId], references: [id], onDelete: SetNull)
+  invoices            Invoice[]
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 }
 
 model InvoiceTemplate {
-  id                 String         @id @default(cuid())
+  id                 String        @id @default(cuid())
   workspaceId        String
-  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name               String
   notes              String?
   extractedText      String?
   detectedFieldsJson Json?
   extractionWarnings Json?
-  assetId            String?         @unique
-  asset              InvoiceAsset?  @relation("InvoiceTemplateAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  assetId            String?       @unique
+  asset              InvoiceAsset? @relation("InvoiceTemplateAsset", fields: [assetId], references: [id], onDelete: SetNull)
   createdByUserId    String?
-  createdByUser      User?          @relation("InvoiceTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser      User?         @relation("InvoiceTemplateCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   invoices           Invoice[]
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@index([workspaceId, createdAt])
 }
 
 model InvoiceService {
-  id                  String      @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  serviceName         String
-  description         String?
-  defaultPriceCents   Int
-  currency            String      @default("AUD")
-  gstRateBps          Int         @default(1000)
-  isTaxInclusive      Boolean     @default(false)
-  active              Boolean     @default(true)
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  id                String    @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  serviceName       String
+  description       String?
+  defaultPriceCents Int
+  currency          String    @default("AUD")
+  gstRateBps        Int       @default(1000)
+  isTaxInclusive    Boolean   @default(false)
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([workspaceId, active])
 }
 
 model Invoice {
-  id                    String         @id @default(cuid())
-  workspaceId           String
-  workspace             Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  clientId              String?
-  client                Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  matterId              String?
-  matter                Matter?        @relation(fields: [matterId], references: [id], onDelete: SetNull)
-  createdByUserId       String
-  createdByUser         User           @relation("InvoiceCreator", fields: [createdByUserId], references: [id])
-  templateId            String?
-  template              InvoiceTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  brandingId            String?
-  branding              InvoiceBranding? @relation(fields: [brandingId], references: [id], onDelete: SetNull)
-  clientName            String
-  clientEmail           String?
-  clientAddress         String?
-  invoiceNumber         String
-  issueDate             DateTime
-  dueDate               DateTime
-  currency              String        @default("AUD")
-  subtotalCents         Int           @default(0)
-  gstCents              Int           @default(0)
-  discountCents         Int           @default(0)
-  totalCents            Int           @default(0)
-  lineItemsJson         Json
-  notes                 String?
-  paymentInstructions   String?
-  generatedContent      String?
-  aiReasoningJson       Json?
-  accountingSyncJson    Json?
-  reviewRequired        Boolean       @default(true)
-  status                InvoiceStatus @default(DRAFT)
-  sentAt                DateTime?
-  paidAt                DateTime?
-  cancelledAt           DateTime?
-  paymentLinks          InvoicePaymentLink[]
-  billingEvents         BillingEvent[]
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-  assets                InvoiceAsset[] @relation("InvoiceAttachment")
+  id                  String               @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId            String?
+  client              Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  matterId            String?
+  matter              Matter?              @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  createdByUserId     String
+  createdByUser       User                 @relation("InvoiceCreator", fields: [createdByUserId], references: [id])
+  templateId          String?
+  template            InvoiceTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  brandingId          String?
+  branding            InvoiceBranding?     @relation(fields: [brandingId], references: [id], onDelete: SetNull)
+  clientName          String
+  clientEmail         String?
+  clientAddress       String?
+  invoiceNumber       String
+  issueDate           DateTime
+  dueDate             DateTime
+  currency            String               @default("AUD")
+  subtotalCents       Int                  @default(0)
+  gstCents            Int                  @default(0)
+  discountCents       Int                  @default(0)
+  totalCents          Int                  @default(0)
+  lineItemsJson       Json
+  notes               String?
+  paymentInstructions String?
+  generatedContent    String?
+  aiReasoningJson     Json?
+  accountingSyncJson  Json?
+  reviewRequired      Boolean              @default(true)
+  status              InvoiceStatus        @default(DRAFT)
+  sentAt              DateTime?
+  paidAt              DateTime?
+  cancelledAt         DateTime?
+  paymentLinks        InvoicePaymentLink[]
+  billingEvents       BillingEvent[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  assets              InvoiceAsset[]       @relation("InvoiceAttachment")
 
   @@unique([workspaceId, invoiceNumber])
   @@index([workspaceId, status, issueDate])
@@ -1811,22 +1842,22 @@ model InvoiceAsset {
 }
 
 model WorkspaceSubscription {
-  id                     String                     @id @default(cuid())
+  id                     String                      @id @default(cuid())
   workspaceId            String
-  workspace              Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace              Workspace                   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   provider               String
   providerCustomerId     String?
-  providerSubscriptionId String?                    @unique
+  providerSubscriptionId String?                     @unique
   plan                   BillingPlan
   status                 WorkspaceSubscriptionStatus
   billingEmail           String?
   trialEndsAt            DateTime?
   currentPeriodEnd       DateTime?
-  cancelAtPeriodEnd      Boolean                    @default(false)
+  cancelAtPeriodEnd      Boolean                     @default(false)
   providerMetadataJson   Json?
   lastSyncedAt           DateTime?
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime                   @updatedAt
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
   billingEvents          BillingEvent[]
 
   @@index([workspaceId, status])
@@ -1854,25 +1885,25 @@ model BillingEvent {
 }
 
 model InvoicePaymentLink {
-  id                  String               @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  invoiceId           String
-  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  provider            String
-  stripePaymentLinkId String?              @unique
-  checkoutSessionId   String?              @unique
-  paymentIntentId     String?              @unique
-  paymentStatus       InvoicePaymentStatus @default(DRAFT)
-  paymentUrl          String?
-  amountCents         Int?
-  amountPaidCents     Int?
-  currency            String?
+  id                   String               @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invoiceId            String
+  invoice              Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  provider             String
+  stripePaymentLinkId  String?              @unique
+  checkoutSessionId    String?              @unique
+  paymentIntentId      String?              @unique
+  paymentStatus        InvoicePaymentStatus @default(DRAFT)
+  paymentUrl           String?
+  amountCents          Int?
+  amountPaidCents      Int?
+  currency             String?
   providerMetadataJson Json?
-  paidAt              DateTime?
-  expiresAt           DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  paidAt               DateTime?
+  expiresAt            DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   @@index([workspaceId, paymentStatus, createdAt])
   @@index([invoiceId, createdAt])
@@ -1912,18 +1943,18 @@ model SmsMessage {
 }
 
 model SmsEvent {
-  id            String      @id @default(cuid())
-  workspaceId   String
-  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  smsMessageId  String?
-  smsMessage    SmsMessage? @relation(fields: [smsMessageId], references: [id], onDelete: SetNull)
-  userId        String?
-  user          User?       @relation("SmsEventActor", fields: [userId], references: [id], onDelete: SetNull)
-  eventType     String
-  status        SmsStatus
-  summary       String?
-  metadataJson  Json?
-  createdAt     DateTime    @default(now())
+  id           String      @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  smsMessageId String?
+  smsMessage   SmsMessage? @relation(fields: [smsMessageId], references: [id], onDelete: SetNull)
+  userId       String?
+  user         User?       @relation("SmsEventActor", fields: [userId], references: [id], onDelete: SetNull)
+  eventType    String
+  status       SmsStatus
+  summary      String?
+  metadataJson Json?
+  createdAt    DateTime    @default(now())
 
   @@index([workspaceId, createdAt])
   @@index([eventType, createdAt])
@@ -1965,29 +1996,29 @@ model SmsOptOut {
 }
 
 model PushSubscription {
-  id                     String            @id @default(cuid())
-  workspaceId            String
-  workspace              Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  userId                 String
-  user                   User              @relation("PushSubscriptionUser", fields: [userId], references: [id], onDelete: Cascade)
-  clientId               String?
-  client                 Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  provider               String
-  deviceId               String
-  endpointEncrypted      String?
-  endpointHash           String?
-  endpointLast8          String?
-  subscriptionEncrypted  String?
-  userAgentHash          String?
-  platform               String?
-  consentStatus          PushConsentStatus @default(UNKNOWN)
-  optOutAt               DateTime?
-  lastSentAt             DateTime?
-  lastFailureAt          DateTime?
-  lastError              String?
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
-  events                 PushEvent[]
+  id                    String            @id @default(cuid())
+  workspaceId           String
+  workspace             Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User              @relation("PushSubscriptionUser", fields: [userId], references: [id], onDelete: Cascade)
+  clientId              String?
+  client                Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  provider              String
+  deviceId              String
+  endpointEncrypted     String?
+  endpointHash          String?
+  endpointLast8         String?
+  subscriptionEncrypted String?
+  userAgentHash         String?
+  platform              String?
+  consentStatus         PushConsentStatus @default(UNKNOWN)
+  optOutAt              DateTime?
+  lastSentAt            DateTime?
+  lastFailureAt         DateTime?
+  lastError             String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  events                PushEvent[]
 
   @@unique([workspaceId, deviceId])
   @@index([workspaceId, userId, createdAt])
@@ -1995,43 +2026,43 @@ model PushSubscription {
 }
 
 model NotificationPreference {
-  id                    String    @id @default(cuid())
-  workspaceId           String
-  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pushEnabled           Boolean   @default(false)
-  inAppEnabled          Boolean   @default(true)
-  emailFallbackEnabled  Boolean   @default(true)
-  quietHoursEnabled     Boolean   @default(false)
-  quietHoursStart       String?
-  quietHoursEnd         String?
-  preferenceJson        Json?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushEnabled          Boolean   @default(false)
+  inAppEnabled         Boolean   @default(true)
+  emailFallbackEnabled Boolean   @default(true)
+  quietHoursEnabled    Boolean   @default(false)
+  quietHoursStart      String?
+  quietHoursEnd        String?
+  preferenceJson       Json?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@unique([workspaceId, userId])
   @@index([workspaceId, updatedAt])
 }
 
 model InAppNotification {
-  id                  String    @id @default(cuid())
+  id                  String      @id @default(cuid())
   workspaceId         String
-  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace           Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId              String
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientId            String?
-  client              Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client              Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   matterId            String?
-  matter              Matter?   @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  matter              Matter?     @relation(fields: [matterId], references: [id], onDelete: SetNull)
   eventType           String
   title               String
   bodyPreviewRedacted String
   route               String?
-  isRead              Boolean   @default(false)
+  isRead              Boolean     @default(false)
   readAt              DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
   events              PushEvent[]
 
   @@index([workspaceId, userId, isRead, createdAt])
@@ -2039,47 +2070,47 @@ model InAppNotification {
 }
 
 model PushEvent {
-  id                   String            @id @default(cuid())
-  workspaceId          String
-  workspace            Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  pushSubscriptionId   String?
-  pushSubscription     PushSubscription? @relation(fields: [pushSubscriptionId], references: [id], onDelete: SetNull)
-  inAppNotificationId  String?
-  inAppNotification    InAppNotification? @relation(fields: [inAppNotificationId], references: [id], onDelete: SetNull)
-  userId               String?
-  user                 User?             @relation("PushEventActor", fields: [userId], references: [id], onDelete: SetNull)
-  eventType            String
-  status               PushStatus
-  summary              String?
-  metadataJson         Json?
-  createdAt            DateTime          @default(now())
+  id                  String             @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pushSubscriptionId  String?
+  pushSubscription    PushSubscription?  @relation(fields: [pushSubscriptionId], references: [id], onDelete: SetNull)
+  inAppNotificationId String?
+  inAppNotification   InAppNotification? @relation(fields: [inAppNotificationId], references: [id], onDelete: SetNull)
+  userId              String?
+  user                User?              @relation("PushEventActor", fields: [userId], references: [id], onDelete: SetNull)
+  eventType           String
+  status              PushStatus
+  summary             String?
+  metadataJson        Json?
+  createdAt           DateTime           @default(now())
 
   @@index([workspaceId, createdAt])
   @@index([eventType, createdAt])
 }
 
 model CloudDriveExportJob {
-  id                  String                 @id @default(cuid())
-  workspaceId         String
-  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  matterId            String
-  matter              Matter                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
-  provider            String
-  exportType          String
-  exportStatus        CloudDriveExportStatus @default(STARTED)
-  exportedByUserId    String
-  exportedByUser      User                   @relation("CloudDriveExportActor", fields: [exportedByUserId], references: [id], onDelete: Cascade)
-  providerFolderId    String?
-  rootFolderId        String?
-  selectedFolderId    String?
+  id                   String                 @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId             String
+  matter               Matter                 @relation(fields: [matterId], references: [id], onDelete: Cascade)
+  provider             String
+  exportType           String
+  exportStatus         CloudDriveExportStatus @default(STARTED)
+  exportedByUserId     String
+  exportedByUser       User                   @relation("CloudDriveExportActor", fields: [exportedByUserId], references: [id], onDelete: Cascade)
+  providerFolderId     String?
+  rootFolderId         String?
+  selectedFolderId     String?
   redactedManifestJson Json?
-  lastError           String?
-  startedAt           DateTime?
-  completedAt         DateTime?
-  createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
-  items               CloudDriveExportItem[]
-  events              CloudDriveEvent[]
+  lastError            String?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  items                CloudDriveExportItem[]
+  events               CloudDriveEvent[]
 
   @@index([workspaceId, createdAt])
   @@index([matterId, createdAt])
@@ -2087,35 +2118,35 @@ model CloudDriveExportJob {
 }
 
 model CloudDriveExportItem {
-  id               String             @id @default(cuid())
+  id               String              @id @default(cuid())
   exportJobId      String
   exportJob        CloudDriveExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
   workspaceId      String
-  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   providerFolderId String?
   providerFileId   String?
   fileName         String
   fileCategory     String
   fileSize         Int?
-  createdAt        DateTime           @default(now())
+  createdAt        DateTime            @default(now())
 
   @@index([exportJobId, createdAt])
   @@index([workspaceId, createdAt])
 }
 
 model CloudDriveEvent {
-  id            String                 @id @default(cuid())
-  workspaceId   String
-  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  exportJobId   String?
-  exportJob     CloudDriveExportJob?   @relation(fields: [exportJobId], references: [id], onDelete: SetNull)
-  userId        String?
-  user          User?                  @relation("CloudDriveEventActor", fields: [userId], references: [id], onDelete: SetNull)
-  eventType     String
-  status        CloudDriveExportStatus @default(STARTED)
-  summary       String?
-  metadataJson  Json?
-  createdAt     DateTime               @default(now())
+  id           String                 @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  exportJobId  String?
+  exportJob    CloudDriveExportJob?   @relation(fields: [exportJobId], references: [id], onDelete: SetNull)
+  userId       String?
+  user         User?                  @relation("CloudDriveEventActor", fields: [userId], references: [id], onDelete: SetNull)
+  eventType    String
+  status       CloudDriveExportStatus @default(STARTED)
+  summary      String?
+  metadataJson Json?
+  createdAt    DateTime               @default(now())
 
   @@index([workspaceId, createdAt])
   @@index([eventType, createdAt])

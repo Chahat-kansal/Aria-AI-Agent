@@ -373,7 +373,7 @@ export default async function OverviewPage() {
                     <div>
                       <p className="text-sm font-semibold text-white">{task.title}</p>
                       <p className="mt-1 text-sm text-slate-400">
-                        Due {formatDate(task.dueDate)} - {task.matter.client.firstName} {task.matter.client.lastName}
+                        Due {formatDate(task.dueDate)} - {task.matter ? `${task.matter.client.firstName} ${task.matter.client.lastName}` : task.matterReferenceSnapshot || "Personal task"}
                       </p>
                     </div>
                     <StatusPill tone={toneForPriority(task.priority)}>{formatEnum(task.priority)}</StatusPill>

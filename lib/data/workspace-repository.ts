@@ -1,6 +1,7 @@
 import { Prisma, type User } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hasPermission, scopedMatterWhere } from "@/lib/services/roles";
+import { getScopedTaskWhere } from "@/lib/services/offline/offline-task-sync";
 import { decryptString, maybeDecryptJson } from "@/lib/security/encryption";
 
 type ScopedUser = Pick<User, "id" | "workspaceId" | "role" | "visibilityScope" | "status" | "permissionsJson">;
@@ -86,7 +87,10 @@ export async function getOverviewData(workspaceId: string, user?: ScopedUser) {
         })
       : Promise.resolve([]),
     prisma.task.findMany({
-      where: { workspaceId, status: { not: "DONE" }, matter: matterWhere },
+      where: {
+        ...(user ? getScopedTaskWhere(user) : { workspaceId }),
+        status: { not: "DONE" }
+      },
       include: { matter: { include: { client: true } }, assignedToUser: true },
       orderBy: { dueDate: "asc" },
       take: 8
@@ -146,6 +150,7 @@ export async function getMatterOptionsData(workspaceId: string, user?: ScopedUse
     select: {
       id: true,
       title: true,
+      matterReference: true,
       visaSubclass: true,
       client: { select: { firstName: true, lastName: true } }
     },
@@ -201,7 +206,7 @@ export async function getDocumentDetailData(workspaceId: string, documentId: str
 
 export async function getTasksData(workspaceId: string, user?: ScopedUser) {
   return prisma.task.findMany({
-    where: { workspaceId, ...(user ? { matter: scopedMatterWhere(user) } : {}) },
+    where: user ? getScopedTaskWhere(user) : { workspaceId },
     include: {
       assignedToUser: true,
       matter: { include: { client: true } }
