@@ -81,7 +81,14 @@ jobs:
         run: npx tsx scripts/production-security-validation.ts
 
       - name: Capture offline task proof screenshots
-        run: npx tsx scripts/capture-offline-notes-tasks-screenshots.ts
+        run: |
+          set -o pipefail
+          if ! npx tsx scripts/capture-offline-notes-tasks-screenshots.ts > phase11-screenshot-capture.log 2>&1; then
+            tail -n 80 phase11-screenshot-capture.log
+            message="$(tail -n 20 phase11-screenshot-capture.log | tr '\n' ' ' | sed -e 's/%/%25/g' -e 's/\r//g' -e 's/:/%3A/g' -e 's/,/%2C/g')"
+            echo "::error title=Phase 11 screenshot capture failed::$message"
+            exit 1
+          fi
 
       - name: Commit proof screenshots
         run: |
