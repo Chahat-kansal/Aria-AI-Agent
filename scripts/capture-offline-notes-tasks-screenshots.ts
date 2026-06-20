@@ -76,11 +76,12 @@ async function saveShot(page: Page, name: string) {
 }
 
 async function login(page: Page) {
-  await page.goto(`${BASE_URL}/w/${WORKSPACE_SLUG}/login`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/w/${WORKSPACE_SLUG}/login`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(750);
   await page.getByRole("textbox", { name: "Email" }).fill(OWNER_EMAIL);
   await page.getByRole("textbox", { name: "Password" }).fill(OWNER_PASSWORD);
   await page.getByRole("button", { name: /Sign in to workspace/i }).click();
-  await page.waitForURL(/\/app\//, { timeout: 90000 });
+  await page.waitForFunction(() => window.location.pathname.startsWith("/app/"), undefined, { timeout: 90000 });
 }
 
 async function seedDemo() {
