@@ -80,7 +80,7 @@ async function login(page: Page) {
   await page.getByRole("textbox", { name: "Email" }).fill(OWNER_EMAIL);
   await page.getByRole("textbox", { name: "Password" }).fill(OWNER_PASSWORD);
   await page.getByRole("button", { name: /Sign in to workspace/i }).click();
-  await page.waitForURL(/\/app\/overview/, { timeout: 30000 });
+  await page.waitForURL(/\/app\//, { timeout: 90000 });
 }
 
 async function seedDemo() {
