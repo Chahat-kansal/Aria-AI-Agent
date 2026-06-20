@@ -234,8 +234,12 @@ async function main() {
     await saveShot(page, "08-sensitive-offline-content-blocked-warning.png");
 
     await page.context().setOffline(false);
-    await page.getByRole("button", { name: "Sync now" }).click();
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(
+      () => !document.body.textContent?.includes("Pending sync badge active"),
+      undefined,
+      { timeout: 20000 }
+    );
+    await page.waitForTimeout(1000);
     await saveShot(page, "05-sync-completed-state.png");
 
     const freshTask = await prisma.task.findFirst({
@@ -254,8 +258,8 @@ async function main() {
     await page.context().setOffline(true);
     await page.getByRole("button", { name: "Queue task update" }).click();
     await page.context().setOffline(false);
-    await page.getByRole("button", { name: "Sync now" }).click();
-    await page.waitForTimeout(1500);
+    await page.getByRole("heading", { name: "Conflict detected state" }).waitFor({ timeout: 20000 });
+    await page.waitForTimeout(1000);
     await saveShot(page, "06-conflict-detected-state.png");
     await saveShot(page, "07-conflict-resolution-state.png");
 
