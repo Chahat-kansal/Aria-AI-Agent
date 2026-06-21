@@ -282,6 +282,16 @@ enum PushConsentStatus {
   INTERNAL_ONLY
 }
 
+enum ClientChaseStatus {
+  PENDING
+  PREVIEWED
+  SENT
+  BLOCKED
+  RATE_LIMITED
+  SKIPPED
+  ERROR
+}
+
 enum CloudDriveExportStatus {
   STARTED
   DRY_RUN
@@ -498,6 +508,8 @@ model Workspace {
   pushEvents               PushEvent[]
   notificationPreferences  NotificationPreference[]
   inAppNotifications       InAppNotification[]
+  clientChasingPreferences ClientChasingPreference[]
+  clientChaseAttempts      ClientChaseAttempt[]
   cloudDriveExportJobs     CloudDriveExportJob[]
   cloudDriveExportItems    CloudDriveExportItem[]
   cloudDriveEvents         CloudDriveEvent[]
@@ -566,6 +578,8 @@ model User {
   pushEvents                   PushEvent[]                    @relation("PushEventActor")
   notificationPreferences      NotificationPreference[]
   inAppNotifications           InAppNotification[]
+  clientChasingPreferences     ClientChasingPreference[]      @relation("ClientChasingPreferenceRecorder")
+  clientChaseAttempts          ClientChaseAttempt[]           @relation("ClientChaseActor")
   cloudDriveExportJobs         CloudDriveExportJob[]          @relation("CloudDriveExportActor")
   cloudDriveEvents             CloudDriveEvent[]              @relation("CloudDriveEventActor")
 
@@ -608,6 +622,8 @@ model Client {
   smsOptOuts               SmsOptOut[]
   pushSubscriptions        PushSubscription[]
   inAppNotifications       InAppNotification[]
+  clientChasingPreferences ClientChasingPreference[]
+  clientChaseAttempts      ClientChaseAttempt[]
 }
 
 model Matter {
@@ -664,6 +680,7 @@ model Matter {
   officialFormDrafts       MatterOfficialFormDraft[]
   cloudDriveExportJobs     CloudDriveExportJob[]
   inAppNotifications       InAppNotification[]
+  clientChaseAttempts      ClientChaseAttempt[]
 }
 
 model PathwayAnalysis {
@@ -1164,6 +1181,12 @@ model WorkspaceOperationalSettings {
   pushClientOptInRequired        Boolean   @default(true)
   pushAgentAlertsEnabled         Boolean   @default(true)
   pushQuietHoursJson             Json?
+  clientChasingEnabled           Boolean   @default(false)
+  clientChasingAutoSendEnabled   Boolean   @default(false)
+  clientChasingConsentRequired   Boolean   @default(true)
+  clientChasingFrequencyHours    Int       @default(48)
+  clientChasingChannelsJson      Json?
+  clientChasingQuietHoursJson    Json?
   formsDefaultSettingsJson       Json?
   integrationConnectionsJson     Json?
   createdAt                      DateTime  @default(now())
@@ -2067,6 +2090,56 @@ model InAppNotification {
 
   @@index([workspaceId, userId, isRead, createdAt])
   @@index([workspaceId, eventType, createdAt])
+}
+
+model ClientChasingPreference {
+  id                   String    @id @default(cuid())
+  workspaceId          String
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId             String
+  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  recordedByUserId     String?
+  recordedByUser       User?     @relation("ClientChasingPreferenceRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  emailEnabled         Boolean   @default(false)
+  smsEnabled           Boolean   @default(false)
+  pushEnabled          Boolean   @default(false)
+  portalEnabled        Boolean   @default(true)
+  optedOutNonEssential Boolean   @default(false)
+  source               String?
+  notesRedacted        String?
+  updatedAt            DateTime  @updatedAt
+  createdAt            DateTime  @default(now())
+
+  @@unique([workspaceId, clientId])
+  @@index([workspaceId, optedOutNonEssential, updatedAt])
+}
+
+model ClientChaseAttempt {
+  id            String            @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  matterId      String?
+  matter        Matter?           @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  actorUserId   String?
+  actorUser     User?             @relation("ClientChaseActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  sourceType    String
+  templateKey   String
+  channel       String
+  mode          String
+  status        ClientChaseStatus @default(PENDING)
+  previewJson   Json?
+  metadataJson  Json?
+  blockedReason String?
+  processedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, status, createdAt])
+  @@index([clientId, sourceType, channel, createdAt])
+  @@index([matterId, createdAt])
 }
 
 model PushEvent {

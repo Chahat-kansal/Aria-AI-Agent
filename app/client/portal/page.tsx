@@ -30,7 +30,9 @@ const visibleClientTimelineEvents = new Set([
   "client.review.returned",
   "client.review.confirmed",
   "portal.client_message",
-  "portal.client_acknowledgement"
+  "portal.client_acknowledgement",
+  "portal.reminder_posted",
+  "portal.team_message"
 ]);
 
 function nextActionForMatter(matter: NonNullable<Awaited<ReturnType<typeof getClientPortalSession>>>["matter"]) {

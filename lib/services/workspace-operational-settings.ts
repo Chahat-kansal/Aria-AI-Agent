@@ -76,6 +76,12 @@ async function readOrCreateWorkspaceOperationalSettings(workspaceId: string) {
         pushClientOptInRequired: true,
         pushAgentAlertsEnabled: true,
         pushQuietHoursJson: { enabled: false, start: null, end: null },
+        clientChasingEnabled: false,
+        clientChasingAutoSendEnabled: false,
+        clientChasingConsentRequired: true,
+        clientChasingFrequencyHours: 48,
+        clientChasingChannelsJson: { portal: true, email: true, sms: false, push: false },
+        clientChasingQuietHoursJson: { enabled: false, start: null, end: null, timezone: "Australia/Sydney" },
         integrationConnectionsJson: {}
       } as Prisma.WorkspaceOperationalSettingsUncheckedCreateInput
     });
@@ -115,6 +121,12 @@ export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
     pushClientOptInRequired?: boolean;
     pushAgentAlertsEnabled?: boolean;
     pushQuietHoursJson?: unknown;
+    clientChasingEnabled?: boolean;
+    clientChasingAutoSendEnabled?: boolean;
+    clientChasingConsentRequired?: boolean;
+    clientChasingFrequencyHours?: number;
+    clientChasingChannelsJson?: unknown;
+    clientChasingQuietHoursJson?: unknown;
   };
   return {
     ...settings,
@@ -135,6 +147,16 @@ export async function getWorkspaceOperationalSettingsView(workspaceId: string) {
     pushEnabled: pushSettings.pushEnabled ?? false,
     pushClientOptInRequired: pushSettings.pushClientOptInRequired ?? true,
     pushAgentAlertsEnabled: pushSettings.pushAgentAlertsEnabled ?? true,
-    pushQuietHours: typeof pushSettings.pushQuietHoursJson === "object" && pushSettings.pushQuietHoursJson ? pushSettings.pushQuietHoursJson : { enabled: false, start: null, end: null }
+    pushQuietHours: typeof pushSettings.pushQuietHoursJson === "object" && pushSettings.pushQuietHoursJson ? pushSettings.pushQuietHoursJson : { enabled: false, start: null, end: null },
+    clientChasingEnabled: pushSettings.clientChasingEnabled ?? false,
+    clientChasingAutoSendEnabled: pushSettings.clientChasingAutoSendEnabled ?? false,
+    clientChasingConsentRequired: pushSettings.clientChasingConsentRequired ?? true,
+    clientChasingFrequencyHours: pushSettings.clientChasingFrequencyHours ?? 48,
+    clientChasingChannels: typeof pushSettings.clientChasingChannelsJson === "object" && pushSettings.clientChasingChannelsJson
+      ? pushSettings.clientChasingChannelsJson
+      : { portal: true, email: true, sms: false, push: false },
+    clientChasingQuietHours: typeof pushSettings.clientChasingQuietHoursJson === "object" && pushSettings.clientChasingQuietHoursJson
+      ? pushSettings.clientChasingQuietHoursJson
+      : { enabled: false, start: null, end: null, timezone: settings.appointmentTimezone || "Australia/Sydney" }
   };
 }
