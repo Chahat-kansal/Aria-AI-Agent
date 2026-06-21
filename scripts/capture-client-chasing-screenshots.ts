@@ -405,10 +405,10 @@ async function main() {
     await page.waitForTimeout(800);
     await saveShot(page, "07-invoice-reminder-preview.png");
 
-    await page.locator("text=Optout Client").first().scrollIntoViewIfNeeded();
+    await page.getByText("Client opted out of non-essential chasing.").first().scrollIntoViewIfNeeded();
     await saveShot(page, "08-opt-out-blocked-state.png");
 
-    await page.locator("text=Consent Client").first().scrollIntoViewIfNeeded();
+    await page.getByText("Consent/preferences not recorded.").first().scrollIntoViewIfNeeded();
     await saveShot(page, "09-consent-missing-blocked-state.png");
 
     await enableChasing(seeded.workspace.id);
