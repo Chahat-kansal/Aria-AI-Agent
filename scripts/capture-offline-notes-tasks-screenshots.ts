@@ -253,7 +253,10 @@ async function main() {
       });
     }
 
-    await page.getByRole("button", { name: "Edit" }).first().click();
+    const conflictTaskCard = page.locator("div.rounded-2xl.border.border-white\\/10.bg-slate-950\\/40.p-4").filter({
+      has: page.getByText("Prepare review checklist", { exact: true })
+    }).first();
+    await conflictTaskCard.getByRole("button", { name: "Edit" }).click();
     await page.getByLabel("Offline-safe note draft").fill("Queued conflicting change.");
     await page.context().setOffline(true);
     await page.getByRole("button", { name: "Queue task update" }).click();
@@ -261,6 +264,13 @@ async function main() {
     await page.getByRole("heading", { name: "Conflict detected state" }).waitFor({ timeout: 20000 });
     await page.waitForTimeout(1000);
     await saveShot(page, "06-conflict-detected-state.png");
+    await page.getByRole("button", { name: "Merge safe" }).first().click();
+    await page.waitForFunction(
+      () => document.body.textContent?.includes("Conflict resolution queued for sync.") || document.body.textContent?.includes("Offline task changes synced."),
+      undefined,
+      { timeout: 20000 }
+    );
+    await page.waitForTimeout(1000);
     await saveShot(page, "07-conflict-resolution-state.png");
 
     await page.goto(`${BASE_URL}/app/settings/notifications`, { waitUntil: "networkidle" });
