@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { clearOfflineTaskCache } from "@/lib/services/offline/offline-queue";
 
 export default function SignOutPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function SignOutPage() {
 
     async function runSignOut() {
       try {
+        clearOfflineTaskCache();
         await signOut({ redirect: false, callbackUrl: "/auth/sign-in" });
         if (!active) return;
         setMessage("Signed out. Redirecting...");
@@ -22,6 +24,7 @@ export default function SignOutPage() {
       } catch {
         if (!active) return;
         setMessage("Could not complete the client sign out. Opening the secure sign-out endpoint...");
+        clearOfflineTaskCache();
         window.location.href = "/api/auth/signout?callbackUrl=/auth/sign-in";
       }
     }
@@ -45,4 +48,3 @@ export default function SignOutPage() {
     </div>
   );
 }
-

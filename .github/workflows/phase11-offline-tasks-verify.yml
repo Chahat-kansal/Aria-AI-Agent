@@ -1,0 +1,103 @@
+name: Phase 11 Offline Tasks Verify
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - phase11-offline-tasks-verify
+    paths-ignore:
+      - docs/demo/offline-notes-tasks-proof/**
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      APP_FIELD_ENCRYPTION_KEY: ${{ secrets.APP_FIELD_ENCRYPTION_KEY }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      PRODUCTION_URL: https://aria-ai-agent-vert.vercel.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Secret presence
+        run: |
+          for name in DATABASE_URL DIRECT_URL APP_FIELD_ENCRYPTION_KEY NEXTAUTH_SECRET CRON_SECRET; do
+            value="${!name:-}"
+            if [ -n "$value" ]; then
+              echo "$name: present"
+            else
+              echo "$name: missing"
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+
+      - name: Prisma migrate status
+        run: npx prisma migrate status
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Offline readiness
+        run: npx tsx scripts/offline-notes-tasks-readiness.ts
+
+      - name: Push readiness
+        run: npx tsx scripts/push-notification-readiness.ts
+
+      - name: Platform admin readiness
+        run: npx tsx scripts/platform-admin-readiness.ts
+
+      - name: Production security validation
+        run: npx tsx scripts/production-security-validation.ts
+
+      - name: Capture offline task proof screenshots
+        run: |
+          set -o pipefail
+          if ! npx tsx scripts/capture-offline-notes-tasks-screenshots.ts > phase11-screenshot-capture.log 2>&1; then
+            tail -n 80 phase11-screenshot-capture.log
+            message="$(tail -n 20 phase11-screenshot-capture.log | tr '\n' ' ' | sed -e 's/%/%25/g' -e 's/\r//g' -e 's/:/%3A/g' -e 's/,/%2C/g')"
+            echo "::error title=Phase 11 screenshot capture failed::$message"
+            exit 1
+          fi
+
+      - name: Commit proof screenshots
+        run: |
+          if [ -n "$(git status --short docs/demo/offline-notes-tasks-proof)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/demo/offline-notes-tasks-proof
+            git commit -m "Add Phase 11 proof screenshots"
+            git push origin HEAD:phase11-offline-tasks-verify
+          else
+            echo "No screenshot changes to commit."
+          fi

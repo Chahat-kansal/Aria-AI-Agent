@@ -14,6 +14,7 @@ import { aiNotConfiguredResponse, isAiConfigured } from "@/lib/services/ai-confi
 import { generateAriaAiResponse } from "@/lib/services/ai-provider";
 import { auditAiUsed, auditEvent } from "@/lib/services/audit";
 import { runDocumentPipeline } from "@/lib/services/document-pipeline";
+import { getScopedTaskWhere } from "@/lib/services/offline/offline-task-sync";
 import { retrieveRelevantContext } from "@/lib/services/retrieval";
 import {
   canAccessMatter,
@@ -243,7 +244,7 @@ async function getScopedMatterBundle(workspaceId: string, user: ScopedUser) {
       orderBy: { updatedAt: "desc" }
     }),
     prisma.task.findMany({
-      where: { workspaceId, matter: matterWhere, status: { not: TaskStatus.DONE } },
+      where: { ...getScopedTaskWhere(user), status: { not: TaskStatus.DONE } },
       include: { matter: { include: { client: true } }, assignedToUser: true },
       orderBy: { dueDate: "asc" },
       take: 50

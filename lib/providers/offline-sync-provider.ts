@@ -6,14 +6,14 @@ export function getOfflineSyncProviderStatus(): ProviderStatus {
     key: "offline_sync",
     label: "Offline sync",
     providerName: "browser-safe-mode",
-    configured: false,
-    state: "disabled",
+    configured: true,
+    state: "configured",
     missingEnv: [],
-    requiredSetupSteps: ["Implement encrypted low-risk offline metadata storage before enabling sync.", "Do not cache sensitive client document content offline by default."],
+    requiredSetupSteps: ["Keep offline support limited to low-risk task metadata.", "Do not cache sensitive client document content offline by default."],
     notes: [
-      "Offline support must stay limited to low-risk metadata unless explicit encryption and policy controls exist.",
+      "Offline support is limited to low-risk task metadata and safe note drafts only.",
       "Sensitive client documents and extracted text must not be cached offline by default."
     ],
-    disabledReason: "Offline sync is intentionally disabled until the safe-mode implementation is complete."
+    disabledReason: null
   });
 }
