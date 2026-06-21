@@ -24,8 +24,11 @@ function normalizePostgresUrl(raw: string | undefined) {
 }
 
 function resolveRuntimeDatabaseUrl() {
-  const preferDirect = process.env.NODE_ENV !== "production" && process.env.DIRECT_URL;
-  return normalizePostgresUrl(preferDirect || process.env.DATABASE_URL);
+  const allowDirectRuntime =
+    process.env.PRISMA_RUNTIME_USE_DIRECT_URL === "true" &&
+    process.env.NODE_ENV !== "production" &&
+    process.env.DIRECT_URL;
+  return normalizePostgresUrl(allowDirectRuntime || process.env.DATABASE_URL || process.env.DIRECT_URL);
 }
 
 export const prisma =
