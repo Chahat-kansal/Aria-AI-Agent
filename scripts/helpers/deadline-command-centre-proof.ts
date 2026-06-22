@@ -55,6 +55,24 @@ export async function restoreDefaultDeadlineAgentPermissions(userId: string) {
   });
 }
 
+export async function setDeadlineOwnerPermissionsBlocked(userId: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      permissionsJson: falsePermissions()
+    }
+  });
+}
+
+export async function restoreDefaultDeadlineOwnerPermissions(userId: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      permissionsJson: defaultPermissionsForRole(UserRole.COMPANY_OWNER)
+    }
+  });
+}
+
 export function chromiumExecutable() {
   return resolveChromiumExecutable();
 }

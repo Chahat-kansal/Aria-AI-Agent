@@ -3,13 +3,11 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 import {
   chromiumExecutable,
-  DEADLINE_AGENT_EMAIL,
-  DEADLINE_AGENT_PASSWORD,
   DEADLINE_OWNER_EMAIL,
   DEADLINE_OWNER_PASSWORD,
   login,
-  restoreDefaultDeadlineAgentPermissions,
-  setDeadlineAgentPermissionsBlocked,
+  restoreDefaultDeadlineOwnerPermissions,
+  setDeadlineOwnerPermissionsBlocked,
   seedDeadlineWorkspace,
   startServer,
   stopServer
@@ -62,15 +60,15 @@ async function main() {
     await page.locator("text=Reminder preview").first().scrollIntoViewIfNeeded();
     await saveScreenshot(page, "08-reminder-preview.png");
 
-    await setDeadlineAgentPermissionsBlocked(seeded.agent.id);
+    await setDeadlineOwnerPermissionsBlocked(seeded.owner.id);
     try {
       const blockedPage = await browser.newPage({ viewport: { width: 1280, height: 960 } });
-      await login(blockedPage, BASE_URL, DEADLINE_AGENT_EMAIL, DEADLINE_AGENT_PASSWORD);
+      await login(blockedPage, BASE_URL, DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
       await blockedPage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
       await saveScreenshot(blockedPage, "09-permission-blocked-state.png");
       await blockedPage.close();
     } finally {
-      await restoreDefaultDeadlineAgentPermissions(seeded.agent.id);
+      await restoreDefaultDeadlineOwnerPermissions(seeded.owner.id);
     }
 
     await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
