@@ -32,6 +32,7 @@ const nav: Array<{
   { label: "Matters", href: "/app/matters", icon: "matters" },
   { label: "Client Intake", href: "/app/intake", icon: "intake", permission: "can_send_client_requests" },
   { label: "Document Requests", href: "/app/document-requests", icon: "documentRequests", permission: "can_send_client_requests" },
+  { label: "Deadlines", href: "/app/deadlines", icon: "tasks", permission: "can_send_client_requests" },
   { label: "Appointments", href: "/app/appointments", icon: "appointments", permission: "can_manage_appointments" },
   { label: "Pathway Analysis", href: "/app/pathways", icon: "pathways", permission: "can_run_pathway_analysis" },
   { label: "Visa Knowledge", href: "/app/knowledge", icon: "knowledge", permission: "can_access_visa_knowledge" },
