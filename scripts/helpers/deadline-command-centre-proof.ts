@@ -86,7 +86,32 @@ export async function login(page: any, baseUrl: string, email: string, password:
   await page
     .getByRole("button", { name: usePublicPortal ? /^sign in$/i : /sign in to workspace/i })
     .click();
-  await page.waitForFunction(() => window.location.pathname.startsWith("/app/"), undefined, { timeout: 90_000 });
+  const loginStartedAt = Date.now();
+  while (Date.now() - loginStartedAt < 90_000) {
+    const currentPath = new URL(page.url()).pathname;
+    if (currentPath.startsWith("/app/")) {
+      return;
+    }
+
+    const errorText =
+      (await page
+        .locator("form p")
+        .filter({
+          hasText:
+            /Unable to sign in|incorrect|deactivated|Invite not accepted|not active yet|different workspace|workspace portal/i
+        })
+        .first()
+        .textContent()
+        .catch(() => null)) ?? null;
+
+    if (errorText) {
+      throw new Error(`Login failed for ${email}: ${errorText.trim()}`);
+    }
+
+    await wait(1000);
+  }
+
+  throw new Error(`Login did not reach the app for ${email}. Current path: ${new URL(page.url()).pathname}`);
 }
 
 export async function seedDeadlineWorkspace() {
