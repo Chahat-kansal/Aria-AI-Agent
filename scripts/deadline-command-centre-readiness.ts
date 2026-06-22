@@ -163,25 +163,19 @@ async function main() {
     console.log("Phase 13 readiness: owner matter panel");
     checks.push(record("matter-level deadline panel loads", await ownerPage.goto(`http://localhost:3028/app/matters/${seeded.matterPrimary.id}`, { waitUntil: "domcontentloaded" }).then(async () => ownerPage.locator("text=Matter deadline panel").first().isVisible())));
 
+    console.log("Phase 13 readiness: blocked-state page");
     await setDeadlineOwnerPermissionsBlocked(seeded.owner.id);
     try {
-      const blockedPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-      console.log("Phase 13 readiness: blocked-state login");
-      await login(blockedPage, "http://localhost:3028", DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
-      console.log("Phase 13 readiness: blocked-state page");
-      await blockedPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
-      checks.push(record("permission blocked state is shown", await blockedPage.locator("text=Deadline command centre unavailable").first().isVisible()));
-      await blockedPage.close();
+      await ownerPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
+      checks.push(record("permission blocked state is shown", await ownerPage.locator("text=Deadline command centre unavailable").first().isVisible()));
     } finally {
       await restoreDefaultDeadlineOwnerPermissions(seeded.owner.id);
     }
 
-    const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    console.log("Phase 13 readiness: mobile owner login");
-    await login(mobilePage, "http://localhost:3028", DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
     console.log("Phase 13 readiness: mobile dashboard");
-    await mobilePage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
-    const mobileWidth = await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+    await ownerPage.setViewportSize({ width: 390, height: 844 });
+    await ownerPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
+    const mobileWidth = await ownerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
     checks.push(record("mobile deadline view avoids horizontal overflow", mobileWidth));
   } finally {
     await browser?.close().catch(() => null);

@@ -62,11 +62,8 @@ async function main() {
 
     await setDeadlineOwnerPermissionsBlocked(seeded.owner.id);
     try {
-      const blockedPage = await browser.newPage({ viewport: { width: 1280, height: 960 } });
-      await login(blockedPage, BASE_URL, DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
-      await blockedPage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
-      await saveScreenshot(blockedPage, "09-permission-blocked-state.png");
-      await blockedPage.close();
+      await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
+      await saveScreenshot(page, "09-permission-blocked-state.png");
     } finally {
       await restoreDefaultDeadlineOwnerPermissions(seeded.owner.id);
     }
@@ -78,11 +75,9 @@ async function main() {
     await page.locator("text=History and audit").first().scrollIntoViewIfNeeded();
     await saveScreenshot(page, "11-audit-history-view.png");
 
-    const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await login(mobilePage, BASE_URL, DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
-    await mobilePage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
-    await saveScreenshot(mobilePage, "12-mobile-deadline-view.png");
-    await mobilePage.close();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
+    await saveScreenshot(page, "12-mobile-deadline-view.png");
   } finally {
     await browser.close().catch(() => null);
     await stopServer(server);
