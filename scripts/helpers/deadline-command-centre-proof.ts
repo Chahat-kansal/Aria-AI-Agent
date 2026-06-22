@@ -76,10 +76,16 @@ export async function stopServer(child: ChildProcess | null) {
 }
 
 export async function login(page: any, baseUrl: string, email: string, password: string) {
-  await page.goto(`${baseUrl}/w/${DEADLINE_WORKSPACE_SLUG}/login`, { waitUntil: "domcontentloaded" });
+  const usePublicPortal = email === DEADLINE_OWNER_EMAIL;
+  await page.goto(
+    usePublicPortal ? `${baseUrl}/auth/sign-in` : `${baseUrl}/w/${DEADLINE_WORKSPACE_SLUG}/login`,
+    { waitUntil: "domcontentloaded" }
+  );
   await page.getByRole("textbox", { name: "Email" }).fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(password);
-  await page.getByRole("button", { name: /sign in to workspace/i }).click();
+  await page
+    .getByRole("button", { name: usePublicPortal ? /^sign in$/i : /sign in to workspace/i })
+    .click();
   await page.waitForFunction(() => window.location.pathname.startsWith("/app/"), undefined, { timeout: 90_000 });
 }
 
