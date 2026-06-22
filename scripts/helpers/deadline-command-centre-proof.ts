@@ -76,11 +76,11 @@ export async function stopServer(child: ChildProcess | null) {
 }
 
 export async function login(page: any, baseUrl: string, email: string, password: string) {
-  await page.goto(`${baseUrl}/auth/sign-in`, { waitUntil: "networkidle" });
-  await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/app\/overview|\/app\/deadlines|\/app\/tasks|\/app\/matters/, { timeout: 60_000 });
+  await page.goto(`${baseUrl}/w/${DEADLINE_WORKSPACE_SLUG}/login`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("textbox", { name: "Email" }).fill(email);
+  await page.getByRole("textbox", { name: "Password" }).fill(password);
+  await page.getByRole("button", { name: /sign in to workspace/i }).click();
+  await page.waitForFunction(() => window.location.pathname.startsWith("/app/"), undefined, { timeout: 90_000 });
 }
 
 export async function seedDeadlineWorkspace() {
