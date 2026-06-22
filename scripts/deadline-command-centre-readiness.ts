@@ -14,10 +14,10 @@ import {
   chromiumExecutable,
   DEADLINE_AGENT_EMAIL,
   DEADLINE_AGENT_PASSWORD,
-  DEADLINE_BLOCKED_EMAIL,
-  DEADLINE_BLOCKED_PASSWORD,
   DEADLINE_OWNER_EMAIL,
   DEADLINE_OWNER_PASSWORD,
+  restoreDefaultDeadlineAgentPermissions,
+  setDeadlineAgentPermissionsBlocked,
   login,
   seedDeadlineWorkspace,
   startServer,
@@ -160,10 +160,16 @@ async function main() {
     checks.push(record("deadline dashboard page loads", await ownerPage.locator("text=Deadline command centre").first().isVisible()));
     checks.push(record("matter-level deadline panel loads", await ownerPage.goto(`http://localhost:3028/app/matters/${seeded.matterPrimary.id}`, { waitUntil: "networkidle" }).then(async () => ownerPage.locator("text=Matter deadline panel").first().isVisible())));
 
-    const blockedPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    await login(blockedPage, "http://localhost:3028", DEADLINE_BLOCKED_EMAIL, DEADLINE_BLOCKED_PASSWORD);
-    await blockedPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "networkidle" });
-    checks.push(record("permission blocked state is shown", await blockedPage.locator("text=Deadline command centre unavailable").first().isVisible()));
+    await setDeadlineAgentPermissionsBlocked(seeded.agent.id);
+    try {
+      const blockedPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      await login(blockedPage, "http://localhost:3028", DEADLINE_AGENT_EMAIL, DEADLINE_AGENT_PASSWORD);
+      await blockedPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "networkidle" });
+      checks.push(record("permission blocked state is shown", await blockedPage.locator("text=Deadline command centre unavailable").first().isVisible()));
+      await blockedPage.close();
+    } finally {
+      await restoreDefaultDeadlineAgentPermissions(seeded.agent.id);
+    }
 
     const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await login(mobilePage, "http://localhost:3028", DEADLINE_AGENT_EMAIL, DEADLINE_AGENT_PASSWORD);

@@ -37,6 +37,24 @@ function falsePermissions() {
   return permissionDefinitions.reduce((acc, item) => ({ ...acc, [item.key]: false }), {} as Record<string, boolean>);
 }
 
+export async function setDeadlineAgentPermissionsBlocked(userId: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      permissionsJson: falsePermissions()
+    }
+  });
+}
+
+export async function restoreDefaultDeadlineAgentPermissions(userId: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      permissionsJson: defaultPermissionsForRole(UserRole.MIGRATION_AGENT)
+    }
+  });
+}
+
 export function chromiumExecutable() {
   return resolveChromiumExecutable();
 }
