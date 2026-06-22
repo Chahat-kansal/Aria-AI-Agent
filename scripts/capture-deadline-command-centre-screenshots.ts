@@ -32,7 +32,7 @@ async function main() {
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1280 } });
     await login(page, BASE_URL, DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
-    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
     await saveScreenshot(page, "01-deadline-dashboard.png");
 
     await page.getByRole("button", { name: /overdue/i }).click();
@@ -52,11 +52,11 @@ async function main() {
     await page.getByRole("button", { name: /review required/i }).first().click();
     await saveScreenshot(page, "06-review-required-calculated-suggested-deadline.png");
 
-    await page.goto(`${BASE_URL}/app/matters/${seeded.matterPrimary.id}`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL}/app/matters/${seeded.matterPrimary.id}`, { waitUntil: "domcontentloaded" });
     await page.locator("text=Matter deadline panel").first().scrollIntoViewIfNeeded();
     await saveScreenshot(page, "07-matter-level-deadline-panel.png");
 
-    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: /all open/i }).click();
     await page.getByRole("button", { name: /preview reminder/i }).first().click();
     await page.locator("text=Reminder preview").first().scrollIntoViewIfNeeded();
@@ -66,14 +66,14 @@ async function main() {
     try {
       const blockedPage = await browser.newPage({ viewport: { width: 1280, height: 960 } });
       await login(blockedPage, BASE_URL, DEADLINE_AGENT_EMAIL, DEADLINE_AGENT_PASSWORD);
-      await blockedPage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "networkidle" });
+      await blockedPage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
       await saveScreenshot(blockedPage, "09-permission-blocked-state.png");
       await blockedPage.close();
     } finally {
       await restoreDefaultDeadlineAgentPermissions(seeded.agent.id);
     }
 
-    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: /^completed$/i }).click();
     await saveScreenshot(page, "10-completed-deadline.png");
 
@@ -82,7 +82,7 @@ async function main() {
 
     const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await login(mobilePage, BASE_URL, DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
-    await mobilePage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "networkidle" });
+    await mobilePage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
     await saveScreenshot(mobilePage, "12-mobile-deadline-view.png");
     await mobilePage.close();
   } finally {
