@@ -76,7 +76,7 @@ export async function stopServer(child: ChildProcess | null) {
 }
 
 export async function login(page: any, baseUrl: string, email: string, password: string) {
-  const usePublicPortal = email === DEADLINE_OWNER_EMAIL;
+  const usePublicPortal = email === DEADLINE_OWNER_EMAIL || email === DEADLINE_BLOCKED_EMAIL;
   const errorPattern = usePublicPortal
     ? /Unable to sign in right now\.|Email or password is incorrect\.|Staff and agents sign in through their firm workspace portal, not the public owner portal\.|Your staff invite has not been accepted yet\.|Your account has been deactivated\.|Your account setup is incomplete\./i
     : /Unable to sign in to this workspace right now\.|Invite not accepted yet\.|Your account is not active yet\.|This email belongs to a different workspace\.|Your account has been deactivated\.|Email or password is incorrect for this workspace\./i;
@@ -174,9 +174,9 @@ export async function seedDeadlineWorkspace() {
     update: {
       workspaceId: workspace.id,
       hashedPassword: await hash(DEADLINE_BLOCKED_PASSWORD, 12),
-      role: UserRole.ADMIN_ASSISTANT,
+      role: UserRole.COMPANY_ADMIN,
       status: UserStatus.ACTIVE,
-      visibilityScope: UserVisibilityScope.ASSIGNED_ONLY,
+      visibilityScope: UserVisibilityScope.FIRM_WIDE,
       permissionsJson: falsePermissions(),
       inviteAcceptedAt: new Date()
     },
@@ -185,9 +185,9 @@ export async function seedDeadlineWorkspace() {
       name: "Deadline Blocked",
       email: DEADLINE_BLOCKED_EMAIL,
       hashedPassword: await hash(DEADLINE_BLOCKED_PASSWORD, 12),
-      role: UserRole.ADMIN_ASSISTANT,
+      role: UserRole.COMPANY_ADMIN,
       status: UserStatus.ACTIVE,
-      visibilityScope: UserVisibilityScope.ASSIGNED_ONLY,
+      visibilityScope: UserVisibilityScope.FIRM_WIDE,
       permissionsJson: falsePermissions(),
       inviteAcceptedAt: new Date()
     }
