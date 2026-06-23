@@ -37,10 +37,14 @@ function ensure(check: Check) {
 async function main() {
   let currentStage = "seed workspace";
   let diagnosticPage: any = null;
+  let timeoutServer: Awaited<ReturnType<typeof startServer>> | null = null;
+  let timeoutBrowser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
   const readinessTimeoutMs = 5 * 60 * 1000;
-  const timeoutPromise = new Promise<never>((_, reject) => {
+  let timedOut = false;
+  const timeoutPromise = new Promise<never>((_) => {
     setTimeout(() => {
       void (async () => {
+        timedOut = true;
         let detail = `Phase 13 readiness timed out during ${currentStage}.`;
         if (diagnosticPage) {
           try {
@@ -58,7 +62,10 @@ async function main() {
             }
           } catch {}
         }
-        reject(new Error(detail));
+        console.error(detail);
+        await timeoutBrowser?.close().catch(() => null);
+        await stopServer(timeoutServer);
+        process.exit(1);
       })();
     }, readinessTimeoutMs);
   });
@@ -181,9 +188,11 @@ async function main() {
     currentStage = "start local server";
     console.log("Phase 13 readiness: starting local server");
     server = await startServer(3028);
+    timeoutServer = server;
     currentStage = "launch browser";
     console.log("Phase 13 readiness: launching browser");
     browser = await chromium.launch({ executablePath: chromiumExecutable(), headless: true });
+    timeoutBrowser = browser;
 
     currentStage = "create owner page";
     const ownerPage = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
@@ -216,8 +225,10 @@ async function main() {
     const mobileWidth = await ownerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
     checks.push(record("mobile deadline view avoids horizontal overflow", mobileWidth));
   } finally {
-    await browser?.close().catch(() => null);
-    await stopServer(server);
+    if (!timedOut) {
+      await browser?.close().catch(() => null);
+      await stopServer(server);
+    }
   }
 
   checks.forEach(ensure);
