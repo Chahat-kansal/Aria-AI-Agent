@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
 import {
+  DEADLINE_BLOCKED_EMAIL,
+  DEADLINE_BLOCKED_PASSWORD,
   chromiumExecutable,
   DEADLINE_OWNER_EMAIL,
   DEADLINE_OWNER_PASSWORD,
   login,
-  restoreDefaultDeadlineOwnerPermissions,
-  setDeadlineOwnerPermissionsBlocked,
   seedDeadlineWorkspace,
   startServer,
   stopServer
@@ -60,13 +60,11 @@ async function main() {
     await page.locator("text=Reminder preview").first().scrollIntoViewIfNeeded();
     await saveScreenshot(page, "08-reminder-preview.png");
 
-    await setDeadlineOwnerPermissionsBlocked(seeded.owner.id);
-    try {
-      await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
-      await saveScreenshot(page, "09-permission-blocked-state.png");
-    } finally {
-      await restoreDefaultDeadlineOwnerPermissions(seeded.owner.id);
-    }
+    const blockedPage = await browser.newPage({ viewport: { width: 1440, height: 1280 } });
+    await login(blockedPage, BASE_URL, DEADLINE_BLOCKED_EMAIL, DEADLINE_BLOCKED_PASSWORD);
+    await blockedPage.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
+    await saveScreenshot(blockedPage, "09-permission-blocked-state.png");
+    await blockedPage.close();
 
     await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: /^completed$/i }).click();

@@ -11,11 +11,11 @@ import {
 import { DEADLINE_REVIEW_WARNING } from "@/lib/services/deadlines/deadline-policy";
 import { getWorkspaceRows, safeJson } from "@/lib/services/platform-admin-data";
 import {
+  DEADLINE_BLOCKED_EMAIL,
+  DEADLINE_BLOCKED_PASSWORD,
   chromiumExecutable,
   DEADLINE_OWNER_EMAIL,
   DEADLINE_OWNER_PASSWORD,
-  restoreDefaultDeadlineOwnerPermissions,
-  setDeadlineOwnerPermissionsBlocked,
   login,
   seedDeadlineWorkspace,
   startServer,
@@ -201,13 +201,13 @@ async function main() {
 
     currentStage = "blocked-state page";
     console.log("Phase 13 readiness: blocked-state page");
-    await setDeadlineOwnerPermissionsBlocked(seeded.owner.id);
-    try {
-      await ownerPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
-      checks.push(record("permission blocked state is shown", await ownerPage.locator("text=Deadline command centre unavailable").first().isVisible()));
-    } finally {
-      await restoreDefaultDeadlineOwnerPermissions(seeded.owner.id);
-    }
+    const blockedPage = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+    diagnosticPage = blockedPage;
+    await login(blockedPage, "http://localhost:3028", DEADLINE_BLOCKED_EMAIL, DEADLINE_BLOCKED_PASSWORD);
+    await blockedPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
+    checks.push(record("permission blocked state is shown", await blockedPage.locator("text=Deadline command centre unavailable").first().isVisible()));
+    await blockedPage.close();
+    diagnosticPage = ownerPage;
 
     currentStage = "mobile dashboard";
     console.log("Phase 13 readiness: mobile dashboard");
