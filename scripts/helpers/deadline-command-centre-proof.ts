@@ -107,8 +107,24 @@ export async function startServer(port: number): Promise<ChildProcess> {
 
 export async function stopServer(child: ChildProcess | null) {
   if (!child) return;
+  if (child.exitCode !== null || child.killed) {
+    await wait(250);
+    return;
+  }
+
   child.kill();
-  await wait(1500);
+  const exited = await new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), 5_000);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+
+  if (!exited && child.exitCode === null) {
+    child.kill("SIGKILL");
+    await wait(1000);
+  }
 }
 
 export async function login(page: any, baseUrl: string, email: string, password: string) {
