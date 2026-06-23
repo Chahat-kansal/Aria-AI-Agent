@@ -35,6 +35,35 @@ function ensure(check: Check) {
 }
 
 async function main() {
+  let currentStage = "seed workspace";
+  let diagnosticPage: any = null;
+  const readinessTimeoutMs = 5 * 60 * 1000;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      void (async () => {
+        let detail = `Phase 13 readiness timed out during ${currentStage}.`;
+        if (diagnosticPage) {
+          try {
+            const currentPath = new URL(diagnosticPage.url()).pathname;
+            const visibleHeading =
+              (await diagnosticPage
+                .locator("h1, h2, [role='heading']")
+                .filter({ hasText: /\S/ })
+                .first()
+                .textContent()
+                .catch(() => null)) ?? null;
+            detail += ` Current path: ${currentPath}.`;
+            if (visibleHeading) {
+              detail += ` Visible heading: ${visibleHeading.trim().slice(0, 160)}.`;
+            }
+          } catch {}
+        }
+        reject(new Error(detail));
+      })();
+    }, readinessTimeoutMs);
+  });
+
+  const runChecks = async () => {
   const seeded = await seedDeadlineWorkspace();
   const checks: Check[] = [];
 
@@ -149,20 +178,28 @@ async function main() {
   let server: Awaited<ReturnType<typeof startServer>> | null = null;
   let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
   try {
+    currentStage = "start local server";
     console.log("Phase 13 readiness: starting local server");
     server = await startServer(3028);
+    currentStage = "launch browser";
     console.log("Phase 13 readiness: launching browser");
     browser = await chromium.launch({ executablePath: chromiumExecutable(), headless: true });
 
+    currentStage = "create owner page";
     const ownerPage = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+    diagnosticPage = ownerPage;
+    currentStage = "owner login";
     console.log("Phase 13 readiness: owner login");
     await login(ownerPage, "http://localhost:3028", DEADLINE_OWNER_EMAIL, DEADLINE_OWNER_PASSWORD);
+    currentStage = "owner dashboard";
     console.log("Phase 13 readiness: owner dashboard");
     await ownerPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
     checks.push(record("deadline dashboard page loads", await ownerPage.locator("text=Deadline command centre").first().isVisible()));
+    currentStage = "owner matter panel";
     console.log("Phase 13 readiness: owner matter panel");
     checks.push(record("matter-level deadline panel loads", await ownerPage.goto(`http://localhost:3028/app/matters/${seeded.matterPrimary.id}`, { waitUntil: "domcontentloaded" }).then(async () => ownerPage.locator("text=Matter deadline panel").first().isVisible())));
 
+    currentStage = "blocked-state page";
     console.log("Phase 13 readiness: blocked-state page");
     await setDeadlineOwnerPermissionsBlocked(seeded.owner.id);
     try {
@@ -172,6 +209,7 @@ async function main() {
       await restoreDefaultDeadlineOwnerPermissions(seeded.owner.id);
     }
 
+    currentStage = "mobile dashboard";
     console.log("Phase 13 readiness: mobile dashboard");
     await ownerPage.setViewportSize({ width: 390, height: 844 });
     await ownerPage.goto("http://localhost:3028/app/deadlines", { waitUntil: "domcontentloaded" });
@@ -184,6 +222,9 @@ async function main() {
 
   checks.forEach(ensure);
   console.log(JSON.stringify({ ok: true, checks }, null, 2));
+  };
+
+  await Promise.race([runChecks(), timeoutPromise]);
 }
 
 main()
