@@ -463,10 +463,84 @@ export async function seedDeadlineWorkspace() {
     }
   });
 
+  const optOutDocumentRequest = await prisma.documentRequest.create({
+    data: {
+      workspaceId: workspace.id,
+      clientId: clientOptOut.id,
+      matterId: matterOptOut.id,
+      createdByUserId: owner.id,
+      recipientName: `${clientOptOut.firstName} ${clientOptOut.lastName}`,
+      recipientEmail: clientOptOut.email,
+      message: "Upload pending items in the secure portal.",
+      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+      status: DocumentRequestStatus.SENT,
+      tokenHash: `deadline-doc-optout-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  const consentDocumentRequest = await prisma.documentRequest.create({
+    data: {
+      workspaceId: workspace.id,
+      clientId: clientConsentMissing.id,
+      matterId: matterConsentMissing.id,
+      createdByUserId: owner.id,
+      recipientName: `${clientConsentMissing.firstName} ${clientConsentMissing.lastName}`,
+      recipientEmail: clientConsentMissing.email,
+      message: "Upload pending items in the secure portal.",
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      status: DocumentRequestStatus.SENT,
+      tokenHash: `deadline-doc-consent-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }
+  });
+
   await prisma.documentRequestItem.create({
     data: {
       requestId: documentRequest.id,
       checklistItemId: checklistItem.id,
+      status: DocumentRequestItemStatus.MISSING
+    }
+  });
+
+  const optOutChecklistItem = await prisma.checklistItem.create({
+    data: {
+      matterId: matterOptOut.id,
+      itemKey: "deadline-optout-proof",
+      label: "Opt-out portal evidence",
+      category: "Identity",
+      description: "Opt-out proof checklist item.",
+      status: "REQUESTED",
+      required: true,
+      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.documentRequestItem.create({
+    data: {
+      requestId: optOutDocumentRequest.id,
+      checklistItemId: optOutChecklistItem.id,
+      status: DocumentRequestItemStatus.MISSING
+    }
+  });
+
+  const consentChecklistItem = await prisma.checklistItem.create({
+    data: {
+      matterId: matterConsentMissing.id,
+      itemKey: "deadline-consent-proof",
+      label: "Consent portal evidence",
+      category: "Identity",
+      description: "Consent proof checklist item.",
+      status: "REQUESTED",
+      required: true,
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.documentRequestItem.create({
+    data: {
+      requestId: consentDocumentRequest.id,
+      checklistItemId: consentChecklistItem.id,
       status: DocumentRequestItemStatus.MISSING
     }
   });

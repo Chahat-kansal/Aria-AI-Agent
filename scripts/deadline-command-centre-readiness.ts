@@ -89,8 +89,8 @@ async function main() {
     user: seeded.owner
   });
   const missingEvidenceItem = refreshed.items.find((item) => item.category === "missing_evidence" && item.clientId === seeded.clientPrimary.id && item.status === "OPEN");
-  const optOutItem = refreshed.items.find((item) => item.clientId === seeded.clientOptOut.id && item.category === "critical_deadline");
-  const consentMissingItem = refreshed.items.find((item) => item.clientId === seeded.clientConsentMissing.id && item.category === "critical_deadline");
+  const optOutItem = refreshed.items.find((item) => item.clientId === seeded.clientOptOut.id && item.category === "missing_evidence" && item.status === "OPEN");
+  const consentMissingItem = refreshed.items.find((item) => item.clientId === seeded.clientConsentMissing.id && item.category === "missing_evidence" && item.status === "OPEN");
   const calculatedItem = refreshed.items.find((item) => item.kind !== "manual" && item.reviewRequired);
 
   checks.push(record("calculated or suggested deadline exists", Boolean(calculatedItem)));
