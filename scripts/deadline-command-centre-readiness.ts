@@ -186,7 +186,11 @@ async function main() {
   console.log(JSON.stringify({ ok: true, checks }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect().catch(() => null);
+  });
