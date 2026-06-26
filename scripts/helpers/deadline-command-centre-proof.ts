@@ -33,6 +33,8 @@ export const DEADLINE_AGENT_PASSWORD = "Deadline-Agent-2026!";
 export const DEADLINE_BLOCKED_EMAIL = "deadline.blocked@example.com";
 export const DEADLINE_BLOCKED_PASSWORD = "Deadline-Blocked-2026!";
 
+type LoginMode = "public" | "workspace";
+
 function falsePermissions() {
   return permissionDefinitions.reduce((acc, item) => ({ ...acc, [item.key]: false }), {} as Record<string, boolean>);
 }
@@ -127,20 +129,39 @@ export async function stopServer(child: ChildProcess | null) {
   }
 }
 
-export async function login(page: any, baseUrl: string, email: string, password: string) {
-  const usePublicPortal = email === DEADLINE_OWNER_EMAIL || email === DEADLINE_BLOCKED_EMAIL;
+function inferLoginMode(email: string): LoginMode {
+  return email === DEADLINE_OWNER_EMAIL ? "public" : "workspace";
+}
+
+export async function login(page: any, baseUrl: string, email: string, password: string, mode?: LoginMode) {
+  const loginMode = mode ?? inferLoginMode(email);
+  const usePublicPortal = loginMode === "public";
   const errorPattern = usePublicPortal
     ? /Unable to sign in right now\.|Email or password is incorrect\.|Staff and agents sign in through their firm workspace portal, not the public owner portal\.|Your staff invite has not been accepted yet\.|Your account has been deactivated\.|Your account setup is incomplete\./i
     : /Unable to sign in to this workspace right now\.|Invite not accepted yet\.|Your account is not active yet\.|This email belongs to a different workspace\.|Your account has been deactivated\.|Email or password is incorrect for this workspace\./i;
-  await page.goto(
-    usePublicPortal ? `${baseUrl}/auth/sign-in` : `${baseUrl}/w/${DEADLINE_WORKSPACE_SLUG}/login`,
-    { waitUntil: "domcontentloaded" }
-  );
-  await page.getByRole("textbox", { name: "Email" }).fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill(password);
-  await page
-    .getByRole("button", { name: usePublicPortal ? /^sign in$/i : /sign in to workspace/i })
-    .click();
+  const loginPath = usePublicPortal ? `/auth/sign-in` : `/w/${DEADLINE_WORKSPACE_SLUG}/login`;
+  await page.goto(`${baseUrl}${loginPath}`, { waitUntil: "domcontentloaded" });
+  const csrf = await (await page.request.get(`${baseUrl}/api/auth/csrf`)).json() as { csrfToken?: string };
+  if (!csrf.csrfToken) {
+    throw new Error(`Login failed for ${email}: csrf token missing`);
+  }
+
+  const response = await page.request.post(`${baseUrl}/api/auth/callback/credentials`, {
+    form: {
+      csrfToken: csrf.csrfToken,
+      email,
+      password,
+      ...(usePublicPortal ? {} : { workspaceSlug: DEADLINE_WORKSPACE_SLUG }),
+      redirect: "false",
+      json: "true"
+    }
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Login failed for ${email}: credential callback returned HTTP ${response.status()}`);
+  }
+
+  await page.goto(`${baseUrl}/app/overview`, { waitUntil: "domcontentloaded" });
   const loginStartedAt = Date.now();
   while (Date.now() - loginStartedAt < 90_000) {
     const currentPath = new URL(page.url()).pathname;
@@ -163,7 +184,22 @@ export async function login(page: any, baseUrl: string, email: string, password:
     await wait(1000);
   }
 
-  throw new Error(`Login did not reach the app for ${email}. Current path: ${new URL(page.url()).pathname}`);
+  const currentPath = new URL(page.url()).pathname;
+  const visibleHeading =
+    (await page
+      .locator("h1, h2, [role='heading']")
+      .filter({ hasText: /\S/ })
+      .first()
+      .textContent()
+      .catch(() => null)) ?? null;
+  const responseStatus = await page
+    .mainFrame()
+    .response()
+    .then((value: any) => value?.status?.() ?? null)
+    .catch(() => null);
+  throw new Error(
+    `Login did not reach the app for ${email}. Current path: ${currentPath}. Response status: ${responseStatus ?? "unknown"}. Visible heading: ${visibleHeading?.trim().slice(0, 160) ?? "none"}.`
+  );
 }
 
 export async function seedDeadlineWorkspace() {
