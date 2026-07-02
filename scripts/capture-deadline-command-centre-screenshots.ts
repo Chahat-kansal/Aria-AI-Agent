@@ -55,7 +55,7 @@ async function main() {
     await saveScreenshot(page, "07-matter-level-deadline-panel.png");
 
     await page.goto(`${BASE_URL}/app/deadlines`, { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: /all open/i }).click();
+    await page.getByRole("button", { name: /preview reminder/i }).first().waitFor({ state: "visible", timeout: 30_000 });
     await page.getByRole("button", { name: /preview reminder/i }).first().click();
     await page.locator("text=Reminder preview").first().scrollIntoViewIfNeeded();
     await saveScreenshot(page, "08-reminder-preview.png");
