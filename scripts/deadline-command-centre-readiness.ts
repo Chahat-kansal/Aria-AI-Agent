@@ -41,8 +41,9 @@ async function main() {
   let timeoutBrowser: Awaited<ReturnType<typeof chromium.launch>> | null = null;
   const readinessTimeoutMs = 5 * 60 * 1000;
   let timedOut = false;
+  let timeoutHandle: NodeJS.Timeout | null = null;
   const timeoutPromise = new Promise<never>((_) => {
-    setTimeout(() => {
+    timeoutHandle = setTimeout(() => {
       void (async () => {
         timedOut = true;
         let detail = `Phase 13 readiness timed out during ${currentStage}.`;
@@ -235,7 +236,14 @@ async function main() {
   console.log(JSON.stringify({ ok: true, checks }, null, 2));
   };
 
-  await Promise.race([runChecks(), timeoutPromise]);
+  try {
+    await Promise.race([runChecks(), timeoutPromise]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+      timeoutHandle = null;
+    }
+  }
 }
 
 main()
