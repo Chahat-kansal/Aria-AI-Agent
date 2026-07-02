@@ -6,6 +6,7 @@ import { AriaAutoprepPanel } from "@/components/app/aria-autoprep-panel";
 import { MatterEmailWorkspace } from "@/components/app/matter-email-workspace";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { MatterAcknowledgementPanel } from "@/components/app/matter-acknowledgement-panel";
+import { MatterDeadlinePanel } from "@/components/app/matter-deadline-panel";
 import { PortalAccessManager } from "@/components/app/portal-access-manager";
 import { MatterCloudExportPanel } from "@/components/app/matter-cloud-export-panel";
 import { AIInsightPanel } from "@/components/ui/ai-insight-panel";
@@ -375,6 +376,16 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
                 </div>
               </div>
             ) : null}
+          </SectionCard>
+        </PageSection>
+
+        <PageSection
+          eyebrow="DEADLINE PANEL"
+          title="Matter deadline actions"
+          description="Track the live matter deadline queue, complete manual deadlines, and preview generic reminder wording before sending it."
+        >
+          <SectionCard className="p-5">
+            <MatterDeadlinePanel workspaceId={context.workspace.id} user={context.user} matterId={matter.id} />
           </SectionCard>
         </PageSection>
 

@@ -133,6 +133,18 @@ enum TaskConflictStatus {
   MERGE_REQUIRED
 }
 
+enum DeadlineStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+enum DeadlineSourceType {
+  MANUAL
+  CALCULATED
+  SUGGESTED
+}
+
 enum IntakeRequestStatus {
   DRAFT
   SENT
@@ -510,6 +522,8 @@ model Workspace {
   inAppNotifications       InAppNotification[]
   clientChasingPreferences ClientChasingPreference[]
   clientChaseAttempts      ClientChaseAttempt[]
+  deadlines                MatterDeadline[]
+  deadlineEvents           DeadlineEvent[]
   cloudDriveExportJobs     CloudDriveExportJob[]
   cloudDriveExportItems    CloudDriveExportItem[]
   cloudDriveEvents         CloudDriveEvent[]
@@ -580,6 +594,9 @@ model User {
   inAppNotifications           InAppNotification[]
   clientChasingPreferences     ClientChasingPreference[]      @relation("ClientChasingPreferenceRecorder")
   clientChaseAttempts          ClientChaseAttempt[]           @relation("ClientChaseActor")
+  deadlinesAssigned            MatterDeadline[]               @relation("DeadlineAssignee")
+  deadlinesCreated             MatterDeadline[]               @relation("DeadlineCreator")
+  deadlineEvents               DeadlineEvent[]                @relation("DeadlineActor")
   cloudDriveExportJobs         CloudDriveExportJob[]          @relation("CloudDriveExportActor")
   cloudDriveEvents             CloudDriveEvent[]              @relation("CloudDriveEventActor")
 
@@ -619,6 +636,7 @@ model Client {
   matterImpacts            MatterImpact[]
   smsMessages              SmsMessage[]
   smsConsents              SmsConsent[]
+  deadlines                MatterDeadline[]
   smsOptOuts               SmsOptOut[]
   pushSubscriptions        PushSubscription[]
   inAppNotifications       InAppNotification[]
@@ -681,6 +699,7 @@ model Matter {
   cloudDriveExportJobs     CloudDriveExportJob[]
   inAppNotifications       InAppNotification[]
   clientChaseAttempts      ClientChaseAttempt[]
+  deadlines                MatterDeadline[]
 }
 
 model PathwayAnalysis {
@@ -2140,6 +2159,61 @@ model ClientChaseAttempt {
   @@index([workspaceId, status, createdAt])
   @@index([clientId, sourceType, channel, createdAt])
   @@index([matterId, createdAt])
+}
+
+model MatterDeadline {
+  id                 String             @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  matterId           String?
+  matter             Matter?            @relation(fields: [matterId], references: [id], onDelete: SetNull)
+  clientId           String?
+  client             Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  assignedToUserId   String?
+  assignedToUser     User?              @relation("DeadlineAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  createdByUserId    String?
+  createdByUser      User?              @relation("DeadlineCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  title              String
+  safeSummary        String?
+  dueAt              DateTime
+  completedAt        DateTime?
+  status             DeadlineStatus     @default(OPEN)
+  category           String
+  sourceType         DeadlineSourceType @default(MANUAL)
+  reviewRequired     Boolean            @default(true)
+  clientVisible      Boolean            @default(false)
+  reminderLastSentAt DateTime?
+  reminderStatus     String?
+  sourceLabel        String?
+  metadataJson       Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  events             DeadlineEvent[]
+
+  @@index([workspaceId, dueAt, status])
+  @@index([workspaceId, category, dueAt])
+  @@index([matterId, dueAt])
+  @@index([clientId, dueAt])
+  @@index([assignedToUserId, dueAt])
+}
+
+model DeadlineEvent {
+  id           String         @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deadlineId   String?
+  deadline     MatterDeadline? @relation(fields: [deadlineId], references: [id], onDelete: SetNull)
+  actorUserId  String?
+  actorUser    User?          @relation("DeadlineActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  eventType    String
+  status       DeadlineStatus?
+  summary      String?
+  metadataJson Json?
+  createdAt    DateTime       @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([deadlineId, createdAt])
+  @@index([eventType, createdAt])
 }
 
 model PushEvent {
