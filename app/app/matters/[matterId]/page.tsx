@@ -4,6 +4,7 @@ import { AgentClientFolderActions } from "@/components/app/agent-client-folder-a
 import { AppShell } from "@/components/app/app-shell";
 import { AriaAutoprepPanel } from "@/components/app/aria-autoprep-panel";
 import { MatterEmailWorkspace } from "@/components/app/matter-email-workspace";
+import { MatterHealthPanel } from "@/components/app/matter-health-panel";
 import { MatterAssignmentForm } from "@/components/app/matter-assignment-form";
 import { MatterAcknowledgementPanel } from "@/components/app/matter-acknowledgement-panel";
 import { MatterDeadlinePanel } from "@/components/app/matter-deadline-panel";
@@ -28,6 +29,7 @@ import { getSubclassSupport, supportLevelLabel } from "@/lib/services/subclass-s
 import { getAgentClientFolderConfirmation, isAssignedAgentForPrivateFolder } from "@/lib/services/agent-client-folder";
 import { buildMatterDeadlineIntelligence } from "@/lib/services/deadline-intelligence";
 import { getMatterEmailWorkspace } from "@/lib/services/email-sync/matter-email-linking";
+import { getMatterHealthForMatter } from "@/lib/services/matter-health/matter-health-service";
 
 export default async function MatterDetailPage({ params }: { params: { matterId: string } }) {
   const context = await getCurrentWorkspaceContext();
@@ -119,6 +121,11 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
   ]);
   const emailConfigured = getEmailConfigStatus().configured;
   const deadlineIntelligence = buildMatterDeadlineIntelligence(matter, { emailConfigured });
+  const matterHealthItem = await getMatterHealthForMatter({
+    workspaceId: context.workspace.id,
+    matterId: matter.id,
+    user: context.user
+  });
   const subclassSupport = getSubclassSupport(matter.visaSubclass);
   const folderConfirmation = await getAgentClientFolderConfirmation(matter.id);
   const isAssignedAgentFolderUser = isAssignedAgentForPrivateFolder(context.user, matter);
@@ -312,6 +319,14 @@ export default async function MatterDetailPage({ params }: { params: { matterId:
           <MetricCard label="Validation issues" value={openIssues.length} hint="Open issues still needing review." accent={openIssues.length ? "red" : "emerald"} />
           <MetricCard label="Pending client actions" value={pendingClientActions} hint="Intake, doc requests, and linked review items." accent={pendingClientActions ? "amber" : "emerald"} />
         </section>
+
+        <PageSection
+          eyebrow="MATTER HEALTH"
+          title="Operational health score"
+          description="Advisory matter health signals stay review-required. This score does not predict visa outcomes or provide legal advice."
+        >
+          <MatterHealthPanel item={matterHealthItem} />
+        </PageSection>
 
         <PageSection
           eyebrow="DEADLINES"
