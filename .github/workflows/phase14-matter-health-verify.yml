@@ -57,10 +57,24 @@ jobs:
         run: npx prisma generate
 
       - name: Prisma migrate deploy
-        run: npx prisma migrate deploy
+        run: |
+          set -o pipefail
+          if ! npx prisma migrate deploy 2>&1 | tee phase14-prisma-migrate-deploy.log; then
+            tail -n 80 phase14-prisma-migrate-deploy.log
+            message="$(tail -n 20 phase14-prisma-migrate-deploy.log | tr '\n' ' ' | sed -e 's/%/%25/g' -e 's/\r//g' -e 's/:/%3A/g' -e 's/,/%2C/g')"
+            echo "::error title=Prisma migrate deploy failed::$message"
+            exit 1
+          fi
 
       - name: Prisma migrate status
-        run: npx prisma migrate status
+        run: |
+          set -o pipefail
+          if ! npx prisma migrate status 2>&1 | tee phase14-prisma-migrate-status.log; then
+            tail -n 80 phase14-prisma-migrate-status.log
+            message="$(tail -n 20 phase14-prisma-migrate-status.log | tr '\n' ' ' | sed -e 's/%/%25/g' -e 's/\r//g' -e 's/:/%3A/g' -e 's/,/%2C/g')"
+            echo "::error title=Prisma migrate status failed::$message"
+            exit 1
+          fi
 
       - name: TypeScript
         run: npx tsc --noEmit
